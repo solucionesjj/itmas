@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend (lint, build, test, e2e, audit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test
+      # test:e2e spins up its own mongodb-memory-server (downloads a mongod
+      # binary on first run) — no separate Mongo service container is used
+      # here. If a CI runner ever blocks that download's network egress,
+      # this step needs a `services: mongo:` block added instead.
+      - run: npm run test:e2e
+      - run: npm audit --omit=dev --audit-level=high
+
+  frontend:
+    name: Frontend (lint, build, test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test -- --watch=false --browsers=ChromeHeadless
+      - run: npm audit --omit=dev --audit-level=high
+
+# Deploy is intentionally NOT automated here — it's environment-specific
+# (target infra, TLS/reverse-proxy, Mongo replica set, secrets manager) and
+# out of scope for this sandbox. See DEPLOYMENT.md for what a real deploy
+# still requires beyond what this pipeline can verify.

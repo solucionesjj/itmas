@@ -1,0 +1,73 @@
+:host {
+  --chart-surface: #fcfcfb;
+  --chart-text-primary: #0b0b0b;
+  --chart-text-secondary: #52514e;
+  --chart-gridline: #e1e0d9;
+
+  display: block;
+  background: var(--chart-surface);
+}
+
+@media (prefers-color-scheme: dark) {
+  :host {
+    --chart-surface: #1a1a19;
+    --chart-text-primary: #ffffff;
+    --chart-text-secondary: #c3c2b7;
+    --chart-gridline: #2c2c2a;
+  }
+}
+
+.chart-rows {
+  display: flex;
+  flex-direction: column;
+  // Surface-color gap between rows — comfortably above the 2px minimum that
+  // separates adjacent marks.
+  gap: 10px;
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: max-content 1fr max-content;
+  align-items: center;
+  gap: 12px;
+}
+
+.os-label {
+  color: var(--chart-text-primary);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.bar-track {
+  height: 16px;
+  border-left: 1px solid var(--chart-gridline);
+  position: relative;
+}
+
+.bar {
+  height: 16px;
+  min-width: 2px;
+  background: var(--bar-color-light);
+  // Square at the baseline (left), 4px rounded cap at the data end (right).
+  border-radius: 0 4px 4px 0;
+}
+
+@media (prefers-color-scheme: dark) {
+  .bar {
+    background: var(--bar-color-dark);
+  }
+}
+
+.value-label {
+  color: var(--chart-text-secondary);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 2ch;
+  text-align: right;
+}
+
+.empty-state {
+  color: var(--chart-text-secondary);
+  font-size: 0.875rem;
+  margin: 0;
+}

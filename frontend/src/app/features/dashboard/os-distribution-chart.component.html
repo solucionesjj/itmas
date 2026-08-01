@@ -1,0 +1,43 @@
+@if (rows().length === 0) {
+  <p class="empty-state">No hay datos de sistemas operativos disponibles todavía.</p>
+} @else {
+  <!-- The visual bars are one summarized image for assistive tech (role="img" +
+       aria-label); the real per-row data lives in the visually-hidden table
+       below as ordinary, navigable markup. Screen-reader users get both a
+       quick summary and the full detail, never just a silently-skipped canvas. -->
+  <div class="chart-rows" role="img" [attr.aria-label]="ariaSummary()">
+    @for (row of rows(); track row.os) {
+      <div class="chart-row" aria-hidden="true">
+        <span class="os-label">{{ row.os }}</span>
+        <div class="bar-track">
+          <div
+            class="bar"
+            [style.width.%]="row.widthPercent"
+            [style.--bar-color-light]="row.colorLight"
+            [style.--bar-color-dark]="row.colorDark"
+            [attr.title]="row.os + ': ' + row.count"
+          ></div>
+        </div>
+        <span class="value-label">{{ row.count }}</span>
+      </div>
+    }
+  </div>
+
+  <table class="sr-only">
+    <caption>Distribución de equipos por sistema operativo</caption>
+    <thead>
+      <tr>
+        <th scope="col">Sistema operativo</th>
+        <th scope="col">Cantidad</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.os) {
+        <tr>
+          <td>{{ row.os }}</td>
+          <td>{{ row.count }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

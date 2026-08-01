@@ -1,0 +1,33 @@
+services:
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo-data:/data/db
+    # Intentionally not published to the host — only `backend` needs to reach
+    # it, over the compose network (service name `mongo`). Production Mongo
+    # must run with replication and storage-level encryption at rest — see
+    # DEPLOYMENT.md; this is a single-instance dev/demo convenience only.
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    env_file:
+      - ./backend/.env
+    environment:
+      MONGO_URI: mongodb://mongo:27017/itmas
+    ports:
+      - "3100:3000"
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  mongo-data:

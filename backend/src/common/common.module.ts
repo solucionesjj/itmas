@@ -1,0 +1,9 @@
+import { Global, Module } from '@nestjs/common';
+import { JsonLoggerService } from './logger/json-logger.service';
+
+@Global()
+@Module({
+  providers: [JsonLoggerService],
+  exports: [JsonLoggerService],
+})
+export class CommonModule {}

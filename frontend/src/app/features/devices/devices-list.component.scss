@@ -1,0 +1,15 @@
+.filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.empty-state {
+  color: #52514e;
+  padding: 16px 0;
+}

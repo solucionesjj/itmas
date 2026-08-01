@@ -1,0 +1,25 @@
+# Trazabilidad de Criterios de Aceptación (Fase 1)
+
+Mapeo de cada CA-xx de `spec.md` §9 / `agent.md` §16 a la sub-fase que lo implementa y la prueba automatizada (o verificación manual) que lo cubre. "Verificado manualmente" indica una comprobación end-to-end adicional hecha contra un backend real (Docker MongoDB) durante la revisión de cada sub-fase, más allá de los tests automatizados.
+
+| CA | Descripción | Sub-fase | Prueba automatizada | Verificación manual |
+|----|-------------|----------|----------------------|----------------------|
+| CA-01 | Inventario válido → 201 y persistido | 1.2 | `test/ingestion.e2e-spec.ts` | Sí — `POST /inventory` con curl, confirmado en Mongo |
+| CA-02 | Segunda inventario con RAM distinta → alerta `resource_change` | 1.2 (detección) / 1.3 (alerta real) | `test/alert-rules.e2e-spec.ts`, `test/alerts.e2e-spec.ts` | Sí — cambio de RAM, `GET /alerts` muestra el registro |
+| CA-03 | Acceso a servidor fuera de horario → alerta `off_hours_access` | 1.3 | `alert-engine.service.spec.ts`, `test/alerts.e2e-spec.ts` | Sí — login 03:00 UTC en equipo `infrastructure`, alerta generada |
+| CA-04 | Dashboard: total de equipos por categoría | 1.5 | `test/devices-stats.e2e-spec.ts` | Sí — `GET /stats/devices` con 3 equipos sembrados |
+| CA-05 | Dashboard: distribución por SO actualizada | 1.5 | `test/devices-stats.e2e-spec.ts` | Sí — incluye bucket `"unknown"` para equipo sin inventario |
+| CA-06 | Sin token válido → 401 | 1.1 | `test/auth.e2e-spec.ts` (y repetido en cada suite e2e posterior) | Sí |
+| CA-07 | Alertas filtrables por tipo y rango de fechas | 1.3 (API) / 1.5 (UI) | `test/alerts.e2e-spec.ts` | Sí — filtros `type`/`status`/`from`/`to` |
+| CA-08 | Usuario no autenticado → redirigido a login | 1.1 | `authGuard` (frontend, sin test unitario dedicado — mismo patrón que el resto del frontend) | No probado visualmente en navegador (sin herramientas de browser en sesión); verificado por lectura de código y por el 401 del backend |
+| CA-09 | Usuario recibe 403 en gestión de usuarios/alertas y no ve esas opciones en el menú | 1.3/1.4/1.5 | `test/users.e2e-spec.ts`, `test/alert-rules.e2e-spec.ts` (403 backend) | Sí — 403 confirmado con usuario real; ocultamiento de menú verificado por lectura de `shell.component.html` |
+| CA-10 | Administrador crea usuario y este puede iniciar sesión | 1.4 | `test/users.e2e-spec.ts` | Sí — usuario `jperez`/`usuario1` creado y logueado exitosamente |
+| CA-11 | Administrador define/modifica alerta y el motor aplica el cambio | 1.3 | `alert-engine.service.spec.ts` (regla deshabilitada → no dispara) | Sí — deshabilité la regla `off_hours_access` por PATCH y confirmé que dejó de generar alertas |
+| CA-12 | Acción administrativa queda en `audit_log` con usuario y marca de tiempo | 1.1/1.3/1.4 | Verificado dentro de los e2e de auth/alert-rules/users (se consulta `audit_log` tras cada acción) | Sí — consultado directamente vía `mongosh` |
+| CA-13 | Usuario consulta y exporta reportes correctamente | 1.6 | `test/reports.e2e-spec.ts` | Sí — export CSV/PDF como `usuario1`, 200; export de alertas como Usuario, 403 |
+| CA-14 | Auditor consulta eventos y gestiona estado de alertas sin acceder a usuarios/reglas | 1.3/1.4/1.5 | `test/alerts.e2e-spec.ts`, `test/users.e2e-spec.ts`, `test/alert-rules.e2e-spec.ts` | Sí — Auditor: 200 en `/alerts`, 403 en `/users` y `/alert-rules` |
+
+## Notas
+
+- CA-08 es el único criterio sin verificación de navegador real en esta sesión (la extensión Claude in Chrome no llegó a conectarse). Cuando se conecte, vale la pena repetir el flujo de login/redirección visualmente.
+- Todas las demás verificaciones manuales se hicieron con MongoDB real en Docker y llamadas HTTP directas (curl), no solo con `mongodb-memory-server` de los tests automatizados.

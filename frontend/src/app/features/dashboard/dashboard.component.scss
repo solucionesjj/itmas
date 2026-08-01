@@ -1,0 +1,53 @@
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+}
+
+.kpi-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.stat-tile {
+  flex: 1 1 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #52514e;
+}
+
+@media (prefers-color-scheme: dark) {
+  .stat-label {
+    color: #c3c2b7;
+  }
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #0b0b0b;
+}
+
+@media (prefers-color-scheme: dark) {
+  .stat-value {
+    color: #ffffff;
+  }
+}
+
+.chart-card {
+  padding: 16px;
+
+  h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 16px;
+  }
+}

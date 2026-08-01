@@ -1,0 +1,64 @@
+<h1>Equipos</h1>
+
+<form [formGroup]="filters" class="filters-row">
+  <mat-form-field appearance="outline">
+    <mat-label>Categoría</mat-label>
+    <mat-select formControlName="category">
+      <mat-option value="">Todas</mat-option>
+      <mat-option value="collaborator">Colaborador</mat-option>
+      <mat-option value="infrastructure">Infraestructura</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Hostname</mat-label>
+    <input matInput formControlName="hostname" placeholder="Buscar por hostname" />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Sistema operativo</mat-label>
+    <input matInput formControlName="osName" placeholder="Buscar por SO" />
+  </mat-form-field>
+</form>
+
+<table mat-table [dataSource]="devices()" class="full-width">
+  <ng-container matColumnDef="hostname">
+    <th mat-header-cell *matHeaderCellDef>Hostname</th>
+    <td mat-cell *matCellDef="let device">{{ device.hostname }}</td>
+  </ng-container>
+
+  <ng-container matColumnDef="category">
+    <th mat-header-cell *matHeaderCellDef>Categoría</th>
+    <td mat-cell *matCellDef="let device">
+      {{ device.category === 'collaborator' ? 'Colaborador' : 'Infraestructura' }}
+    </td>
+  </ng-container>
+
+  <ng-container matColumnDef="os">
+    <th mat-header-cell *matHeaderCellDef>Sistema operativo</th>
+    <td mat-cell *matCellDef="let device">
+      {{ device.os ? device.os.name + ' ' + device.os.version : 'Sin datos' }}
+    </td>
+  </ng-container>
+
+  <ng-container matColumnDef="lastSeen">
+    <th mat-header-cell *matHeaderCellDef>Última conexión</th>
+    <td mat-cell *matCellDef="let device">
+      {{ device.lastSeen ? (device.lastSeen | date: 'medium') : 'Nunca' }}
+    </td>
+  </ng-container>
+
+  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+  <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+</table>
+
+@if (!loading() && devices().length === 0) {
+  <p class="empty-state">No hay equipos que coincidan con los filtros.</p>
+}
+
+<mat-paginator
+  [length]="total()"
+  [pageSize]="20"
+  [pageSizeOptions]="[20, 50, 100]"
+  (page)="onPage($event)"
+/>

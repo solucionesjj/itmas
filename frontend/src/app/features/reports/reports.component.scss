@@ -1,0 +1,22 @@
+.reports-card {
+  max-width: 640px;
+}
+
+.radio-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.inline-spinner {
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}

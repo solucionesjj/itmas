@@ -1,0 +1,25 @@
+@if (loading()) {
+  <div class="loading">
+    <mat-spinner diameter="32" />
+  </div>
+} @else {
+  <div class="kpi-row">
+    <mat-card class="stat-tile">
+      <span class="stat-label">Total de equipos</span>
+      <span class="stat-value">{{ deviceStats()?.total ?? 0 }}</span>
+    </mat-card>
+    <mat-card class="stat-tile">
+      <span class="stat-label">Colaboradores</span>
+      <span class="stat-value">{{ deviceStats()?.collaborator ?? 0 }}</span>
+    </mat-card>
+    <mat-card class="stat-tile">
+      <span class="stat-label">Infraestructura</span>
+      <span class="stat-value">{{ deviceStats()?.infrastructure ?? 0 }}</span>
+    </mat-card>
+  </div>
+
+  <mat-card class="chart-card">
+    <h2>Distribución por sistema operativo</h2>
+    <app-os-distribution-chart [data]="osStats()" />
+  </mat-card>
+}

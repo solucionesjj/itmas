@@ -1,0 +1,19 @@
+.nav-links {
+  display: flex;
+  gap: 0.25rem;
+  margin-left: 1.5rem;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.user-info {
+  margin-right: 1rem;
+  opacity: 0.85;
+  font-size: 0.9rem;
+}
+
+.shell-content {
+  padding: 1.5rem;
+}

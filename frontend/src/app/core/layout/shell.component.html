@@ -1,0 +1,23 @@
+<mat-toolbar color="primary">
+  <span>IT-MAS</span>
+  <nav class="nav-links">
+    <a mat-button routerLink="/">Inicio</a>
+    <a mat-button routerLink="/devices">Equipos</a>
+    @if (authService.currentUser()?.role === 'administrator' || authService.currentUser()?.role === 'auditor') {
+      <a mat-button routerLink="/alerts">Alertas</a>
+    }
+    <a mat-button routerLink="/reports">Reportes</a>
+    @if (authService.currentUser()?.role === 'administrator') {
+      <a mat-button routerLink="/admin/users">Usuarios</a>
+    }
+  </nav>
+  <span class="spacer"></span>
+  @if (authService.currentUser(); as user) {
+    <span class="user-info">{{ user.username }} · {{ user.role }}</span>
+  }
+  <button mat-button (click)="logout()">Cerrar sesión</button>
+</mat-toolbar>
+
+<div class="shell-content">
+  <router-outlet />
+</div>

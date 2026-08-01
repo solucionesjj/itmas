@@ -1,0 +1,76 @@
+<h1>Reportes</h1>
+
+<mat-card class="reports-card">
+  <mat-card-content>
+    <form [formGroup]="form">
+      <mat-radio-group formControlName="type" class="radio-row" aria-label="Tipo de reporte">
+        <mat-radio-button value="devices">Equipos</mat-radio-button>
+        @if (canExportAlerts()) {
+          <mat-radio-button value="alerts">Alertas</mat-radio-button>
+        }
+      </mat-radio-group>
+
+      <mat-radio-group formControlName="format" class="radio-row" aria-label="Formato">
+        <mat-radio-button value="csv">CSV</mat-radio-button>
+        <mat-radio-button value="pdf">PDF</mat-radio-button>
+      </mat-radio-group>
+
+      @if (form.controls.type.value === 'devices') {
+        <div class="filters-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Categoría</mat-label>
+            <mat-select formControlName="category">
+              <mat-option value="">Todas</mat-option>
+              <mat-option value="collaborator">Colaborador</mat-option>
+              <mat-option value="infrastructure">Infraestructura</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Hostname</mat-label>
+            <input matInput formControlName="hostname" placeholder="Buscar por hostname" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Sistema operativo</mat-label>
+            <input matInput formControlName="osName" placeholder="Buscar por SO" />
+          </mat-form-field>
+        </div>
+      } @else {
+        <div class="filters-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Estado</mat-label>
+            <mat-select formControlName="status">
+              <mat-option value="">Todos</mat-option>
+              <mat-option value="open">Abierta</mat-option>
+              <mat-option value="reviewed">Revisada</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Desde</mat-label>
+            <input matInput type="date" formControlName="from" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Hasta</mat-label>
+            <input matInput type="date" formControlName="to" />
+          </mat-form-field>
+        </div>
+      }
+
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        [disabled]="downloading()"
+        (click)="download()"
+      >
+        @if (downloading()) {
+          <mat-spinner diameter="18" class="inline-spinner" />
+        }
+        Descargar
+      </button>
+    </form>
+  </mat-card-content>
+</mat-card>

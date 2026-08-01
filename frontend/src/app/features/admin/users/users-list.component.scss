@@ -1,0 +1,15 @@
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.empty-state {
+  padding: 1rem 0;
+  opacity: 0.7;
+}
