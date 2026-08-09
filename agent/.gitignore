@@ -1,0 +1,11 @@
+.venv/
+.venv-build-arm64/
+.venv-build-x86_64/
+__pycache__/
+*.pyc
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+*.spec
+config.json
