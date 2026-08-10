@@ -1,0 +1,14 @@
+<h2 mat-dialog-title>Rotar clave de API</h2>
+
+<mat-dialog-content>
+  <p>
+    ¿Rotar la clave de API de <strong>{{ data.hostname }}</strong>?
+    La clave anterior dejará de funcionar inmediatamente y el dispositivo
+    deberá reconfigurarse con la nueva clave.
+  </p>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="cancel()">Cancelar</button>
+  <button mat-flat-button color="primary" (click)="confirm()">Rotar clave</button>
+</mat-dialog-actions>

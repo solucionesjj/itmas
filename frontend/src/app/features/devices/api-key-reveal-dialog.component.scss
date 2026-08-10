@@ -1,0 +1,32 @@
+mat-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 420px;
+}
+
+.warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: #7a4d00;
+  background: #fff4e0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+}
+
+.key-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
+.api-key {
+  flex: 1;
+  overflow-wrap: anywhere;
+  font-family: monospace;
+  font-size: 0.9rem;
+}

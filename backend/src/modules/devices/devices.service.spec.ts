@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { DevicesService } from './devices.service';
 import { DeviceCategory } from './device-category.enum';
 
@@ -82,11 +82,13 @@ describe('DevicesService.provision / rotateKey', () => {
     );
   });
 
-  it('throws when rotating a key for a device that does not exist', async () => {
+  it('throws NotFoundException when rotating a key for a device that does not exist', async () => {
     const findById = jest.fn().mockResolvedValue(null);
     const service = new DevicesService({ findById } as never);
 
-    await expect(service.rotateKey('missing-device')).rejects.toThrow();
+    await expect(service.rotateKey('missing-device')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });
 

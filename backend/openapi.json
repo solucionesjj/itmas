@@ -322,6 +322,75 @@
         "tags": [
           "devices"
         ]
+      },
+      "post": {
+        "operationId": "DevicesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "devices"
+        ]
+      }
+    },
+    "/api/v1/devices/{id}/rotate-key": {
+      "post": {
+        "operationId": "DevicesController_rotateKey",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "devices"
+        ]
       }
     },
     "/api/v1/inventory": {
@@ -1388,6 +1457,26 @@
         "required": [
           "currentPassword",
           "newPassword"
+        ]
+      },
+      "CreateDeviceDto": {
+        "type": "object",
+        "properties": {
+          "hostname": {
+            "type": "string",
+            "minLength": 1
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "collaborator",
+              "infrastructure"
+            ]
+          }
+        },
+        "required": [
+          "hostname",
+          "category"
         ]
       },
       "OsDto": {
