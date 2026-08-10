@@ -84,6 +84,30 @@ class EnvironmentVariables {
   @IsOptional()
   @IsString()
   HABITUAL_HOURS_TZ?: string;
+
+  // AWS Security Group audit extension (ADR-0013). All optional — the sync
+  // module is inert (never registers its cron, and DescribeRegions-discovers
+  // scope) with zero configuration beyond an authenticated AWS SDK context.
+  @IsOptional()
+  @IsString()
+  AWS_SYNC_REGIONS?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  AWS_SYNC_HOUR?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(59)
+  AWS_SYNC_MINUTE?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  AWS_SYNC_RUN_RETENTION_DAYS?: number;
 }
 
 export function validateEnv(config: Record<string, unknown>) {

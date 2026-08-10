@@ -58,6 +58,13 @@ export const routes: Routes = [
           import('./features/reports/reports.component').then(
             (m) => m.ReportsComponent
           )
+      },
+      {
+        path: 'security-group-rules',
+        loadComponent: () =>
+          import(
+            './features/security-group-rules/security-group-rules-list.component'
+          ).then((m) => m.SecurityGroupRulesListComponent)
       }
     ]
   },

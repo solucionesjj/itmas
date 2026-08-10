@@ -1,0 +1,193 @@
+<h1>Reglas de Firewall AWS</h1>
+
+<form [formGroup]="filters" class="filters-row">
+  <mat-form-field appearance="outline">
+    <mat-label>Buscar</mat-label>
+    <input matInput formControlName="q" placeholder="Grupo, regla, origen..." />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Grupo de seguridad</mat-label>
+    <mat-select formControlName="securityGroupId">
+      <mat-option value="">Todos</mat-option>
+      @for (group of groups(); track group.securityGroupId) {
+        <mat-option [value]="group.securityGroupId">
+          {{ group.securityGroupName }} - {{ group.securityGroupId }}
+        </mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Estado</mat-label>
+    <mat-select formControlName="status">
+      <mat-option value="">Todos</mat-option>
+      <mat-option value="pendiente">Pendiente</mat-option>
+      <mat-option value="revisado">Revisado</mat-option>
+      <mat-option value="autorizado">Autorizado</mat-option>
+      <mat-option value="eliminado">Eliminado</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Creado desde</mat-label>
+    <input matInput type="date" formControlName="createdFrom" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Creado hasta</mat-label>
+    <input matInput type="date" formControlName="createdTo" />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Revisado desde</mat-label>
+    <input matInput type="date" formControlName="reviewedFrom" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Revisado hasta</mat-label>
+    <input matInput type="date" formControlName="reviewedTo" />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Autorizado desde</mat-label>
+    <input matInput type="date" formControlName="authorizedFrom" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Autorizado hasta</mat-label>
+    <input matInput type="date" formControlName="authorizedTo" />
+  </mat-form-field>
+</form>
+
+<div class="actions-row">
+  @if (canSync()) {
+    <button mat-flat-button color="primary" (click)="sync()" [disabled]="syncing()">
+      @if (syncing()) {
+        <mat-spinner diameter="18" />
+      } @else {
+        Sincronizar ahora
+      }
+    </button>
+  }
+  <button mat-stroked-button (click)="export('csv')">Exportar CSV</button>
+  <button mat-stroked-button (click)="export('pdf')">Exportar PDF</button>
+</div>
+
+<div class="table-container">
+  <table
+    mat-table
+    [dataSource]="items()"
+    matSort
+    [matSortActive]="sortBy()"
+    [matSortDirection]="sortDir()"
+    (matSortChange)="onSortChange($event)"
+    class="full-width"
+  >
+    <ng-container matColumnDef="securityGroupName">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Grupo de seguridad</th>
+      <td mat-cell *matCellDef="let rule">{{ rule.securityGroupName }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="securityGroupId">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Id del grupo</th>
+      <td mat-cell *matCellDef="let rule">{{ rule.securityGroupId }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="attachedResources">
+      <th mat-header-cell *matHeaderCellDef>Dispositivo asociado</th>
+      <td mat-cell *matCellDef="let rule">{{ attachedResourceLabel(rule) }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="ruleName">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre de la regla</th>
+      <td mat-cell *matCellDef="let rule">{{ rule.ruleName ?? '—' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="ruleId">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Id de la regla</th>
+      <td mat-cell *matCellDef="let rule">{{ rule.ruleId }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="source">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Origen</th>
+      <td mat-cell *matCellDef="let rule">{{ rule.source }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="destination">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Destino</th>
+      <td mat-cell *matCellDef="let rule">{{ rule.destination }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="protocol">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Protocolo</th>
+      <td mat-cell *matCellDef="let rule">{{ rule.protocol }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="portRange">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Puertos</th>
+      <td mat-cell *matCellDef="let rule">{{ rule.portRange ?? '—' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="status">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Estado</th>
+      <td mat-cell *matCellDef="let rule">
+        <app-status-chip [status]="rule.status" />
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="createdAt">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha de creación</th>
+      <td mat-cell *matCellDef="let rule">{{ rule.createdAt | date: 'medium' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="reviewedAt">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha de revisión</th>
+      <td mat-cell *matCellDef="let rule">
+        {{ rule.reviewedAt ? (rule.reviewedAt | date: 'medium') : '—' }}
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="authorizedAt">
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha de autorización</th>
+      <td mat-cell *matCellDef="let rule">
+        {{ rule.authorizedAt ? (rule.authorizedAt | date: 'medium') : '—' }}
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef>Acciones</th>
+      <td mat-cell *matCellDef="let rule">
+        @if (rule.status === 'pendiente' && isAuditor()) {
+          <button
+            mat-button
+            (click)="review(rule)"
+            [attr.aria-label]="'Marcar como revisado el registro de ' + rule.securityGroupName + ' / ' + rule.ruleId"
+          >
+            Marcar como revisado
+          </button>
+        }
+        @if (rule.status === 'revisado' && isAdministrador()) {
+          <button
+            mat-button
+            (click)="authorize(rule)"
+            [attr.aria-label]="'Marcar como autorizado el registro de ' + rule.securityGroupName + ' / ' + rule.ruleId"
+          >
+            Marcar como autorizado
+          </button>
+        }
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+  </table>
+</div>
+
+@if (!loading() && items().length === 0) {
+  <p class="empty-state">No hay reglas que coincidan con los filtros.</p>
+}
+
+<mat-paginator
+  [length]="total()"
+  [pageSize]="20"
+  [pageSizeOptions]="[20, 50, 100]"
+  (page)="onPage($event)"
+/>
