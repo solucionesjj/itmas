@@ -35,4 +35,20 @@ export default () => ({
   // Timezone the off_hours_access rule evaluates habitualHours in (agent.md
   // Assumption #6: configurable per installation, UTC until configured).
   habitualHoursTz: process.env.HABITUAL_HOURS_TZ ?? 'UTC',
+  // AWS Security Group audit extension (ADR-0013/0014/0015). Credentials are
+  // never read here — the AWS SDK's own default provider chain (env vars or
+  // an IAM role) resolves them; this block only holds sync behavior knobs.
+  aws: {
+    // Comma-separated region override; unset means auto-discover every
+    // enabled region on the account via DescribeRegions (ADR-0014).
+    syncRegions: process.env.AWS_SYNC_REGIONS
+      ? process.env.AWS_SYNC_REGIONS.split(',').map((r) => r.trim())
+      : undefined,
+    syncHour: parseInt(process.env.AWS_SYNC_HOUR ?? '2', 10),
+    syncMinute: parseInt(process.env.AWS_SYNC_MINUTE ?? '0', 10),
+  },
+  syncRunRetentionDays: parseInt(
+    process.env.AWS_SYNC_RUN_RETENTION_DAYS ?? '90',
+    10,
+  ),
 });

@@ -14,7 +14,7 @@
 
 - **Nombre del Proyecto:** Management and Audit System (IT-MAS)
 - **Tipo:** Plataforma de monitoreo, inventario y auditoría de infraestructura tecnológica
-- **Versión del Documento:** 1.3 (Corrección: exportación de reportes PDF/CSV confirmada en Fase 1, alineada con CA-13; ver ADR correspondiente)
+- **Versión del Documento:** 1.4 (Extensión: auditoría de reglas de Security Groups AWS — RF-21 a RF-27, CA-15 a CA-20; ver §21 y ADR-0013)
 - **Stack Tecnológico:** Angular (frontend), Node.js (backend), MongoDB (persistencia)
 - **Modalidad de ingesta:** API REST expuesta a internet, alimentada por agentes/nodos distribuidos
 - **Plataformas objetivo:** Equipos de colaboradores (Windows/Linux/Mac) y servidores (Windows/Linux)
@@ -201,6 +201,15 @@ Cualquier usuario autenticado actualiza sus datos básicos y cambia su contrase�
 - **RF-19:** El portal debe permitir **exportar reportes** en PDF/CSV (Fase 1, confirmado por CA-13).
 - **RF-20 (recomendado):** El sistema debe permitir **notificar alertas** por correo/webhook.
 
+## Auditoría de firewall AWS (Extensión — ver §21)
+- **RF-21:** El sistema debe sincronizar diariamente (hora configurable) y bajo demanda (disparo manual) el catálogo de Security Groups y sus reglas en todas las regiones habilitadas de una cuenta AWS.
+- **RF-22:** Cada regla observada debe registrar un estado de control propio de IT-MAS (`pendiente`, `revisado`, `autorizado`, `eliminado`), nunca derivado de AWS, y preservar dicho estado entre sincronizaciones mientras la regla siga existiendo en AWS.
+- **RF-23:** El perfil **Auditor** debe poder marcar una regla `pendiente` como `revisado`, indicando una observación obligatoria.
+- **RF-24:** El perfil **Administrador** debe poder marcar una regla `revisado` como `autorizado`, indicando una observación obligatoria. Ningún perfil puede revisar y autorizar la misma regla.
+- **RF-25:** El portal debe listar/filtrar (texto libre, grupo de seguridad, estado, rangos de fecha de creación/revisión/autorización) y exportar (CSV/PDF, ordenado por id de grupo y luego id de regla) el catálogo de reglas, para los perfiles Administrador, Auditor y Usuario (consulta).
+- **RF-26:** Cada corrida de sincronización (manual o automatizada) debe registrar su resultado por grupo/región y un resumen (grupos y reglas procesadas, regiones y VPCs verificadas), en un registro propio distinto del `audit_log` general.
+- **RF-27:** El portal debe indicar de forma visible cuántas reglas quedaron en estado `pendiente` desde la última sincronización exitosa.
+
 ---
 
 ### 9. Criterios de Aceptación
@@ -221,6 +230,14 @@ Cualquier usuario autenticado actualiza sus datos básicos y cambia su contrase�
 - **CA-12:** Cada acción administrativa (crear usuario, modificar alerta, inicio de sesión) queda registrada en el log de auditoría con usuario y marca de tiempo.
 - **CA-13:** El perfil **Usuario** puede consultar y exportar reportes correctamente.
 - **CA-14:** El perfil **Auditor** puede consultar eventos de auditoría y actualizar el estado de una alerta, sin acceder a la gestión de usuarios ni a la configuración de reglas.
+
+## Auditoría de firewall AWS (Extensión — ver §21)
+- **CA-15:** Una sincronización marca como `eliminado` toda regla que ya no existe en AWS y crea como `pendiente` toda regla nueva, sin alterar el estado de revisión/autorización de las reglas que siguen existiendo.
+- **CA-16:** El perfil **Auditor** puede marcar una regla `pendiente` como `revisado` con observación; recibe **403** al intentar autorizarla.
+- **CA-17:** El perfil **Administrador** puede marcar una regla `revisado` como `autorizado` con observación; recibe **403** al intentar revisar una regla `pendiente`.
+- **CA-18:** El perfil **Usuario** puede consultar y exportar el catálogo de reglas, y recibe **403** en cualquier acción de revisión, autorización o sincronización.
+- **CA-19:** El catálogo puede filtrarse combinando texto libre, grupo, estado y los tres rangos de fecha, y exportarse respetando esos filtros con el orden grupo→regla.
+- **CA-20:** Cada corrida de sincronización (manual o automatizada) queda registrada con su resultado por grupo/región y resumen, y genera una entrada gruesa correspondiente en `audit_log`.
 
 ---
 
@@ -552,3 +569,74 @@ Formato de datos: **JSON**. Versionado por prefijo `/v1`.
 - Gestión de licencias de software.
 - Remediación y acciones automatizadas.
 - Perfiles y permisos personalizables (roles a medida).
+
+---
+
+### 21. Extensión: Auditoría de Firewall AWS
+
+# Auditoría de reglas de Security Groups AWS
+
+> Extensión formal de IT-MAS fuera del roadmap original de Fases 1-4 (ver ADR-0013). Cubre RF-21 a RF-27 y CA-15 a CA-20. No sustituye ni se cruza con el modelo `devices`/`inventories` de agentes de recolección — es un catálogo independiente, poblado desde la API de AWS, no desde nodos.
+
+## Alcance
+Una única cuenta de AWS, todas sus regiones habilitadas (auto-descubiertas). Cubre exclusivamente Security Groups de EC2/VPC (no NACLs, WAF, ni otros servicios de red de AWS).
+
+## Modelo de datos (MongoDB)
+
+### Colección `security_group_rules` (catálogo vivo, sin expiración)
+```json
+{
+  "_id": "ObjectId",
+  "awsAccountId": "123456789012",
+  "region": "us-east-1",
+  "vpcId": "vpc-xxxx",
+  "securityGroupId": "sg-xxxx",
+  "securityGroupName": "web-servers",
+  "attachedResources": [{ "resourceType": "ec2-instance", "resourceId": "i-xxxx", "resourceName": "web-01" }],
+  "ruleId": "sgr-xxxx",
+  "ruleName": "HTTPS desde internet",
+  "direction": "ingress",
+  "remoteEndpoint": { "kind": "cidr_ipv4", "value": "0.0.0.0/0" },
+  "source": "0.0.0.0/0",
+  "destination": "sg-xxxx",
+  "protocol": "tcp",
+  "portRange": "443",
+  "status": "pendiente",
+  "createdAt": "ISODate",
+  "lastSeenAt": "ISODate",
+  "reviewObservation": null,
+  "reviewedAt": null,
+  "reviewedBy": null,
+  "authorizationObservation": null,
+  "authorizedAt": null,
+  "authorizedBy": null,
+  "deletedAt": null
+}
+```
+
+### Colección `aws_sync_runs` (log de corridas, retención configurable vía TTL)
+```json
+{
+  "_id": "ObjectId",
+  "triggerType": "manual | automated",
+  "triggeredBy": "user-uuid | null",
+  "startedAt": "ISODate",
+  "finishedAt": "ISODate",
+  "status": "success | partial_failure | failure",
+  "regionsChecked": ["us-east-1", "us-west-2"],
+  "vpcsChecked": ["vpc-xxxx"],
+  "groupResults": [{ "region": "us-east-1", "vpcId": "vpc-xxxx", "groupId": "sg-xxxx", "groupName": "web-servers", "outcome": "success", "ruleCount": 4 }],
+  "summary": { "groupsProcessed": 12, "groupsFailed": 0, "rulesProcessed": 48, "rulesCreated": 3, "rulesMarkedDeleted": 1 }
+}
+```
+
+## API
+
+- `GET /api/v1/security-group-rules` — lista paginada/filtrada/ordenable (Administrador, Auditor, Usuario).
+- `GET /api/v1/security-group-rules/groups` — listado de grupos para el filtro (mismos roles).
+- `GET /api/v1/security-group-rules/export` — exportación CSV/PDF respetando filtros, orden grupo→regla (mismos roles).
+- `PATCH /api/v1/security-group-rules/:id/review` — `pendiente → revisado` (solo Auditor).
+- `PATCH /api/v1/security-group-rules/:id/authorize` — `revisado → autorizado` (solo Administrador).
+- `POST /api/v1/security-group-sync/run` — disparo manual (Administrador, Auditor).
+- `GET /api/v1/security-group-sync/runs` — historial de corridas (Administrador, Auditor).
+- `GET /api/v1/security-group-sync/summary` — indicador de pendientes desde la última corrida (Administrador, Auditor).

@@ -49,6 +49,57 @@ jobs:
       - run: npm test -- --watch=false --browsers=ChromeHeadless
       - run: npm audit --omit=dev --audit-level=high
 
+  agent-macos:
+    name: Agent — macOS (full suite, universal2 build, launchd smoke test)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - run: pytest tests/
+      - run: pytest integration_smoke/ -m macos_integration
+      - run: ./Scripts/macos/build.sh
+      - run: lipo -info dist/itmas-agent
+      - run: sudo ./Scripts/macos/smoke-test.sh
+
+  # These two only exercise the OS-agnostic core (collectors run against
+  # FakePlatformBackend) plus the Windows/Linux stub backends — confirming
+  # the "one shared codebase" premise on real Windows/Linux runners, without
+  # needing physical hardware. No build/install step yet since those
+  # platforms' service installers aren't implemented (see platforms/base.py).
+  agent-ubuntu:
+    name: Agent — Linux (shared core + stub backend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - run: pytest tests/
+
+  agent-windows:
+    name: Agent — Windows (shared core + stub backend)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e ".[dev]"
+      - run: pytest tests/
+
 # Deploy is intentionally NOT automated here — it's environment-specific
 # (target infra, TLS/reverse-proxy, Mongo replica set, secrets manager) and
 # out of scope for this sandbox. See DEPLOYMENT.md for what a real deploy

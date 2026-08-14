@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { randomBytes, randomUUID } from 'crypto';
 import * as argon2 from 'argon2';
 import { DevicesRepository } from './devices.repository';
@@ -75,7 +79,13 @@ export class DevicesService {
     await this.devicesRepository.touchLastSeen(deviceId);
   }
 
-  /** Used only by the `device:provision` CLI script — not exposed over HTTP. */
+  /**
+   * Used by both the `device:provision` CLI script and `POST /devices`
+   * (Administrador only, ADR-0016) — the two entry points share this exact
+   * logic rather than each generating their own key/hash, so the one-time-
+   * reveal security property (plaintext key never persisted, never
+   * retrievable again) holds identically for both.
+   */
   async provision(input: {
     hostname: string;
     category: DeviceCategory;
@@ -94,11 +104,17 @@ export class DevicesService {
     return { deviceId, apiKey: `${deviceId}.${secret}` };
   }
 
-  /** Used only by the `device:rotate-key` CLI script — not exposed over HTTP. */
+  /**
+   * Used by both the `device:rotate-key` CLI script and
+   * `POST /devices/:id/rotate-key` (Administrador only, ADR-0016).
+   * `NotFoundException` (rather than a plain `Error`) lets the REST layer
+   * surface a real 404 — the CLI script's `catch` still handles it fine,
+   * since `NotFoundException` is still an `Error`.
+   */
   async rotateKey(deviceId: string): Promise<ProvisionedDevice> {
     const device = await this.devicesRepository.findById(deviceId);
     if (!device) {
-      throw new Error(`No device found with id ${deviceId}`);
+      throw new NotFoundException(`No device found with id ${deviceId}`);
     }
 
     const secret = randomBytes(32).toString('base64url');

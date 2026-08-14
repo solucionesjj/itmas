@@ -58,6 +58,37 @@ needed in CI) `→ npm audit --omit=dev --audit-level=high`.
 management, and TLS/reverse-proxy setup are environment-specific decisions for
 whoever operates a real deployment, not something this pipeline can express.
 
+## AWS Security Group audit extension (EXT-1 — ADR-0013/0014/0015)
+
+`security-group-sync` calls the AWS EC2 API to build the `security_group_rules` catalog. Credentials are **never** configured through IT-MAS's own env vars or database — the AWS SDK's own default credential provider chain resolves them (environment variables, a shared credentials file, or an IAM role/instance profile), exactly as any other AWS SDK consumer on the host.
+
+**Minimal IAM policy** — attach only this to whatever principal (IAM role/user) the backend process runs as:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeRegions",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSecurityGroupRules",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeInstances"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+No write/mutate EC2 permission is ever needed — this integration is strictly read-only.
+
+New optional env vars (all documented in `backend/.env.example`, all with safe defaults so the module is inert with zero configuration beyond an authenticated AWS context): `AWS_SYNC_REGIONS` (override auto-discovery), `AWS_SYNC_HOUR`/`AWS_SYNC_MINUTE` (daily automated run time, UTC), `AWS_SYNC_RUN_RETENTION_DAYS`.
+
+**Operational security note, found during manual verification of this extension**: whatever host/container runs the IT-MAS backend must carry *only* the IAM policy above — scoped to a dedicated role or credential, never a developer's own broad ambient AWS credentials (e.g. inherited from a shell profile, SSO session, or instance profile meant for other work). During this feature's manual browser testing, the "Sincronizar ahora" button was triggered once in a local dev sandbox that turned out to have live AWS credentials on its PATH with far broader account access than intended for this test — it successfully synced ~1,100 real production security group rules across a real account before being caught and the local test database was destroyed immediately. No IT-MAS code caused this (the sync worked exactly as designed against whatever credentials it found); the risk is entirely in **which credentials are reachable from wherever this runs**. Treat `AWS_SYNC_*` credential exposure with the same care as any other production secret — a read-only policy still means "this process can enumerate every security group and firewall rule you have."
+
 ## What this does NOT solve (still manual/ops decisions — agent.md §6, §9)
 
 - **TLS termination**: the API is meant to sit behind a reverse proxy / API

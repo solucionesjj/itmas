@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import configuration from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { CommonModule } from './common/common.module';
@@ -20,6 +21,8 @@ import { AlertsModule } from './modules/alerts/alerts.module';
 import { AlertEngineModule } from './modules/alert-engine/alert-engine.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { SecurityGroupRulesModule } from './modules/security-group-rules/security-group-rules.module';
+import { SecurityGroupSyncModule } from './modules/security-group-sync/security-group-sync.module';
 
 @Module({
   imports: [
@@ -61,6 +64,10 @@ import { ReportsModule } from './modules/reports/reports.module';
         },
       ],
     }),
+    // Global, single registration (ADR-0015) — SchedulerRegistry becomes
+    // available everywhere without SecurityGroupSyncModule needing to import
+    // ScheduleModule itself.
+    ScheduleModule.forRoot(),
     CommonModule,
     UsersModule,
     AuditLogModule,
@@ -75,6 +82,8 @@ import { ReportsModule } from './modules/reports/reports.module';
     AlertEngineModule,
     StatsModule,
     ReportsModule,
+    SecurityGroupRulesModule,
+    SecurityGroupSyncModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

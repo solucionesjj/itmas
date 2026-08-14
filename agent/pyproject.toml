@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "itmas-agent"
+version = "0.1.0"
+description = "IT-MAS inventory/monitoring agent (macOS backend implemented; Windows/Linux backends stubbed for future extension)"
+requires-python = ">=3.11"
+dependencies = [
+    "psutil>=5.9",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-mock>=3.12",
+    "requests-mock>=1.12",
+    "pyinstaller>=6.3",
+]
+
+[project.scripts]
+itmas-agent = "itmas_agent.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+markers = [
+    "macos_integration: requires a real macOS machine, excluded from default test runs",
+]
+testpaths = ["tests"]

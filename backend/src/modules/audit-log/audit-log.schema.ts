@@ -7,6 +7,11 @@ export type AuditLogDocument = HydratedDocument<AuditLog>;
 // update_alert_status) is illustrative, not exhaustive — each sub-phase adds
 // the actions it introduces. 1.1: login/login_failed/logout/change_password.
 // 1.3: update_alert_rule, update_alert_status. 1.4: create_user, update_user.
+// EXT-1 (ADR-0013): sync_run, review_security_group_rule,
+// authorize_security_group_rule.
+// ADR-0016: create_device, rotate_device_key (portal-based device
+// provisioning/key rotation, Administrador only — reverses ADR-0003's
+// CLI-only decision).
 export type AuditLogAction =
   | 'login'
   | 'login_failed'
@@ -15,7 +20,12 @@ export type AuditLogAction =
   | 'update_alert_rule'
   | 'update_alert_status'
   | 'create_user'
-  | 'update_user';
+  | 'update_user'
+  | 'sync_run'
+  | 'review_security_group_rule'
+  | 'authorize_security_group_rule'
+  | 'create_device'
+  | 'rotate_device_key';
 
 @Schema({ collection: 'audit_log' })
 export class AuditLog {

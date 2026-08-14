@@ -7,6 +7,7 @@
       <a mat-button routerLink="/alerts">Alertas</a>
     }
     <a mat-button routerLink="/reports">Reportes</a>
+    <a mat-button routerLink="/security-group-rules">Reglas de Firewall AWS</a>
     @if (authService.currentUser()?.role === 'administrator') {
       <a mat-button routerLink="/admin/users">Usuarios</a>
     }

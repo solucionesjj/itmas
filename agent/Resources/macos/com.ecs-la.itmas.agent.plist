@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Reference copy of the LaunchDaemon plist this agent installs at
+  /Library/LaunchDaemons/com.ecs-la.itmas.agent.plist. The real file is
+  generated programmatically (platforms/macos/launchd_service_installer.py,
+  via plistlib) with the actual installed executable path — this checked-in
+  copy is for documentation/review only, with a placeholder path.
+
+  StartCalendarInterval + RunAtLoad + scheduling.is_daily_run_due() jointly
+  implement "once daily at 9am, catch up if missed, on-demand via
+  `itmas-agent run --now` or `launchctl kickstart`" — see
+  agent/docs/ARCHITECTURE.md for the full rationale. No KeepAlive: each
+  invocation is short-lived by design (ephemeral-per-invocation model).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ecs-la.itmas.agent</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/itmas-agent/bin/itmas-agent</string>
+        <string>run</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Library/Logs/ITMasAgent/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Library/Logs/ITMasAgent/launchd.err.log</string>
+</dict>
+</plist>

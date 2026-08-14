@@ -1,0 +1,8 @@
+{
+  "apiBaseUrl": "https://itmas.example.com/api/v1",
+  "category": "collaborator",
+  "scheduledHour": 9,
+  "scheduledMinute": 0,
+  "publicIpLookupUrl": "https://api.ipify.org?format=text",
+  "tlsCaBundlePath": null
+}

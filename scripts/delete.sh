@@ -27,14 +27,9 @@ done
 resolve_compose_cmd
 
 if [ "${SKIP_CONFIRM}" != true ]; then
-  log_warn "Esto detendrá y eliminará los contenedores, la red y el volumen 'mongo-data'."
-  log_warn "Se perderán TODOS los datos (dispositivos, inventarios, usuarios, alertas, audit log)."
-  printf 'Escribe "eliminar" para confirmar: '
-  read -r CONFIRMATION
-  if [ "${CONFIRMATION}" != "eliminar" ]; then
-    log_info "Cancelado — no se eliminó nada."
-    exit 0
-  fi
+  confirm_destructive_action \
+    "Esto detendrá y eliminará los contenedores, la red y el volumen 'mongo-data'." \
+    "Se perderán TODOS los datos (dispositivos, inventarios, usuarios, alertas, audit log)."
 fi
 
 DOWN_FLAGS=(-v --remove-orphans)

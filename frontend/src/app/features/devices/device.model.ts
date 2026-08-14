@@ -22,3 +22,22 @@ export interface DevicesQuery {
   page?: number;
   limit?: number;
 }
+
+export interface CreateDeviceRequest {
+  hostname: string;
+  category: DeviceCategory;
+}
+
+// ADR-0016 — the only response shape in the whole API carrying a plaintext
+// apiKey; shown once in a reveal dialog and never fetchable again.
+export interface CreateDeviceResponse {
+  deviceId: string;
+  hostname: string;
+  category: DeviceCategory;
+  apiKey: string;
+}
+
+export interface RotateDeviceKeyResponse {
+  deviceId: string;
+  apiKey: string;
+}

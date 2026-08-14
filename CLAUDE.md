@@ -89,11 +89,12 @@ Key architectural principles (agent.md §4):
 
 ### API contract (authoritative — see agent.md §5.4 / spec.md §12)
 
-Prefix `/api/v1`. Do not invent endpoints, fields, or roles beyond this contract:
+Prefix `/api/v1`. Do not invent endpoints, fields, or roles beyond this contract (or beyond a documented, explicitly-approved extension ADR — see ADR-0016 below for the one exception so far):
 - Ingestion: `POST /inventory`, `POST /access-events`
 - Auth: `POST /auth/login`, `POST /auth/logout`, `POST /auth/refresh`, `POST /auth/change-password`
 - Users (Administrador only): `GET /users`, `POST /users`, `PATCH /users/:id`
 - Alert rules (Administrador only): `GET /alert-rules`, `POST /alert-rules`, `PATCH /alert-rules/:id`
+- Devices — mutation, Administrador only (ADR-0016, post-Fase-1 addition — not in spec.md's original literal contract): `POST /devices`, `POST /devices/:id/rotate-key`
 - Query: `GET /devices`, `GET /stats/os`, `GET /stats/devices`, `GET /reports/export`, `GET /alerts`, `PATCH /alerts/:id` (Administrador/Auditor)
 - Health: `GET /health`
 
@@ -171,6 +172,15 @@ Closes out the portal/query feature set of Fase 1 — only 1.7 (hardening/qualit
 - **Accessibility (WCAG AA)**: closed the sub-phase-1.5 debt — the hand-built OS-distribution chart now has an accessible fallback (`aria-label`/visually-hidden data), icon-only actions across the users/alerts/reports UIs got `aria-label`s, and `angular-eslint` template a11y rules are on as a regression gate.
 - **Encryption at rest**: an infrastructure decision (MongoDB cluster/storage-level encryption), not application code — documented as an operational requirement in `DEPLOYMENT.md`.
 - **Fase 1 (1.0–1.7) is functionally complete.** ADRs for major architectural decisions live in `docs/adr/`; CA-01..14 → test mapping lives in `docs/ca-traceability.md`.
+
+### Portal device provisioning implementation notes (post-Fase-1 addition — done, see ADR-0016)
+
+Not one of the numbered 1.0–1.7 sub-phases (those are fixed by agent.md §17 and Fase 1 is already functionally complete) — this is a deliberate, explicitly-requested scope decision reversing part of ADR-0003 ("no REST endpoint provisions/rotates a node's key" → now the portal can, alongside the still-valid CLI scripts). Same "extension documented via its own ADR rather than silently folded into Fase 1" treatment as EXT-1 elsewhere in this project's history.
+
+- **Backend**: `devices.controller.ts` gains `POST /devices` (`201`) and `POST /devices/:id/rotate-key` (`200`, `404` if missing), both `@Roles(ADMINISTRATOR)` at the method level — overriding, for just these two routes, the class-level `@Roles(ADMINISTRATOR, USER, AUDITOR)` that still governs `GET /devices`. Both call `DevicesService.provision()`/`rotateKey()` verbatim, the exact methods `backend/scripts/provision-device.ts`/`rotate-device-key.ts` already used — no key-generation/hashing logic was duplicated. The only service change was `rotateKey`'s not-found case moving from a plain `Error` to `NotFoundException`, so the REST layer gets a real `404` (harmless to the CLI script, which just logs and exits either way). Two new `AuditLogAction` values, `create_device`/`rotate_device_key`, follow the exact `AuditLogService.record(action, actorId, target, detail)` convention every other mutation endpoint uses; `detail` never contains the key or its secret half.
+- **The one-time-reveal security property holds through the full HTTP path, not just the service layer**: `POST /devices`'s response is the only place in the entire API where `apiKey` plaintext appears, and it never appears again afterward (confirmed by hand against a real running instance — a subsequent `GET /devices` for the same device returns no `apiKey`/`apiKeyHash` field). There is no generic response-body-logging middleware in this app that could leak it into a log line either — `AllExceptionsFilter` only logs `message`/`path`/`method`/`status`, and `JsonLoggerService` is only ever called explicitly with hand-picked, non-secret fields.
+- **Frontend**: `features/devices/` gains a "Crear dispositivo" button and a per-row "Rotar clave" icon button on the existing devices list, gated by the same inline `authService.currentUser()?.role === 'administrator'` check `shell.component` already uses for "Usuarios" — UX only, the backend's own `@Roles()` is the real enforcement (verified directly against the API with a Usuario token during manual testing: `403`). Three new dialog components: `device-form-dialog` (create), `rotate-key-confirm-dialog` (the "la clave anterior dejará de funcionar inmediatamente" confirmation), and `api-key-reveal-dialog` (shared by both the create and rotate flows — full key, `cdkCopyToClipboard`, "Guarda esta clave ahora — no se mostrará de nuevo" warning, `disableClose: true` so it can't be dismissed by an accidental backdrop click/Escape).
+- **Testing gotcha worth knowing before touching `devices-list.component.ts` again**: `MatDialogModule`'s own `@NgModule` declares `providers: [MatDialog]` (redundant with `MatDialog`'s `providedIn: 'root'`, but real) — importing `MatDialogModule` into a standalone component's `imports` array to get the `MatDialog` *service* therefore creates a component-scoped instance that silently shadows any `TestBed`-level provider override, making the component untestable via a mocked `MatDialog`. Fix was to drop `MatDialogModule` from `DevicesListComponent`'s `imports` (its template doesn't use any `mat-dialog-*` directives — it only injects the service to call `.open()`), not to reach for `TestBed.overrideProvider()` gymnastics. `UsersListComponent` has this same latent, never-unit-tested issue; leave it alone unless a future change actually needs to unit-test it.
 
 ## Technical Standards (from agent.md §5, apply once code exists)
 

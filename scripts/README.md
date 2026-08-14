@@ -11,6 +11,7 @@ un solo comando, sin depender de Node/Mongo instalados en la máquina host.
 | `start.sh` | Levanta los tres servicios en segundo plano (`up -d`). Acepta `--build` para reconstruir imágenes antes de arrancar. Espera a que el backend responda en `/api/v1/health` y muestra las URLs. |
 | `stop.sh` | Detiene los contenedores sin borrarlos ni borrar datos. Para reanudar: `start.sh`. |
 | `delete.sh` | Limpieza completa: contenedores + red + **volumen de Mongo** (`down -v`), borrando todos los datos. Pide confirmación escrita salvo que se pase `--yes`. Con `--images` borra también las imágenes construidas localmente. |
+| `recreate.sh` | Atajo para recrear el entorno desde cero: `delete.sh` + `create.sh` + `start.sh` en secuencia. Destructivo — pide la misma confirmación escrita que `delete.sh` (y acepta sus mismos `--yes` / `--images`); cancelar aborta toda la secuencia. `backend/.env` se conserva. |
 | `common.sh` | Helpers compartidos (logging, resolución de `docker compose` vs `docker-compose`, chequeo del daemon). No se ejecuta directamente. |
 
 ## Uso típico

@@ -1,7 +1,9 @@
 # ADR-0003: Node/device authentication mechanism
 
-- **Status**: Accepted (sub-fase 1.2)
+- **Status**: Accepted (sub-fase 1.2) — **amended by [ADR-0016](0016-portal-device-provisioning.md)**
 - **Related**: agent.md §5.4, §6.2, Assumption #14; RF-01
+
+> **Amendment note (ADR-0016)**: the "Provisioning and rotation are CLI-only" bullet below no longer reflects the full picture — the project owner explicitly asked to reverse that specific decision, and the portal now also supports Administrador-driven device creation/key rotation via `POST /devices` and `POST /devices/:id/rotate-key`, calling the exact same `DevicesService` methods the CLI scripts use. The CLI scripts remain valid and unchanged; this is an additive, not a replacing, decision. Everything else on this page (key format, argon2 hashing, "device must be provisioned before it can send data", the dual-auth separation) is still accurate and in force. See ADR-0016 for the full rationale.
 
 ## Context
 
