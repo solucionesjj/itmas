@@ -31,7 +31,7 @@ IT-MAS es una plataforma que permite a los equipos de TI **monitorear, inventari
 
 Un **portal web en Angular** presenta estadísticas (distribución de equipos, sistemas operativos) y **alertas** (cambios de recursos como CPU/RAM/Disco, accesos en horarios no habituales a servidores). El acceso al portal está protegido y organizado mediante **perfiles de usuario** —Administrador, Usuario y Auditor— garantizando que cada rol acceda solo a las funciones que le corresponden.
 
-El valor principal es la **trazabilidad histórica** de los cambios, la **detección temprana de riesgos de seguridad** y un **control de acceso granular** al portal, apoyando cumplimiento normativo y control operativo. El perfil Auditor forma parte del modelo desde la fase inicial de RBAC, con capacidades ampliadas en fases posteriores.
+El valor principal es la **trazabilidad histórica** de los cambios, la **detección temprana de riesgos de seguridad** y un **control de acceso granular** al portal, apoyando cumplimiento normativo y control operativo. El perfil Auditor forma parte del modelo desde la entrega inicial de RBAC; la ampliación de sus capacidades está pendiente en el backlog (BL-012).
 
 ---
 
@@ -85,7 +85,7 @@ Proveer una plataforma centralizada para el inventario, monitoreo y auditoría d
 - **Usuario:** consulta reportes y estadísticas.
 - **Auditor:** revisa eventos de auditoría y gestiona el estado de alertas y eventos, sin permisos de administración.
 
-> Nota: los tres perfiles (Administrador, Usuario, Auditor) forman parte del modelo RBAC desde la fase inicial. La ampliación de capacidades del Auditor y el RBAC avanzado se abordan en la Fase 2 (ver Roadmap).
+> Nota: los tres perfiles (Administrador, Usuario, Auditor) forman parte del modelo RBAC desde la entrega inicial. La ampliación de capacidades del Auditor y el RBAC avanzado están pendientes en el backlog (BL-012 — ver `docs/backlog.md`).
 
 ---
 
@@ -101,9 +101,9 @@ Proveer una plataforma centralizada para el inventario, monitoreo y auditoría d
 - Gestión de **licencias de software** como módulo dedicado.
 - Respaldo/DR de los propios equipos monitoreados.
 - Módulo de facturación o gestión de costos de activos.
-- **Federación de identidad** con proveedores externos (SSO/SAML/OIDC/LDAP): se contempla para fases posteriores; en la fase inicial la gestión de usuarios es local.
+- **Federación de identidad** con proveedores externos (SSO/SAML/OIDC/LDAP): pendiente en el backlog (BL-015, BL-016); en la entrega actual la gestión de usuarios es local.
 - **Autoservicio de registro** de usuarios (el alta de usuarios la realiza el Administrador).
-- **MFA** y roles/permisos personalizables a medida (fases posteriores).
+- **MFA** (BL-014) y roles/permisos personalizables a medida (BL-013): pendientes en el backlog.
 
 ---
 
@@ -466,7 +466,7 @@ Formato de datos: **JSON**. Versionado por prefijo `/v1`.
 - **Cifrado en reposo:** datos sensibles en MongoDB.
 - **Registro de auditoría** de acciones administrativas (creación de usuarios, cambios de alertas, inicios de sesión, cambios de estado de alertas).
 - **Hardening** del gateway/reverse proxy.
-- **MFA:** contemplado para fases posteriores (ver Roadmap).
+- **MFA:** pendiente en el backlog (BL-014 — ver `docs/backlog.md`).
 
 ---
 
@@ -539,11 +539,16 @@ Formato de datos: **JSON**. Versionado por prefijo `/v1`.
 
 ---
 
-### 20. Roadmap
+### 20. Alcance entregado y backlog
 
-# Roadmap
+# Alcance entregado y backlog
 
-## Fase 1 — MVP (Inicial)
+El proyecto **ya no se planifica por fases**. La Fase 1 (MVP) se entregó como tal y se conserva aquí
+como registro histórico; todo el trabajo posterior se gestiona como un backlog de requisitos
+individuales, cada uno con su propio identificador, en [`docs/backlog.md`](docs/backlog.md).
+
+## Entregado — Fase 1 (MVP)
+
 - API de ingesta de inventarios y eventos.
 - Persistencia en MongoDB.
 - Detección de cambios de recursos y accesos en horario no habitual.
@@ -551,24 +556,24 @@ Formato de datos: **JSON**. Versionado por prefijo `/v1`.
 - **Acceso al portal con login y RBAC para los perfiles Administrador, Usuario y Auditor** (creación de usuarios y definición de alertas por Administrador; consulta de reportes por Usuario; consulta de eventos y gestión de estado de alertas por Auditor).
 - **Exportación de reportes (PDF/CSV)** para los perfiles Usuario, Auditor y Administrador (RF-19, CA-13).
 
-> El desglose de implementación de Fase 1 en sub-fases (1.0 a 1.7, con dependencias y CA cubiertos por cada una) está documentado en `agent.md` §17.
+> El desglose de implementación de Fase 1 en sub-fases (1.0 a 1.7, con dependencias y CA cubiertos por cada una) está documentado en `agent.md` §17, también como registro histórico. Cubre RF-01 a RF-19 y CA-01 a CA-14.
 
-## Fase 2
-- **RBAC avanzado** y ampliación de capacidades del perfil Auditor, con auditoría de acciones extendida.
-- Notificaciones (correo/webhook) de alertas.
-- Dashboards adicionales.
-- Gestión del propio perfil y políticas de contraseñas reforzadas.
+## Entregado — EXT-1: Auditoría de firewall AWS
 
-## Fase 3
-- Detección de inactividad de nodos.
-- Integración con ITSM y SIEM.
-- **Autenticación federada (SSO/OIDC/LDAP)** y MFA.
-- Análisis de tendencias y machine learning para anomalías.
+Extensión formal posterior a Fase 1 (ver §21 y ADR-0013). Cubre RF-21 a RF-27 y CA-15 a CA-20.
 
-## Fase 4
-- Gestión de licencias de software.
-- Remediación y acciones automatizadas.
-- Perfiles y permisos personalizables (roles a medida).
+## Pendiente — Backlog
+
+Las antiguas Fases 2, 3 y 4 quedan **sustituidas** por [`docs/backlog.md`](docs/backlog.md), donde su
+contenido está descompuesto en requisitos individuales identificados como `BL-xxx`, cada uno con sus
+propios criterios de aceptación, prioridad, estado y dependencias.
+
+El trabajo se solicita y se entrega **por identificador de backlog**, no por bloques de alcance. Un
+elemento del backlog no requiere que se complete ningún otro salvo sus dependencias declaradas.
+
+Los requisitos pendientes definen sus criterios de aceptación en el propio backlog y **no** acuñan
+nuevos `RF-xx`/`CA-xx` en este documento, para evitar dos numeraciones compitiendo. Las secciones §8 y
+§9 conservan su alcance actual como registro de lo entregado.
 
 ---
 

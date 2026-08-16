@@ -17,7 +17,7 @@ Núcleo funcional:
 
 Stack fijo: **Node.js** (backend/API), **Angular** (frontend), **MongoDB** (persistencia), **Docker** (empaquetado), despliegue tras **reverse proxy/API Gateway con TLS**.
 
-Fase actual: **Fase 1 — MVP**. No implementes funcionalidad de fases posteriores salvo que se ordene explícitamente. Los agentes de recolección por SO están **fuera del alcance de desarrollo**: asume que envían datos a la API.
+**El proyecto no se planifica por fases.** La Fase 1 (MVP) y la extensión EXT-1 ya están entregadas; el trabajo pendiente vive como requisitos individuales en `docs/backlog.md`, cada uno con un id `BL-xxx`. Implementa **únicamente el elemento del backlog que se te solicite**, sin arrastrar otros de paso: si detectas que uno tiene dependencias sin cerrar, indícalo antes de empezar. Los agentes de recolección por SO están **fuera del alcance de desarrollo**: asume que envían datos a la API.
 
 ---
 
@@ -151,8 +151,8 @@ Tu misión como agente es **implementar y evolucionar IT-MAS con calidad de prod
 - **No hardcodear**: umbrales de alerta, horario habitual, TTLs y credenciales van a configuración (`alert_rules` o env).
 - **Documentación**: mantén actualizados README, contratos de API (OpenAPI/Swagger) y ADRs. Documenta supuestos en este archivo.
 - **DRY y SRP**: sin duplicación de lógica de negocio; una responsabilidad por módulo/servicio.
-- **Feature flags**: para funcionalidad experimental o de fases posteriores, desactivada por defecto.
-- **Alcance**: no implementes nada fuera de la Fase 1 sin instrucción explícita. RF-19 (exportación de reportes PDF/CSV) es de cumplimiento obligatorio en Fase 1 (confirmado por CA-13, spec.md v1.3). RF-20 (notificaciones) permanece diferido a Fase 2.
+- **Feature flags**: para funcionalidad experimental, desactivada por defecto.
+- **Alcance**: implementa únicamente el elemento del backlog (`BL-xxx`, ver `docs/backlog.md`) que se te haya solicitado. No amplíes el alcance a elementos vecinos sin instrucción explícita, aunque queden cerca del código que estás tocando; si uno resulta ser prerrequisito, dilo antes de implementarlo.
 
 ---
 
@@ -220,7 +220,7 @@ Un cambio NO se integra ni despliega si falla alguno de estos gates:
 ## 12. AI Agent Behaviour
 
 - **No inventes** endpoints, campos o roles fuera del spec. Usa exactamente los contratos y colecciones definidos.
-- **Respeta el alcance de fase**: implementa Fase 1; marca claramente cualquier trabajo de fases posteriores y no lo actives por defecto.
+- **Respeta el alcance del elemento solicitado**: implementa el `BL-xxx` pedido y nada más; marca claramente cualquier trabajo que exceda ese alcance y no lo actives por defecto.
 - **Seguridad primero**: ante conflicto entre velocidad y seguridad/RBAC, elige seguridad.
 - **Documenta supuestos**: cualquier decisión ante información faltante se registra en **Assumptions** y, si es arquitectónica, en un ADR.
 - **Cambios mínimos y localizados**: no refactorices fuera del alcance de la tarea sin justificación.
@@ -276,7 +276,7 @@ Supuestos adoptados ante información no especificada (revísense y ajústense s
 8. **`deviceId` = `_id` del host (host-uuid)**; los inventarios se vinculan por `deviceId` y se comparan contra el inventario previo más reciente.
 9. **Paginación por defecto** de 20–50 ítems en listados de `devices` y `alerts`.
 10. **OpenAPI/Swagger** como documentación de contrato de la API.
-11. ~~RF-19 (exportación PDF/CSV) y RF-20 (notificaciones) se consideran recomendados~~ — **Resuelto (spec.md v1.3):** existía una contradicción entre CA-13 (exigía exportación en la entrega actual) y el Roadmap original (que ubicaba la exportación en Fase 2). Se resolvió incluyendo explícitamente la exportación de reportes (RF-19) en el alcance y Roadmap de Fase 1 en `spec.md`. Ya no es un supuesto, sino un requisito confirmado. RF-20 (notificaciones) permanece diferido a Fase 2 sin cambios.
+11. ~~RF-19 (exportación PDF/CSV) y RF-20 (notificaciones) se consideran recomendados~~ — **Resuelto (spec.md v1.3):** existía una contradicción entre CA-13 (exigía exportación en la entrega actual) y el Roadmap original (que ubicaba la exportación en Fase 2). Se resolvió incluyendo explícitamente la exportación de reportes (RF-19) en el alcance de Fase 1 en `spec.md`. Ya no es un supuesto, sino un requisito confirmado y entregado. RF-20 (notificaciones) sigue sin implementarse y hoy vive en el backlog como BL-005 a BL-008.
 12. **Rate limiting** por IP y por credencial en login; umbrales configurables por env.
 13. **Retención** de `inventories`, `access_events` y `audit_log` mediante política configurable (TTL/purga), con valor por defecto conservador documentado en configuración.
 14. ~~API Keys de nodos almacenadas hasheadas y rotables; identificación del nodo por su clave~~ — **Resuelto (sub-fase 1.2):** el contrato autoritativo no define un endpoint REST para aprovisionar/rotar claves de nodo, así que esa operación se implementó como script de CLI (`npm run device:provision` / `device:rotate-key` en `backend/`), no como ruta HTTP — mismo enfoque de bootstrap fuera de banda que la semilla de Administrador (§9). Formato de clave `<deviceId>.<secret>`: el `deviceId` permite lookup O(1) en `devices`, el `secret` se valida con el hash argon2 en el campo adicional `devices.apiKeyHash` (no está en el ejemplo de `spec.md`, mismo patrón aditivo que `users.passwordHash`). `NodeApiKeyGuard` es una guard completamente separada de `JwtAuthGuard`/`RolesGuard` — nunca se mezclan en el mismo endpoint (regla de auth dual, §5.4).
@@ -319,9 +319,11 @@ Complementariamente, deben cumplirse los **NFR** (uptime 99.5% API ingesta, inge
 
 ---
 
-## 17. Sub-fases de Fase 1 (Plan de Implementación)
+## 17. Sub-fases de Fase 1 (registro histórico)
 
-La Fase 1 (MVP) definida en `spec.md` §20 se ejecuta de forma incremental en las siguientes sub-fases. El orden respeta dependencias técnicas reales (qué bloquea a qué); no son fases de negocio ni requieren aprobación de alcance como las Fases 2–4, son únicamente secuenciación de implementación dentro de Fase 1.
+> **Este apartado es registro histórico, no plan de trabajo.** La Fase 1 se entregó completa (1.0–1.7) y el proyecto ya no se planifica por fases: el trabajo pendiente son requisitos individuales `BL-xxx` en `docs/backlog.md`. Se conserva porque `docs/ca-traceability.md` mapea cada CA-01..14 a la sub-fase que lo implementó, y porque las notas de implementación de cada sub-fase siguen siendo la mejor referencia sobre por qué el código está como está.
+
+La Fase 1 (MVP) se ejecutó de forma incremental en las siguientes sub-fases. El orden respetaba dependencias técnicas reales (qué bloquea a qué); no eran fases de negocio, sino únicamente secuenciación de implementación.
 
 ### Fase 1.0 — Cimientos
 Sin valor funcional visible; desbloquea todo lo demás.
