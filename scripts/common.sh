@@ -64,3 +64,27 @@ require_env_file() {
     exit 1
   fi
 }
+
+# Confirmación escrita para operaciones destructivas. Recibe como argumentos
+# las líneas de advertencia a mostrar; aborta (sin hacer nada) si el usuario no
+# escribe exactamente "eliminar".
+confirm_destructive_action() {
+  local line confirmation
+
+  for line in "$@"; do
+    log_warn "${line}"
+  done
+
+  if [ ! -t 0 ]; then
+    log_error "Se necesita confirmación interactiva y no hay terminal disponible."
+    log_error "Usa --yes para ejecutarlo sin confirmación (automatización/CI)."
+    exit 1
+  fi
+
+  printf 'Escribe "eliminar" para confirmar: '
+  read -r confirmation
+  if [ "${confirmation}" != "eliminar" ]; then
+    log_info "Cancelado — no se eliminó nada."
+    exit 0
+  fi
+}
