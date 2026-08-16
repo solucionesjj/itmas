@@ -52,9 +52,13 @@ IT-MAS is a centralized platform for **inventory, monitoring, and audit** of IT 
 
 Fixed stack: **Node.js** (API) + **Angular** (frontend) + **MongoDB** (persistence) + **Docker**, deployed behind a TLS-terminating reverse proxy/API gateway. Do not substitute this stack.
 
-**Current phase: Fase 1 (MVP).** Do not implement functionality scoped to later phases (MFA, SSO/OIDC/LDAP, self-service registration, custom roles, automated remediation, ITSM/SIEM integration, real-time APM, license management, notifications) unless explicitly instructed. Collection agents themselves (the per-OS clients that report data) are **out of scope for development** — assume they already exist and call the API.
+**The project is no longer planned in phases.** Fase 1 (MVP) and the EXT-1 AWS firewall-audit extension are delivered; all remaining work lives as individually-identified requirements (`BL-xxx`) in **[`docs/backlog.md`](docs/backlog.md)** — the authoritative list of pending scope, referenced from `spec.md` §20.
 
-Fase 1 is further broken into implementation sub-phases **1.0–1.7** in `agent.md` §17 (foundations → auth/RBAC → ingestion → alert engine → user management → dashboard/stats → reports/export → hardening/quality gates), each mapped to the CA-xx it satisfies and its dependencies on prior sub-phases. Follow that order — most endpoints assume auth/RBAC (1.1) already exists.
+**Implement only the `BL-xxx` item you were asked for.** Do not pull in neighbouring items because they touch the same files, and do not implement anything absent from the backlog without explicit instruction. If the requested item has unmet dependencies (each item declares them), say so before starting rather than silently implementing them too. Pending items define their own acceptance criteria in the backlog — no new `RF-xx`/`CA-xx` are minted in `spec.md` for them, deliberately, to avoid two competing numbering schemes.
+
+Collection agents themselves (the per-OS clients that report data) remain **out of scope for development** — assume they already exist and call the API.
+
+Fase 1's implementation sub-phases **1.0–1.7** (`agent.md` §17) are kept as a **historical record**, not a plan: `docs/ca-traceability.md` maps each CA-01..14 to the sub-phase that implemented it, and each sub-phase's notes explain why the code looks the way it does. The per-sub-phase notes below serve the same purpose.
 
 ## Architecture
 
@@ -208,7 +212,7 @@ Lint clean (backend + frontend) · successful build · unit/integration/contract
 
 - Feature branches (`feature/`, `fix/`, `chore/`); no direct commits to `main`; PRs required.
 - Conventional Commits (`feat:`, `fix:`, `test:`, `refactor:`, `docs:`, `chore:`).
-- Every change should be traceable to a requirement ID from `spec.md` (RF-xx / UC-xx / CA-xx).
+- Every change should be traceable to a requirement ID — a backlog item (`BL-xxx` in `docs/backlog.md`) for new work, or an `RF-xx`/`UC-xx`/`CA-xx` from `spec.md` for delivered scope.
 - Never return raw Mongo documents from the API — define explicit DTOs/schemas for input and output.
 - Record architectural decisions as ADRs; record assumptions made due to missing information in `agent.md` §15 (Assumptions), not scattered inline.
-- Stay within Fase 1 scope; anything from later roadmap phases (see `spec.md` §20) should be flagged rather than silently implemented.
+- Stay within the scope of the requested `BL-xxx` backlog item; anything beyond it should be flagged rather than silently implemented. When an item is completed, mark it `Hecho` in `docs/backlog.md` and record an ADR if it changed architecture or the API contract.
