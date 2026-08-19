@@ -69,9 +69,11 @@ claro, sin bloqueo) · **Baja** (mejora a largo plazo, alto costo o poco valor i
 | [BL-026](#bl-026) | G | Elevar la cobertura de pruebas a ≥ 80 % en lógica crítica | Media | Pendiente | — | Quality Gates §11 |
 | [BL-027](#bl-027) | G | Verificación en navegador de CA-08 | Baja | Pendiente | — | CA-08 |
 | [BL-028](#bl-028) | G | Corregir la testabilidad de `UsersListComponent` | Baja | Pendiente | — | — |
+| [BL-029](#bl-029) | H | Adopción del sistema de diseño Material 3 (`design.md`) | Alta | En curso | — | ADR-0017, ADR-0009 |
 
 **Temas:** A · Auditoría y trazabilidad — B · Notificaciones — C · Identidad y control de acceso —
-D · Monitoreo y detección — E · Integraciones externas — F · Gestión de activos — G · Calidad y deuda técnica
+D · Monitoreo y detección — E · Integraciones externas — F · Gestión de activos — G · Calidad y deuda técnica —
+H · Sistema de diseño
 
 ---
 
@@ -415,3 +417,62 @@ import (su plantilla no usa directivas `mat-dialog-*`).
 Criterios de aceptación:
 1. `MatDialogModule` retirado de los imports si la plantilla no usa sus directivas.
 2. Prueba unitaria que verifica la apertura del diálogo con un `MatDialog` simulado.
+
+---
+
+## H. Sistema de diseño
+
+### BL-029
+**Adopción del sistema de diseño Material 3 (`design.md`)** · Alta · En curso · Trazabilidad: ADR-0017, ADR-0009
+
+El frontend se entregó con el tema por defecto del CLI de Angular (`mat.$azure-palette` / `mat.$blue-palette`,
+`typography: Roboto`, Material Icons) y sin capa de tokens: 34 literales de color en las carpetas de features,
+42 valores de espaciado en píxeles arbitrarios, y `color-scheme: light` fijo, que hacía inalcanzable el modo
+oscuro. [`design.md`](../design.md) es ahora la especificación **normativa** de lo visual del frontend (color,
+tipografía, espaciado, forma, elevación, estados y catálogo de componentes) y este elemento cubre su adopción
+**completa**.
+
+La adopción se ejecuta en las **siete etapas de `design.md` §14**, cada una entregable de forma independiente.
+Se pide por etapa: "implementa la etapa 3 de BL-029" es una instrucción completa. No se abren ids `BL-xxx`
+separados por etapa para no fragmentar un mismo objetivo en el resumen.
+
+Estado por etapa:
+
+| Etapa | Alcance (`design.md` §14) | Estado |
+|---|---|---|
+| 1 | Fundaciones: `_theme-colors.scss`, `_tokens.scss`, `styles.scss`, `index.html`, `ThemeService` | **Hecho** |
+| 2 | Purga de valores fijos: colores, `font-size`, espaciado, `outline: none` | Pendiente |
+| 3 | Shell: `core/layout/` según §9.10, títulos de ruta, modos de sidenav por breakpoint | Pendiente |
+| 4 | Vistas de datos: tabla §9.2, escala de severidad §2.6, cuatro estados §10.4, filtros, fallback móvil | Pendiente |
+| 5 | Dashboard y gráficas: tarjetas KPI §10.2, repuntar la gráfica a `--chart-1…8` | Pendiente |
+| 6 | Pantallas de autenticación: `login`, `change-password` | Pendiente |
+| 7 | i18n: extracción de cadenas a claves, `es-CO` como locale por defecto | Pendiente |
+
+Criterios de aceptación:
+
+1. **Etapa 1 (cerrada en este PR)**: `styles.scss` compila y `mat.theme()` con `theme-type: color-scheme`
+   emite ambos esquemas en un único juego de variables `--mat-sys-*` resueltas con `light-dark()`;
+   `_tokens.scss` queda importado y sus variables disponibles; `index.html` ya no carga Roboto ni Material
+   Icons; los `<mat-icon>` existentes resuelven como glifo con Material Symbols Rounded; `ThemeService`
+   (`system` | `light` | `dark`, persistido en `localStorage` bajo `itmas.theme`) está cableado al botón de
+   la barra superior; `.sr-only` conserva su comportamiento.
+2. `grep -rEn '#[0-9a-fA-F]{3,8}|rgba?\(' frontend/src/app` devuelve **0** resultados — los únicos archivos
+   con literales de color son `styles/_theme-colors.scss` y `styles/_tokens.scss`.
+3. `grep -rn 'font-size' frontend/src/app` devuelve solo contextos `.mono`; ningún componente define
+   `font-size` propio fuera de eso.
+4. Ningún componente decide su paleta con `@media (prefers-color-scheme: dark)`: al forzar el tema desde el
+   selector, los internos del componente siguen al tema y no al sistema operativo.
+5. Espaciado, movimiento, severidad y colores de gráfica salen de los tokens (`--sp-*`, `--dur-*`,
+   `--sev-*`, `--chart-*`); no hay lógica de color de estado local en ninguna vista.
+6. Cada vista de datos tiene los cuatro estados de §10.4 (cargado, vacío, cargando, error), con copias
+   distintas para "sin datos" y "los filtros excluyen todo".
+7. Toda ruta se revisa en **ambos** esquemas antes de dar una etapa por terminada, y el layout sobrevive a
+   360px de ancho y a 200% de zoom sin desbordamiento horizontal (§11).
+8. Sin dependencias nuevas, y sin subir el presupuesto `anyComponentStyle` de 4 kB de `angular.json`: lo
+   compartido se mueve a `frontend/src/styles/`.
+9. Las gráficas conservan el contrato de ADR-0009 (8 ranuras en orden fijo, bucket *Otros*, especificación
+   de marcas, tabla espejo `.sr-only`) con los valores de `design.md` §2.7, y los colores de ranura no se
+   usan nunca para texto.
+10. Al cerrar la última etapa, `design.md` §14 queda marcado como completado y este elemento pasa a `Hecho`.
+
+Dependencias: ninguna. Las etapas 2–7 dependen de la 1, ya entregada.

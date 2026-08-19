@@ -8,8 +8,9 @@ Implementation has started (sub-phases 1.1–1.4 — see below). Governance docu
 
 - `spec.md` — the functional/technical specification for IT-MAS (Management and Audit System).
 - `agent.md` — the mandatory operating guide for any AI/developer implementing this project. **This is the authoritative rulebook and takes precedence over general conventions.** Read it in full before writing any code; it governs architecture, security, testing, DevOps, and decision-making for this project, including the sub-phase breakdown of Fase 1 in §17.
+- `design.md` — the normative design system for the frontend (Material 3 on the SAC brand palette). Read it in full before writing or modifying anything under `frontend/src/`. See **Design (frontend)** below.
 
-Precedence when documents conflict: `spec.md` > `agent.md` > this file. Any ambiguity not resolved by those documents should be resolved using the **Decision Framework** in `agent.md` §13 (security/RBAC first, then spec compliance, then phase scope, then API/data contract stability, then established convention, then simplest reversible choice — documented as an Assumption).
+Precedence when documents conflict: `spec.md` > `agent.md` > this file. **For the frontend's visual layer specifically** — colour, typography, spacing, shape, elevation, states, and the component catalogue — `design.md` is normative and outranks `agent.md` and this file; on everything else (architecture, security, RBAC, testing, DevOps, scope) `design.md` cedes to `agent.md`. Where `design.md` and a component disagree about visuals, the component is wrong. Any ambiguity not resolved by those documents should be resolved using the **Decision Framework** in `agent.md` §13 (security/RBAC first, then spec compliance, then phase scope, then API/data contract stability, then established convention, then simplest reversible choice — documented as an Assumption).
 
 ### Node version
 
@@ -59,6 +60,56 @@ Fixed stack: **Node.js** (API) + **Angular** (frontend) + **MongoDB** (persisten
 Collection agents themselves (the per-OS clients that report data) remain **out of scope for development** — assume they already exist and call the API.
 
 Fase 1's implementation sub-phases **1.0–1.7** (`agent.md` §17) are kept as a **historical record**, not a plan: `docs/ca-traceability.md` maps each CA-01..14 to the sub-phase that implemented it, and each sub-phase's notes explain why the code looks the way it does. The per-sub-phase notes below serve the same purpose.
+
+## Design (frontend)
+
+All frontend visual work is governed by [`design.md`](./design.md). Read it before
+writing or modifying anything under `frontend/src/`. It is normative, not advisory.
+
+- **System**: Material 3 (m3.material.io) as implemented by Angular Material 20's
+  `mat.theme()`. Do not use the legacy `mat.define-theme()` API.
+- **Brand**: SAC palette — primary `#004AAD`, accent `#1893F8`, detail `#F2982A`.
+  Type is Poppins; `Roboto Mono` for IDs, IPs, hostnames, hashes and timestamps.
+- **Hard rules**:
+  - Never write a raw hex, rgb() or named color in a component. Use `var(--mat-sys-*)`
+    or the IT-MAS tokens in `frontend/src/styles/_tokens.scss`.
+  - Never fill a surface, button or bar with `#F2982A`. Orange is a detail color:
+    borders, indicator dots, 3px severity bars, icon strokes.
+  - Every screen must work in light and dark. Test both before declaring done.
+  - Spacing is the 4px scale (`--sp-*`). No arbitrary px values.
+  - Every interactive element needs a visible `:focus-visible` ring and a >=44px hit area.
+  - Empty, loading and error states are required for every data view (design.md §10.4).
+- **Theme files**: `frontend/src/styles.scss`, `frontend/src/styles/_theme-colors.scss`,
+  `frontend/src/styles/_tokens.scss`. Palette tones are generated — do not hand-edit them;
+  regenerate from the seeds documented in design.md §2.1.
+- **Component catalogue**: design.md §9 has the canonical markup for the twelve components
+  in use. Copy from there rather than inventing a variant.
+
+### Adoption status (BL-029 / ADR-0017)
+
+`design.md` §14 stages the retrofit into seven independently-shippable steps. **Only step 1
+(foundations) has landed**; steps 2–7 are tracked as [BL-029](docs/backlog.md#bl-029). Until they
+do, screens legitimately mix themed chrome with un-themed component internals — a planned
+condition, not drift. Three things to know before touching frontend code:
+
+- **`mat.theme()` needs an assembled palette, not the raw ramp map.** `_theme-colors.scss`
+  publishes its six ramps side by side; `styles.scss` merges them into the shape `mat.theme()`
+  expects (own tones at the top level, `secondary`/`neutral`/`neutral-variant`/`error` nested).
+  Passing `$itmas-palettes` straight through **compiles cleanly and silently emits
+  `light-dark(, )` for all 18 primary/tertiary roles** — don't "simplify" it back.
+- **`@media (prefers-color-scheme: dark)` is the wrong hook for a component.** It answers to the
+  OS, so it desynchronizes the moment a user picks a theme explicitly. `--mat-sys-*` and the
+  token layer already cover both the media query and `html[data-theme]`. Two dashboard
+  stylesheets still do this and visibly break; fixing them is step 2/5, not a free-for-all.
+- **Five `--mat-sys-*` roles resolve to a different tone than design.md §2.3's table predicts**
+  (the four light `on-*-container` roles, and dark `on-surface-variant`), because Angular Material
+  20 implements the current MD3 role mapping. All five still pass WCAG AA; the emitted values are
+  correct and the table is the stale side. Don't override them with literals.
+
+`ThemeService` (`core/services/theme.service.ts`) owns the colour scheme: `system` | `light` |
+`dark`, persisted in `localStorage` under `itmas.theme`, written to `<html data-theme>` (removed
+for `system`, so `color-scheme: light dark` hands control back to the OS). It is injected at the
+app root, not only in the shell, so `login`/`change-password` honour the stored choice too.
 
 ## Architecture
 

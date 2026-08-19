@@ -16,6 +16,9 @@
   @if (authService.currentUser(); as user) {
     <span class="user-info">{{ user.username }} · {{ user.role }}</span>
   }
+  <button matIconButton [attr.aria-label]="theme.label()" (click)="theme.cycle()">
+    <mat-icon>{{ theme.icon() }}</mat-icon>
+  </button>
   <button mat-button (click)="logout()">Cerrar sesión</button>
 </mat-toolbar>
 

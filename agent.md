@@ -1,6 +1,6 @@
 # agent.md — IT-MAS (Management and Audit System)
 
-> Guía operativa permanente para toda IA, desarrollador o agente automatizado que implemente, mantenga, evolucione o valide este proyecto. Este documento es de cumplimiento obligatorio y prevalece sobre convenciones personales. Ante conflicto con `spec.md`, prevalece `spec.md`; ante ambigüedad, aplica la sección **Decision Framework**.
+> Guía operativa permanente para toda IA, desarrollador o agente automatizado que implemente, mantenga, evolucione o valide este proyecto. Este documento es de cumplimiento obligatorio y prevalece sobre convenciones personales. Ante conflicto con `spec.md`, prevalece `spec.md`; ante ambigüedad, aplica la sección **Decision Framework**. **Excepción acotada**: para la capa visual del frontend — color, tipografía, espaciado, forma, elevación, estados y catálogo de componentes — la norma es `design.md`, que prevalece sobre este documento en ese ámbito y solo en ese ámbito; en todo lo demás (arquitectura, seguridad, RBAC, pruebas, DevOps, alcance) `design.md` cede ante este documento.
 
 ---
 
@@ -77,7 +77,8 @@ Tu misión como agente es **implementar y evolucionar IT-MAS con calidad de prod
 ### 5.2 Frontend (Angular)
 
 - **Framework**: Angular (última versión estable soportada) con TypeScript strict.
-- **UI**: Angular Material (o equivalente) para diseño moderno, responsivo y accesible (**WCAG AA**).
+- **UI**: Angular Material para diseño moderno, responsivo y accesible (**WCAG AA**).
+- **Sistema de diseño**: [`design.md`](design.md) es **normativo** para todo lo visual bajo `frontend/src/` (color, tipografía, espaciado, forma, elevación, estados y el catálogo de componentes de su §9) y prevalece sobre esta sección en ese ámbito. Léelo completo antes de escribir o modificar código de frontend. Reglas duras que no se negocian: ningún literal de color en un componente (solo `var(--mat-sys-*)` o los tokens de `frontend/src/styles/_tokens.scss`); `#F2982A` es color de detalle y nunca un relleno; toda pantalla correcta en claro **y** en oscuro; espaciado desde la escala de 4px (`--sp-*`); anillo `:focus-visible` visible y área de toque >=44px en todo elemento interactivo; los cuatro estados (cargado, vacío, cargando, error) en toda vista de datos. Material 3 vía `mat.theme()`; no uses la API antigua `mat.define-theme()`. Las paletas tonales de `frontend/src/styles/_theme-colors.scss` son **generadas**: no edites sus tonos a mano, regenéralas desde las semillas de `design.md` §2.1. La adopción va por etapas (`design.md` §14) y se rastrea en `BL-029`; ver ADR-0017.
 - **Arquitectura**: organización por features/modules con lazy loading. Componentes tontos vs. contenedores.
 - **Estado**: servicios con RxJS o signals; evita estado global innecesario. Manejo de suscripciones con `takeUntilDestroyed`/async pipe (sin fugas de memoria).
 - **Route Guards**: aplica guards por perfil (`AdministradorGuard`, `AuditorGuard`, `UsuarioGuard`) y un `AuthGuard` global. **El menú y las vistas se muestran/ocultan según el rol**, pero el ocultamiento visual NO reemplaza la autorización en backend.
