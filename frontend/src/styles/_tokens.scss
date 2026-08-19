@@ -1,0 +1,89 @@
+// ============================================================
+// IT-MAS — tokens that Material 3 does not define.
+// Everything else comes from --mat-sys-* (see design.md §2.4).
+// ============================================================
+
+:root {
+  --itmas-font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  // ---- spacing (4px base) ----
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px; --sp-12: 48px;
+
+  // ---- layout ----
+  --shell-toolbar-h: 64px;
+  --shell-sidenav-w: 264px;
+  --shell-sidenav-rail-w: 72px;
+  --shell-content-max: 1440px;
+  --shell-gutter: var(--sp-6);
+
+  // ---- motion ----
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-brand: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --dur-short: 150ms;
+  --dur-medium: 250ms;
+  --dur-long: 400ms;
+
+  // ---- brand accent (detail only — never a fill) ----
+  --itmas-accent-detail: #F2982A;
+
+  // ---- KPI delta text (AA at 12px; chart slots are for marks, not text) ----
+  --delta-up: #3F6B31;
+  --delta-down: #B4271F;
+
+  // ---- severity: light ----
+  --sev-critical-fg: #B4271F; --sev-critical-bg: #FFDAD4; --sev-critical-dot: #EC5151;
+  --sev-high-fg:     #8A5100; --sev-high-bg:     #FFDCBC; --sev-high-dot:     #F2982A;
+  --sev-medium-fg:   #7A5900; --sev-medium-bg:   #FFDEA0; --sev-medium-dot:   #DBA200;
+  --sev-low-fg:      #0060A9; --sev-low-bg:      #CDE5FF; --sev-low-dot:      #1893F8;
+  --sev-info-fg:     #3E4755; --sev-info-bg:     #D8E3F4; --sev-info-dot:     #6E7887;
+
+  // ---- data visualisation: light (8 fixed slots, ADR-0009 order) ----
+  --chart-1: #3E88F9; --chart-2: #78B6FF; --chart-3: #3BB6FF; --chart-4: #7F73E3;
+  --chart-5: #80C26E; --chart-6: #FA9241; --chart-7: #EC5151; --chart-8: #8C9198;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --delta-up: #94D782;
+    --delta-down: #FFB3AD;
+
+    --sev-critical-fg: #FFB4A8; --sev-critical-bg: #6A0000; --sev-critical-dot: #FFB3AD;
+    --sev-high-fg:     #FFB870; --sev-high-bg:     #4A2800; --sev-high-dot:     #FFB785;
+    --sev-medium-fg:   #F8BD35; --sev-medium-bg:   #412D00; --sev-medium-dot:   #DBA200;
+    --sev-low-fg:      #9ACBFF; --sev-low-bg:      #00315D; --sev-low-dot:      #61B0FF;
+    --sev-info-fg:     #BDC7D8; --sev-info-bg:     #3E4755; --sev-info-dot:     #8791A1;
+
+    --chart-1: #A5C8FF; --chart-2: #9ECAFF; --chart-3: #88CEFF; --chart-4: #C2C1FF;
+    --chart-5: #94D782; --chart-6: #FFB785; --chart-7: #FFB3AD; --chart-8: #A7ABB3;
+  }
+}
+
+html[data-theme='dark'] {
+  --delta-up: #94D782;
+  --delta-down: #FFB3AD;
+
+  --sev-critical-fg: #FFB4A8; --sev-critical-bg: #6A0000; --sev-critical-dot: #FFB3AD;
+  --sev-high-fg:     #FFB870; --sev-high-bg:     #4A2800; --sev-high-dot:     #FFB785;
+  --sev-medium-fg:   #F8BD35; --sev-medium-bg:   #412D00; --sev-medium-dot:   #DBA200;
+  --sev-low-fg:      #9ACBFF; --sev-low-bg:      #00315D; --sev-low-dot:      #61B0FF;
+  --sev-info-fg:     #BDC7D8; --sev-info-bg:     #3E4755; --sev-info-dot:     #8791A1;
+
+  --chart-1: #A5C8FF; --chart-2: #9ECAFF; --chart-3: #88CEFF; --chart-4: #C2C1FF;
+  --chart-5: #94D782; --chart-6: #FFB785; --chart-7: #FFB3AD; --chart-8: #A7ABB3;
+}
+
+html[data-theme='light'] {
+  --delta-up: #3F6B31;
+  --delta-down: #B4271F;
+
+  --sev-critical-fg: #B4271F; --sev-critical-bg: #FFDAD4; --sev-critical-dot: #EC5151;
+  --sev-high-fg:     #8A5100; --sev-high-bg:     #FFDCBC; --sev-high-dot:     #F2982A;
+  --sev-medium-fg:   #7A5900; --sev-medium-bg:   #FFDEA0; --sev-medium-dot:   #DBA200;
+  --sev-low-fg:      #0060A9; --sev-low-bg:      #CDE5FF; --sev-low-dot:      #1893F8;
+  --sev-info-fg:     #3E4755; --sev-info-bg:     #D8E3F4; --sev-info-dot:     #6E7887;
+
+  --chart-1: #3E88F9; --chart-2: #78B6FF; --chart-3: #3BB6FF; --chart-4: #7F73E3;
+  --chart-5: #80C26E; --chart-6: #FA9241; --chart-7: #EC5151; --chart-8: #8C9198;
+}

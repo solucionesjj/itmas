@@ -1,0 +1,59 @@
+// ============================================================
+// IT-MAS — Material 3 tonal palettes
+// Generated from the SAC brand seeds. Do not hand-edit tones;
+// regenerate from the seeds documented in design.md §2.
+//
+//   primary   seed #004AAD  (SAC brand blue    -> tone 40, pinned)
+//   secondary seed #1893F8  (SAC brand accent  -> tone 60, pinned)
+//   tertiary  seed #F2982A  (SAC brand orange  -> tone 70, pinned)
+//   neutral / neutral-variant: primary hue, chroma clamped
+//   error: Material 3 default red (#B3261E seed)
+// ============================================================
+
+$_primary: (
+  0: #000000, 10: #00184A, 20: #002C71, 25: #003482, 30: #00419D, 35: #044DB0,
+  40: #004AAD, 50: #3374DB, 60: #4D8FF8, 70: #78ACFF, 80: #A5C8FF, 90: #D2E4FF,
+  95: #E9F1FF, 98: #F6FAFF, 99: #FAFCFF, 100: #FFFFFF,
+);
+
+$_secondary: (
+  0: #000000, 10: #001C3B, 20: #00315D, 25: #003A6B, 30: #004882, 35: #005495,
+  40: #0060A9, 50: #0079D3, 60: #1893F8, 70: #61B0FF, 80: #9ACBFF, 90: #CDE5FF,
+  95: #E6F2FF, 98: #F5FAFF, 99: #FAFCFF, 100: #FFFFFF,
+);
+
+$_tertiary: (
+  0: #000000, 10: #2E1600, 20: #4A2800, 25: #563000, 30: #693C00, 35: #794600,
+  40: #8A5100, 50: #AD6600, 60: #D07D00, 70: #F2982A, 80: #FFB870, 90: #FFDCBC,
+  95: #FFEEDE, 98: #FFF8F2, 99: #FFFCF8, 100: #FFFFFF,
+);
+
+$_neutral: (
+  0: #000000, 4: #0B0E13, 6: #101419, 10: #181C21, 12: #1C2025, 17: #262A30,
+  20: #2D3137, 22: #31353B, 24: #353940, 25: #383C42, 30: #43474D, 35: #4E5359,
+  40: #5A5F65, 50: #73777E, 60: #8C9198, 70: #A7ABB3, 80: #C2C7CE, 87: #D5DAE2,
+  90: #DEE3EB, 92: #E3E8F0, 94: #E9EEF6, 95: #ECF1F9, 96: #EFF4FC, 98: #F6FAFF,
+  99: #FAFCFF, 100: #FFFFFF,
+);
+
+$_neutral-variant: (
+  0: #000000, 10: #141C28, 20: #29313E, 25: #313A47, 30: #3E4755, 35: #4A5361,
+  40: #565F6D, 50: #6E7887, 60: #8791A1, 70: #A2ACBC, 80: #BDC7D8, 90: #D8E3F4,
+  95: #E9F1FF, 98: #F6FAFF, 99: #FAFCFF, 100: #FFFFFF,
+);
+
+$_error: (
+  0: #000000, 10: #430000, 20: #6A0000, 25: #7A0000, 30: #940001, 35: #A5130F,
+  40: #B4271F, 50: #D2463A, 60: #F16353, 70: #FF8A7A, 80: #FFB4A8, 90: #FFDAD4,
+  95: #FFEDEA, 98: #FFF8F6, 99: #FFFBFB, 100: #FFFFFF,
+);
+
+// Consumed by mat.theme() in styles.scss.
+$itmas-palettes: (
+  primary: $_primary,
+  secondary: $_secondary,
+  tertiary: $_tertiary,
+  neutral: $_neutral,
+  neutral-variant: $_neutral-variant,
+  error: $_error,
+);

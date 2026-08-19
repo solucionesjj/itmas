@@ -1,7 +1,9 @@
 # ADR-0009: Dashboard OS-distribution chart — no charting library
 
-- **Status**: Accepted (sub-fase 1.5); accessibility gap closed in sub-fase 1.7
+- **Status**: Accepted (sub-fase 1.5); accessibility gap closed in sub-fase 1.7 — **palette extended by [ADR-0017](0017-design-system-material3-sac-brand.md)**
 - **Related**: agent.md §5.1 ("minimiza dependencias"), §5.2 (UX: "gráfico de distribución por sistema operativo (pie/bar)"); CA-05
+
+> **Extension note (ADR-0017)**: the eight categorical colour *values* referenced below have been replaced by the SAC data palette in `design.md` §2.7, which also adds a dark-mode variant per slot (this ADR's chart component instead carried a private hard-coded light/dark pair per slot). Everything structural on this page is unchanged and still binding: the no-charting-library decision, the eight-slot count and their fixed assignment order, "never cycled or generated", the neutral *Otros* bucket for a 9th category, the mark spec, and the screen-reader requirements. `design.md` §2.7 also adds one rule this ADR did not state: the slots are for **marks only, never for text** — several fall below 4.5:1 at 12–14px, so text uses `--delta-up`/`--delta-down` or the severity pairs instead. See ADR-0017 for the full rationale.
 
 ## Context
 
