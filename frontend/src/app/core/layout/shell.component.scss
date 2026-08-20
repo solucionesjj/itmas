@@ -1,21 +1,131 @@
-.nav-links {
+// Application shell — design.md §7 and §9.10. This file owns all page chrome;
+// feature routes render into <main> and must not add a toolbar or background.
+
+.shell {
+  height: 100%;
+}
+
+.shell__nav {
+  width: var(--shell-sidenav-w);
+  background: var(--mat-sys-surface-container-low);
+  border-right: 1px solid var(--mat-sys-outline-variant);
+  padding: var(--sp-3);
+}
+
+// Medium window class (§6.3): 72px rail, icons only.
+.shell__nav--rail {
+  width: var(--shell-sidenav-rail-w);
+
+  .nav-item {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  // The label is hidden by binding the global `.sr-only` class in the template,
+  // not by restating the clip technique here — one definition, in styles.scss.
+}
+
+nav {
   display: flex;
+  flex-direction: column;
   gap: var(--sp-1);
-  margin-left: var(--sp-6);
 }
 
-.spacer {
-  flex: 1 1 auto;
-}
-
-.user-info {
-  margin-right: var(--sp-4);
-  // A colour role rather than opacity: `on-surface-variant` is the secondary-text
-  // role and stays legible in both schemes, which a blanket 0.85 does not.
-  font: var(--mat-sys-body-small);
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  height: 48px;
+  padding-inline: var(--sp-3);
+  border-radius: var(--mat-sys-corner-full);
+  font: var(--mat-sys-label-large);
   color: var(--mat-sys-on-surface-variant);
+  text-decoration: none;
+  transition: background var(--dur-short) var(--ease-standard);
+
+  &:hover {
+    // A state layer of the element's own content colour, never a new background.
+    background: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent);
+    text-decoration: none;
+  }
 }
 
-.shell-content {
-  padding: var(--shell-gutter);
+.nav-item--active {
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  // The one orange element in the whole shell — a 3px bar, never a fill (§2.5).
+  box-shadow: inset 3px 0 0 0 var(--itmas-accent-detail);
+}
+
+.shell__bar {
+  height: var(--shell-toolbar-h);
+  background: var(--mat-sys-surface-container-low);
+  color: var(--mat-sys-on-surface);
+  gap: var(--sp-3);
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+  // Sticky so the page title stays visible while a long table scrolls.
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  transition: box-shadow var(--dur-short) var(--ease-standard);
+}
+
+// §7: no shadow at rest, elevation 2 once <main> has scrolled.
+.shell__bar--scrolled {
+  box-shadow: var(--mat-sys-level2);
+}
+
+// The content area itself (§7): capped and centred, with the §6.1 page gutter.
+main {
+  display: block;
+  padding: var(--sp-6) var(--shell-gutter) var(--sp-12);
+  max-width: var(--shell-content-max);
+  margin-inline: auto;
+
+  // §6.1: the gutter tightens at and below the Medium window class.
+  @media (max-width: 905px) {
+    padding-inline: var(--sp-4);
+  }
+}
+
+.shell__brand {
+  font: var(--mat-sys-title-medium);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.shell__separator {
+  color: var(--mat-sys-outline);
+}
+
+.shell__title {
+  font: var(--mat-sys-title-medium);
+  color: var(--mat-sys-on-surface-variant);
+  // A long title (e.g. "Reglas de Firewall AWS") must not push the toolbar
+  // actions off the edge on a narrow window.
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shell__spacer {
+  flex: 1;
+}
+
+.user-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+
+  &__name {
+    font: var(--mat-sys-label-large);
+    color: var(--mat-sys-on-surface);
+  }
+
+  &__role {
+    font: var(--mat-sys-body-small);
+    color: var(--mat-sys-on-surface-variant);
+  }
 }

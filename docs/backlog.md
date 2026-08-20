@@ -466,7 +466,7 @@ Estado por etapa:
 | 1 | Fundaciones: `_theme-colors.scss`, `_tokens.scss`, `styles.scss`, `index.html`, `ThemeService` | **Hecho** |
 | 1b | Corrección: pesos por rol de §3.1 (5 overrides) + prueba de regresión de la escala | **Hecho** |
 | 2 | Purga de valores fijos: colores, `font-size`, espaciado, anillo de foco, `prefers-color-scheme` | **Hecho** |
-| 3 | Shell: `core/layout/` según §9.10, títulos de ruta, modos de sidenav por breakpoint | Pendiente |
+| 3 | Shell: `core/layout/` según §9.10, títulos de ruta, modos de sidenav por breakpoint | **Hecho** |
 | 4 | Vistas de datos: tabla §9.2, escala de severidad §2.6, cuatro estados §10.4, filtros, fallback móvil | Pendiente |
 | 5 | Dashboard y gráficas: tarjetas KPI §10.2, repuntar la gráfica a `--chart-1…8` | Pendiente |
 | 6 | Pantallas de autenticación: `login`, `change-password` | Pendiente |
@@ -521,6 +521,28 @@ Notas de ejecución:
   estado en todo el producto a conservar la lectura «verde = conforme» en la tabla de firewall.
   Las barras de la gráfica ahora eligen su color con `light-dark()`, que sigue el esquema resuelto
   en vez del sistema operativo.
+- **Etapa 3 (shell).** `core/layout/` pasó de una barra superior con enlaces en línea a
+  `mat-sidenav-container` según §9.10: sidenav de 264px en `surface-container-low`, ítems de 48px
+  `corner-full` en `label-large`, activo en `secondary-container` con la **barra naranja de 3px**
+  (el único elemento naranja del shell), barra superior de 64px plana en reposo y con elevación 2
+  al hacer scroll, y menú de usuario con `account_circle`. Los tres modos de §6.3 se conmutan con
+  `BreakpointObserver` (sin dependencia nueva): `over` cerrado por defecto bajo 600px, riel de 72px
+  entre 600 y 904, `side` abierto por encima. Iconos según el mapa canónico de §13.1, con `FILL 1`
+  en el activo.
+
+  Tres discrepancias de `design.md` detectadas al implementar, las tres anotadas en el documento:
+  (i) **§9.10 contenía un bug latente** — mezclar `nav.toggle()` con `[opened]="sidenavOpen()"` hace
+  que el estado interno de `MatDrawer` y la señal se desincronicen, y a partir de ahí escribir en la
+  señal el valor que ya tiene no emite nada, así que el drawer deja de cerrarse. Reproducido y
+  corregido; hay prueba de regresión. (ii) **§7 y §9.10 se contradicen** sobre si la barra superior
+  ocupa todo el ancho por encima del sidenav (diagrama de §7) o vive dentro del contenido (marcado
+  de §9.10); se siguió §9.10 por ser el artefacto copiable. (iii) Los títulos van en el `title`
+  nativo del router, no en `data.title` como dice §7: el shell no se instancia en
+  `login`/`change-password`, así que un `data.title` leído por el shell dejaba esas dos rutas sin
+  título de documento. `ItmasTitleStrategy` lo resuelve para todas.
+
+  Se añadió además una `<h1>` al panel, que no tenía ninguna (§11 exige una por ruta), y la
+  tipografía del encabezado de página se define una sola vez en `styles.scss`.
 - **Pendiente menor de §3.1**: el tracking de `headline-*` se emite en `0` donde la tabla pide
   −0.02em. El resto de la columna de tracking sí coincide. No corregido todavía: es el mismo
   mecanismo de override y conviene decidirlo junto con la etapa 3, que es la que restila

@@ -962,6 +962,19 @@ Never put a primary action *only* in a menu.
 
 ### 9.10 Sidenav + toolbar
 
+> **Two corrections to the snippet below, both found while implementing it.**
+>
+> 1. **Do not mix `nav.toggle()` with `[opened]="sidenavOpen()"`.** `toggle()` mutates
+>    MatDrawer's internal state without touching the signal, so the two drift; once drifted,
+>    writing the value the signal already holds is a no-op (signals don't emit on an equal
+>    write) and the drawer stops responding — tapping a nav item fails to close it. Drive the
+>    drawer from the signal alone (`sidenavOpen.update(o => !o)`) and sync back with
+>    `(closedStart)` for backdrop dismissals.
+> 2. **This markup puts the toolbar inside `mat-sidenav-content`**, i.e. to the *right* of a
+>    full-height sidenav — which contradicts §7's diagram, where the toolbar spans the full
+>    width above the sidenav. The markup is what the implementation follows, being the
+>    copyable artefact; §7's diagram is the schematic that is out of step.
+
 ```html
 <mat-sidenav-container class="shell">
   <mat-sidenav #nav [mode]="sidenavMode()" [opened]="sidenavOpen()" class="shell__nav">
@@ -1398,11 +1411,15 @@ token layer. Migrate in this order — each step is independently shippable.
 - [x] Retire every `@media (prefers-color-scheme: dark)` from component styles — it answers to
       the OS, not the theme, so it desynchronised whenever a user chose one explicitly.
 
-**Step 3 — shell.**
-- [ ] Apply §9.10 to `core/layout/`: toolbar heights, nav item treatment, orange left bar
+**Step 3 — shell.** — **done**, see BL-029.
+- [x] Apply §9.10 to `core/layout/`: toolbar heights, nav item treatment, orange left bar
       on the active item, theme toggle wired to `ThemeService`.
-- [ ] Move page titles into `app.routes.ts` `data.title` and render them in the toolbar.
-- [ ] Add sidenav mode switching at the §6.3 breakpoints.
+- [x] Move page titles into `app.routes.ts` and render them in the toolbar — as the router's
+      native `title`, not `data.title`: the shell is not instantiated for `login` /
+      `change-password`, so a shell-read `data.title` left those two routes with no document
+      title at all. `ItmasTitleStrategy` formats `IT-MAS · <page>` for every route.
+- [x] Add sidenav mode switching at the §6.3 breakpoints (`BreakpointObserver`, no new dependency).
+- [x] Page header typography, and an `<h1>` on the dashboard, which had none (§11 wants one per route).
 
 **Step 4 — data views** (`devices`, `security-group-rules`, `alerts`, `reports`, `admin`).
 - [ ] Apply the §9.2 table treatment: sticky `title-small` header, no zebra, 52px rows,

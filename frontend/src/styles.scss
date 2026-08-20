@@ -122,6 +122,22 @@ mat-icon {
   font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
+// Page header (design.md §7). Feature routes supply the <h1>; the shell owns how
+// it looks, so no page restates it and §3.3's "one <h1> per route, matching the
+// toolbar title" holds uniformly. Styled globally rather than from the shell's
+// scoped stylesheet because the element lives inside the feature's template.
+main h1 {
+  font: var(--mat-sys-headline-medium);
+  color: var(--mat-sys-on-surface);
+  margin: 0 0 var(--sp-6);
+  text-wrap: balance;
+}
+
+// The dashboard's title is one step larger (§7).
+main h1.page-title--hero {
+  font: var(--mat-sys-headline-large);
+}
+
 // Tabular data: IDs, IPs, hostnames, hashes, timestamps, byte counts.
 .mono,
 .cell-id, .cell-ip, .cell-hash {

@@ -1,27 +1,72 @@
-<mat-toolbar color="primary">
-  <span>IT-MAS</span>
-  <nav class="nav-links">
-    <a mat-button routerLink="/">Inicio</a>
-    <a mat-button routerLink="/devices">Equipos</a>
-    @if (authService.currentUser()?.role === 'administrator' || authService.currentUser()?.role === 'auditor') {
-      <a mat-button routerLink="/alerts">Alertas</a>
-    }
-    <a mat-button routerLink="/reports">Reportes</a>
-    <a mat-button routerLink="/security-group-rules">Reglas de Firewall AWS</a>
-    @if (authService.currentUser()?.role === 'administrator') {
-      <a mat-button routerLink="/admin/users">Usuarios</a>
-    }
-  </nav>
-  <span class="spacer"></span>
-  @if (authService.currentUser(); as user) {
-    <span class="user-info">{{ user.username }} · {{ user.role }}</span>
-  }
-  <button matIconButton [attr.aria-label]="theme.label()" (click)="theme.cycle()">
-    <mat-icon>{{ theme.icon() }}</mat-icon>
-  </button>
-  <button mat-button (click)="logout()">Cerrar sesión</button>
-</mat-toolbar>
+<mat-sidenav-container class="shell">
+  <mat-sidenav
+    class="shell__nav"
+    [class.shell__nav--rail]="isRail()"
+    [mode]="sidenavMode()"
+    [opened]="sidenavOpen()"
+    (closedStart)="sidenavOpen.set(false)"
+    [attr.aria-label]="'Navegación principal'"
+  >
+    <nav aria-label="Navegación principal">
+      @for (item of navItems(); track item.route) {
+        <a
+          class="nav-item"
+          [routerLink]="item.route"
+          routerLinkActive="nav-item--active"
+          [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+          [attr.title]="isRail() ? item.label : null"
+          (click)="closeIfOver()"
+        >
+          <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
+          <!-- In rail mode the label is visually hidden but never removed from the
+               a11y tree, so the link keeps its accessible name at every breakpoint. -->
+          <span class="nav-item__label" [class.sr-only]="isRail()">{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+  </mat-sidenav>
 
-<div class="shell-content">
-  <router-outlet />
-</div>
+  <mat-sidenav-content (scroll)="onContentScroll($event)">
+    <mat-toolbar class="shell__bar" [class.shell__bar--scrolled]="scrolled()">
+      @if (isCompact()) {
+        <button matIconButton aria-label="Abrir o cerrar la navegación" (click)="toggleSidenav()">
+          <mat-icon>menu</mat-icon>
+        </button>
+      }
+      <span class="shell__brand">IT-MAS</span>
+      @if (pageTitle()) {
+        <span class="shell__separator" aria-hidden="true">·</span>
+        <span class="shell__title">{{ pageTitle() }}</span>
+      }
+      <span class="shell__spacer"></span>
+
+      <button matIconButton [attr.aria-label]="theme.label()" (click)="theme.cycle()">
+        <mat-icon>{{ theme.icon() }}</mat-icon>
+      </button>
+
+      <button
+        matIconButton
+        [matMenuTriggerFor]="userMenu"
+        aria-label="Menú de usuario"
+      >
+        <mat-icon>account_circle</mat-icon>
+      </button>
+      <mat-menu #userMenu>
+        @if (authService.currentUser(); as user) {
+          <div class="user-card" mat-menu-item disabled>
+            <span class="user-card__name">{{ user.username }}</span>
+            <span class="user-card__role">{{ user.role }}</span>
+          </div>
+        }
+        <button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Cerrar sesión</span>
+        </button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <main tabindex="-1">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>
