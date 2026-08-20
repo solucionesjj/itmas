@@ -10,6 +10,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSortModule, Sort } from '@angular/material/sort';
+import { MatChipsModule } from '@angular/material/chips';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -17,6 +19,14 @@ import { Observable, debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/services/auth.service';
 import { ViewError, toViewError } from '../../core/utils/api-error.util';
+import {
+  AppliedFilter,
+  FilterMetaMap,
+  anyFilterActive,
+  describeFilters,
+  filtersFromParams,
+  paramsFromFilters
+} from '../../core/utils/filter-url.util';
 import { SecurityGroupRulesService } from './security-group-rules.service';
 import { SecurityGroupSyncService } from './security-group-sync.service';
 import {
@@ -36,6 +46,26 @@ import { StatusChipComponent } from './status-chip.component';
 
 const DEFAULT_SORT: SecurityGroupRuleSortField = 'securityGroupName';
 
+const STATUS_LABELS: Record<string, string> = {
+  pendiente: 'Pendiente',
+  revisado: 'Revisado',
+  autorizado: 'Autorizado',
+  eliminado: 'Eliminado'
+};
+
+/** Chip labels for the applied-filter bar (§10.1) — never a raw enum key. */
+const FILTER_META: FilterMetaMap = {
+  q: { label: 'Búsqueda' },
+  securityGroupId: { label: 'Grupo de seguridad' },
+  status: { label: 'Estado', format: (value) => STATUS_LABELS[value] ?? value },
+  createdFrom: { label: 'Creado desde' },
+  createdTo: { label: 'Creado hasta' },
+  reviewedFrom: { label: 'Revisado desde' },
+  reviewedTo: { label: 'Revisado hasta' },
+  authorizedFrom: { label: 'Autorizado desde' },
+  authorizedTo: { label: 'Autorizado hasta' }
+};
+
 @Component({
   selector: 'app-security-group-rules-list',
   standalone: true,
@@ -53,6 +83,7 @@ const DEFAULT_SORT: SecurityGroupRuleSortField = 'securityGroupName';
     MatIconModule,
     MatProgressBarModule,
     MatProgressSpinnerModule,
+    MatChipsModule,
     StatusChipComponent
   ],
   templateUrl: './security-group-rules-list.component.html',
@@ -65,6 +96,8 @@ export class SecurityGroupRulesListComponent {
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly displayedColumns = [
     'securityGroupName',
@@ -95,6 +128,8 @@ export class SecurityGroupRulesListComponent {
 
   /** Drives the two different empty messages §10.4 requires. */
   protected readonly filtersActive = signal(false);
+  /** The active query, shown above the data as removable chips (§10.1). */
+  protected readonly appliedFilters = signal<AppliedFilter[]>([]);
   protected readonly syncing = signal(false);
   protected readonly groups = signal<DistinctGroup[]>([]);
 
@@ -127,6 +162,11 @@ export class SecurityGroupRulesListComponent {
   private readonly pageSize = 20;
 
   constructor() {
+    // The URL is the source of truth on entry, so a filtered view is linkable.
+    this.filters.patchValue(
+      filtersFromParams(this.route.snapshot.queryParams, Object.keys(this.filters.controls)),
+      { emitEvent: false }
+    );
     this.loadGroups();
     this.reload();
 
@@ -293,12 +333,26 @@ export class SecurityGroupRulesListComponent {
     });
   }
 
+  protected removeFilter(key: string): void {
+    this.filters.get(key)?.setValue('');
+  }
+
+  protected statusLabel(status: string): string {
+    return STATUS_LABELS[status] ?? status;
+  }
+
   protected reload(): void {
     this.loading.set(true);
     this.error.set(null);
     const raw = this.filters.getRawValue();
-    // Any of the eight filters being set changes which empty message applies.
-    this.filtersActive.set(Object.values(raw).some((value) => Boolean(value)));
+    // Any of the nine filters being set changes which empty message applies.
+    this.filtersActive.set(anyFilterActive(raw));
+    this.appliedFilters.set(describeFilters(raw, FILTER_META));
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: paramsFromFilters(raw),
+      replaceUrl: true
+    });
     this.rulesService
       .list({
         q: raw.q || undefined,

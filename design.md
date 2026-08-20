@@ -262,6 +262,17 @@ The Medium amber is the one hue the SAC palette does not supply. It is derived f
 `#F2982A` by an 18° hue rotation in OKLCH at constant chroma, so it reads as a sibling of
 the brand orange rather than a foreign color.
 
+**Scope.** This scale applies wherever the product carries a real **verdict** — a judgement of
+risk that the backend actually makes and stores. It is *not* a way to colour a workflow state.
+Today no collection carries such a field: `alerts` has `type` and `status`, `security_group_rules`
+has `status` plus its review/authorization observations, and `devices` has nothing comparable.
+So the five levels below are **defined and unused**, waiting for the first genuine verdict field;
+deriving one in the frontend from `type` or `status` would hardcode a risk judgement the backend
+never made, which `agent.md` §7 forbids. Workflow and lifecycle states — open/reviewed,
+pendiente/revisado/autorizado/eliminado, active/inactive — use the §9.7 status **badge** instead,
+whose four tones borrow these same token pairs. Decided with the design system's owner; see
+BL-029.
+
 **Rules.** Severity is never communicated by color alone: every severity badge carries its
 text label, and every severity row carries the icon above. In tables, severity gets a 3px
 left bar in `--sev-*-dot` plus the badge — the bar is what makes a 200-row findings table
@@ -1422,22 +1433,29 @@ token layer. Migrate in this order — each step is independently shippable.
 - [x] Page header typography, and an `<h1>` on the dashboard, which had none (§11 wants one per route).
 
 **Step 4 — data views** (`devices`, `security-group-rules`, `alerts`, `reports`, `admin`).
-*Partly done — see BL-029 for what landed and what is still open.*
+— **done**, see BL-029.
 - [x] Apply the §9.2 table treatment: sticky `title-small` header, no zebra, 52px rows,
       `.mono` on identifier columns, `.cell-num` on numerics. Shared in
       `styles/_table.scss`; the rules target Material's generated classes, which a
       component's scoped stylesheet cannot reach.
-- [ ] Adopt the five-level severity scale and delete any local status-color logic.
-      **Blocked**: no model carries a severity — not `alerts`, not `security_group_rules`,
-      not `devices`. Deriving one in the frontend would hardcode a risk judgement the
-      backend does not make; carrying one would change the API contract. Needs a decision
-      before it can be built. Status *badges* (§9.7) are in place meanwhile.
+- [x] Adopt the five-level severity scale and delete any local status-color logic.
+      **Resolved by decision**: no model carries a severity, so §2.6 now states that the
+      scale applies only where the backend records a real *verdict*, and that workflow and
+      lifecycle states use the §9.7 status badge instead. Local status-colour logic is gone
+      either way — `status-chip` became a badge in step 2. See §2.6 and BL-029.
 - [x] Add the four states from §10.4 to each view, including separate copy for
       "no data yet" and "the filters exclude everything", skeletons on first load, a 2px
       indeterminate bar over stale rows on refresh, and the API's `requestId` as the
       correlation id in the error panel.
-- [ ] Convert filter bars to `mat-chip-row` applied-filter display with URL reflection.
-- [ ] Small-screen card fallback (§10.3).
+- [x] Convert filter bars to `mat-chip-row` applied-filter display with URL reflection.
+      The URL is the source of truth on entry, so a filtered view is linkable and survives a
+      refresh; writes use `replaceUrl` so typing does not stack one history entry per
+      keystroke, and a cleared filter leaves the query string rather than sitting in it as
+      `?hostname=`.
+- [x] Small-screen card fallback (§10.3). Both markups live in the template and a media
+      query picks one, so no view needs its own breakpoint logic — and `display: none` keeps
+      the hidden one out of the accessibility tree. This is what finally removes the
+      horizontal table overflow below 600px that had been open since step 1.
 
 > **Two tensions in the spec, found while applying §9.2.**
 >

@@ -11,10 +11,20 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatChipsModule } from '@angular/material/chips';
+import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/services/auth.service';
 import { ViewError, toViewError } from '../../core/utils/api-error.util';
+import {
+  AppliedFilter,
+  FilterMetaMap,
+  anyFilterActive,
+  describeFilters,
+  filtersFromParams,
+  paramsFromFilters
+} from '../../core/utils/filter-url.util';
 import { DevicesService } from './devices.service';
 import { CreateDeviceRequest, Device, DeviceCategory } from './device.model';
 import { DeviceFormDialogComponent } from './device-form-dialog.component';
@@ -26,6 +36,16 @@ import {
   RotateKeyConfirmDialogComponent,
   RotateKeyConfirmDialogData
 } from './rotate-key-confirm-dialog.component';
+
+/** Chip labels for the applied-filter bar (§10.1) — never a raw enum key. */
+const FILTER_META: FilterMetaMap = {
+  category: {
+    label: 'Categoría',
+    format: (value) => (value === 'collaborator' ? 'Colaborador' : 'Infraestructura')
+  },
+  hostname: { label: 'Hostname' },
+  osName: { label: 'Sistema operativo' }
+};
 
 @Component({
   selector: 'app-devices-list',
@@ -39,6 +59,7 @@ import {
     MatInputModule,
     MatProgressBarModule,
     MatSelectModule,
+    MatChipsModule,
     MatTableModule,
     MatPaginatorModule
   ],
@@ -51,6 +72,8 @@ export class DevicesListComponent {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   // Hiding "Crear dispositivo"/"Rotar clave" from non-Administradores is UX
   // only — the backend's own @Roles(ADMINISTRATOR) on POST /devices and
@@ -80,11 +103,20 @@ export class DevicesListComponent {
 
   /** Drives the two different empty messages §10.4 requires. */
   protected readonly filtersActive = signal(false);
+  /** The active query, shown above the data as removable chips (§10.1). */
+  protected readonly appliedFilters = signal<AppliedFilter[]>([]);
 
   private page = 0; // zero-based, MatPaginator convention
   private readonly pageSize = 20;
 
   constructor() {
+    // The URL is the source of truth on entry, so a filtered view is linkable and
+    // survives a refresh. Seeded without emitting, or it would trigger a second
+    // reload before the first has run.
+    this.filters.patchValue(
+      filtersFromParams(this.route.snapshot.queryParams, Object.keys(this.filters.controls)),
+      { emitEvent: false }
+    );
     this.reload();
 
     this.filters.valueChanges
@@ -163,11 +195,23 @@ export class DevicesListComponent {
     this.filters.reset({ category: '', hostname: '', osName: '' });
   }
 
+  protected removeFilter(key: string): void {
+    this.filters.get(key)?.setValue('');
+  }
+
   protected reload(): void {
     this.loading.set(true);
     this.error.set(null);
     const raw = this.filters.getRawValue();
-    this.filtersActive.set(Boolean(raw.category || raw.hostname || raw.osName));
+    this.filtersActive.set(anyFilterActive(raw));
+    this.appliedFilters.set(describeFilters(raw, FILTER_META));
+    // replaceUrl so typing in a filter does not stack one history entry per
+    // keystroke — the back button should leave the view, not undo a character.
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: paramsFromFilters(raw),
+      replaceUrl: true
+    });
     this.devicesService
       .list({
         category: raw.category || undefined,
