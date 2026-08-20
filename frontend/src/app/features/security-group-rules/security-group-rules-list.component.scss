@@ -1,15 +1,15 @@
 .filters-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
 }
 
 .actions-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
 }
 
 .table-container {
@@ -21,6 +21,6 @@
 }
 
 .empty-state {
-  color: #52514e;
-  padding: 16px 0;
+  color: var(--mat-sys-on-surface-variant);
+  padding: var(--sp-4) 0;
 }

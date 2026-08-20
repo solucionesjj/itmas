@@ -1,10 +1,8 @@
 import { Component, computed, input } from '@angular/core';
-import { MatChipsModule } from '@angular/material/chips';
 import { SecurityGroupRuleStatus } from './security-group-rule.model';
 
 // Plain constant object, no framework abstraction — same style as the ROLES
-// const in UserFormDialogComponent. No existing status-color-chip pattern in
-// this frontend; establishing it fresh here.
+// const in UserFormDialogComponent.
 const STATUS_LABELS: Record<SecurityGroupRuleStatus, string> = {
   pendiente: 'Pendiente',
   revisado: 'Revisado',
@@ -12,26 +10,38 @@ const STATUS_LABELS: Record<SecurityGroupRuleStatus, string> = {
   eliminado: 'Eliminado'
 };
 
-const STATUS_COLORS: Record<SecurityGroupRuleStatus, string> = {
-  pendiente: '#c62828',
-  revisado: '#f9a825',
-  autorizado: '#2e7d32',
-  eliminado: '#212121'
+/**
+ * Maps a rule's workflow status onto one of design.md §9.7's four canonical badge
+ * tones. The tones carry the colour (from the severity token pairs), so nothing
+ * here knows a hex and both themes are handled by the token layer.
+ *
+ * `autorizado` is `online`, i.e. blue — §9.7 maps `online` to `--sev-low-*`, and
+ * the SAC severity palette has no green. That is a deliberate call: the firewall
+ * table loses the "green = compliant" read it used to have, in exchange for one
+ * status vocabulary across the whole product. See BL-029.
+ */
+const STATUS_TONES: Record<SecurityGroupRuleStatus, string> = {
+  pendiente: 'offline',
+  revisado: 'degraded',
+  autorizado: 'online',
+  eliminado: 'unknown'
 };
 
 @Component({
   selector: 'app-status-chip',
   standalone: true,
-  imports: [MatChipsModule],
+  // A badge, not a chip: chips are interactive (filters), badges are read-only
+  // state (§9.7). The previous `<mat-chip disabled>` was also announced as a
+  // disabled control to screen readers, which it never was.
   template: `
-    <mat-chip [style.background]="color()" [style.color]="'#fff'" disabled>
-      {{ label() }}
-    </mat-chip>
+    <span [class]="'badge badge--' + tone()">
+      <span class="badge__dot" aria-hidden="true"></span>{{ label() }}
+    </span>
   `
 })
 export class StatusChipComponent {
   readonly status = input.required<SecurityGroupRuleStatus>();
 
   protected readonly label = computed(() => STATUS_LABELS[this.status()]);
-  protected readonly color = computed(() => STATUS_COLORS[this.status()]);
+  protected readonly tone = computed(() => STATUS_TONES[this.status()]);
 }

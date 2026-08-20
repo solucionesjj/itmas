@@ -3,7 +3,7 @@
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding: 1rem;
+  padding: var(--sp-4);
 }
 
 .login-card {
@@ -13,10 +13,13 @@
 
 .full-width {
   width: 100%;
-  margin-top: 0.5rem;
+  margin-top: var(--sp-2);
 }
 
+// §9.3: error text is body-small in --mat-sys-error. No hex fallback — the role
+// is always defined by mat.theme(), and a stale fallback only hides a real
+// theming failure behind a colour that is not in the palette.
 .error {
-  color: var(--mat-sys-error, #b3261e);
-  font-size: 0.875rem;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-error);
 }

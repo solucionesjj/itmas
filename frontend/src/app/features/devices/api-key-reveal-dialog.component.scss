@@ -1,32 +1,37 @@
 mat-dialog-content {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--sp-3);
   min-width: 420px;
 }
 
+// The severity High pair (§2.6) — it is a warning, and these tokens already
+// carry a dark-scheme variant. The previous pair was hard-coded light-only and sat
+// as a bright cream block inside a dark dialog.
 .warning {
   display: flex;
   align-items: flex-start;
-  gap: 0.5rem;
-  color: #7a4d00;
-  background: #fff4e0;
-  padding: 0.5rem 0.75rem;
-  border-radius: 4px;
+  gap: var(--sp-2);
+  color: var(--sev-high-fg);
+  background: var(--sev-high-bg);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--mat-sys-corner-extra-small);
 }
 
 .key-row {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 4px;
-  padding: 0.5rem 0.75rem;
+  gap: var(--sp-2);
+  // A surface step, not a translucent black overlay: the old 4% black darkened a
+  // dark surface instead of lifting it, so the row was invisible in dark mode.
+  background: var(--mat-sys-surface-container-high);
+  border-radius: var(--mat-sys-corner-extra-small);
+  padding: var(--sp-2) var(--sp-3);
 }
 
+// Font comes from the global `.mono` class on the element (§3.2) — an API key is
+// exactly the kind of value that must be monospaced.
 .api-key {
   flex: 1;
   overflow-wrap: anywhere;
-  font-family: monospace;
-  font-size: 0.9rem;
 }

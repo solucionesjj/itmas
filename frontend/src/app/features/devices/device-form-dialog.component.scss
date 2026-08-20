@@ -6,6 +6,6 @@
 mat-dialog-content {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--sp-2);
   min-width: 320px;
 }

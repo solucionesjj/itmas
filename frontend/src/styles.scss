@@ -2,6 +2,7 @@
 @use '@angular/material' as mat;
 @use './styles/theme-colors' as itmas;
 @use './styles/tokens' as *;
+@use './styles/badges';
 
 // ------------------------------------------------------------
 // IT-MAS theme — Material 3, SAC brand palette, Poppins.
@@ -143,15 +144,20 @@ a {
   text-decoration: none;
 }
 a:hover { text-decoration: underline; }
-a:focus-visible {
-  outline: 3px solid var(--mat-sys-secondary);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
+// Only the ring's *shape* on a link — the ring itself is defined once below.
+a:focus-visible { border-radius: var(--mat-sys-corner-extra-small); }
 
-// Focus ring — one definition for the whole app.
+// Focus ring — one definition for the whole app (design.md §8.2).
+//
+// `!important` is load-bearing, not laziness. Angular Material's own component
+// styles set `outline: none` on `.mdc-text-field__input:focus`, `.mdc-button` and
+// `.mdc-button:active`, and they are injected into <head> *after* this global
+// sheet — so on equal specificity they win, and raising specificity is a losing
+// race against a selector we don't control. Without this, `:focus-visible`
+// matches and `outline-offset` applies while `outline-style` still resolves to
+// `none`: the ring silently never paints on any input or button.
 :focus-visible {
-  outline: 3px solid var(--mat-sys-secondary);
+  outline: 3px solid var(--mat-sys-secondary) !important;
   outline-offset: 2px;
 }
 

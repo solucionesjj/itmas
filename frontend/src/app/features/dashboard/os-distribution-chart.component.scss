@@ -1,40 +1,40 @@
+// Chart chrome — surface, text and gridlines. The eight categorical slot colours
+// still come from the component's own constant; repointing those to --chart-1…8
+// with their dark variants is design.md §14 step 5, deliberately not done here.
+//
+// Every branch on `prefers-color-scheme` is gone: that query answers to the
+// operating system, so it desynchronised from the app the moment a user chose a
+// theme — an OS in dark with the app forced light painted this canvas black with
+// white labels on a light page. The `--mat-sys-*` roles resolve per *resolved*
+// colour scheme, which honours html[data-theme] as well as the OS default.
 :host {
-  --chart-surface: #fcfcfb;
-  --chart-text-primary: #0b0b0b;
-  --chart-text-secondary: #52514e;
-  --chart-gridline: #e1e0d9;
+  --chart-surface: var(--mat-sys-surface-container-low);
+  --chart-text-primary: var(--mat-sys-on-surface);
+  --chart-text-secondary: var(--mat-sys-on-surface-variant);
+  --chart-gridline: var(--mat-sys-outline-variant);
 
   display: block;
   background: var(--chart-surface);
-}
-
-@media (prefers-color-scheme: dark) {
-  :host {
-    --chart-surface: #1a1a19;
-    --chart-text-primary: #ffffff;
-    --chart-text-secondary: #c3c2b7;
-    --chart-gridline: #2c2c2a;
-  }
 }
 
 .chart-rows {
   display: flex;
   flex-direction: column;
   // Surface-color gap between rows — comfortably above the 2px minimum that
-  // separates adjacent marks.
-  gap: 10px;
+  // separates adjacent marks (§2.7), now on the 4px scale.
+  gap: var(--sp-2);
 }
 
 .chart-row {
   display: grid;
   grid-template-columns: max-content 1fr max-content;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 
 .os-label {
+  font: var(--mat-sys-body-medium);
   color: var(--chart-text-primary);
-  font-size: 0.875rem;
   white-space: nowrap;
 }
 
@@ -47,27 +47,26 @@
 .bar {
   height: 16px;
   min-width: 2px;
-  background: var(--bar-color-light);
+  // `light-dark()` picks between the two slot colours the component sets inline,
+  // using the resolved colour scheme — the same mechanism mat.theme() uses. This
+  // is what replaces the `prefers-color-scheme` branch that used to swap them, so
+  // the bars follow the theme toggle instead of the OS.
+  background: light-dark(var(--bar-color-light), var(--bar-color-dark));
   // Square at the baseline (left), 4px rounded cap at the data end (right).
   border-radius: 0 4px 4px 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  .bar {
-    background: var(--bar-color-dark);
-  }
-}
-
 .value-label {
-  color: var(--chart-text-secondary);
-  font-size: 0.875rem;
+  font: var(--mat-sys-body-medium);
+  // Declared after `font:`, which resets the font-variant longhands.
   font-variant-numeric: tabular-nums;
+  color: var(--chart-text-secondary);
   min-width: 2ch;
   text-align: right;
 }
 
 .empty-state {
+  font: var(--mat-sys-body-medium);
   color: var(--chart-text-secondary);
-  font-size: 0.875rem;
   margin: 0;
 }

@@ -465,7 +465,7 @@ Estado por etapa:
 |---|---|---|
 | 1 | Fundaciones: `_theme-colors.scss`, `_tokens.scss`, `styles.scss`, `index.html`, `ThemeService` | **Hecho** |
 | 1b | Corrección: pesos por rol de §3.1 (5 overrides) + prueba de regresión de la escala | **Hecho** |
-| 2 | Purga de valores fijos: colores, `font-size`, espaciado, `outline: none` | Pendiente |
+| 2 | Purga de valores fijos: colores, `font-size`, espaciado, anillo de foco, `prefers-color-scheme` | **Hecho** |
 | 3 | Shell: `core/layout/` según §9.10, títulos de ruta, modos de sidenav por breakpoint | Pendiente |
 | 4 | Vistas de datos: tabla §9.2, escala de severidad §2.6, cuatro estados §10.4, filtros, fallback móvil | Pendiente |
 | 5 | Dashboard y gráficas: tarjetas KPI §10.2, repuntar la gráfica a `--chart-1…8` | Pendiente |
@@ -508,6 +508,19 @@ Notas de ejecución:
   que su propio `mat-card-subtitle` (500). Resuelto con overrides por rol en `styles.scss` (opción
   acordada con el responsable del sistema de diseño frente a rebajar §3.1), documentados en §13 y
   anclados por `frontend/src/styles/type-scale.spec.ts`, que verifica los 15 roles contra la tabla.
+- **Etapa 2 (purga).** 34 colores literales → 9 (solo las ranuras de la gráfica, diferidas a la
+  etapa 5 por decisión explícita); 10 `font-size` → 0; 43 declaraciones de espaciado en px/rem → 0;
+  4 bloques `@media (prefers-color-scheme: dark)` → 0. Dos cosas que no eran sustituciones
+  mecánicas: (i) el ítem del `outline: none` **engaña** — nuestro código nunca tuvo ninguno, pero el
+  anillo de §8.2 tampoco pintaba, porque son los estilos de Angular Material los que lo anulan
+  (`.mdc-text-field__input:focus`, `.mdc-button`, `.mdc-button:active`) y se inyectan después de la
+  hoja global; hace falta `!important`. (ii) `status-chip` pasó de `<mat-chip disabled>` a `.badge`
+  de §9.7, porque un chip es interactivo y un badge es estado — y el `disabled` además lo anunciaba
+  como control deshabilitado a un lector de pantalla. `autorizado` queda **azul** (`--sev-low-*`,
+  `online` en §9.7): la paleta de severidad no tiene verde, y se prefirió un solo vocabulario de
+  estado en todo el producto a conservar la lectura «verde = conforme» en la tabla de firewall.
+  Las barras de la gráfica ahora eligen su color con `light-dark()`, que sigue el esquema resuelto
+  en vez del sistema operativo.
 - **Pendiente menor de §3.1**: el tracking de `headline-*` se emite en `0` donde la tabla pide
   −0.02em. El resto de la columna de tracking sí coincide. No corregido todavía: es el mismo
   mecanismo de override y conviene decidirlo junto con la etapa 3, que es la que restila
