@@ -44,6 +44,42 @@ html {
   color-scheme: light dark;              // system preference by default
 }
 
+// Per-role type weights (design.md §3.1).
+//
+// `mat.theme()` exposes only three weight knobs — regular/medium/bold — and
+// Angular Material maps every role onto one of them with a mapping we don't
+// control. It sends display-*, headline-* and title-large to *regular*, which
+// §3.1 deliberately sets to 300 for SAC's Light body copy. Those five roles
+// therefore emit 300 instead of the weight §3.1 asks for, which is why a
+// mat-card-title (title-large, 300) renders *lighter* than its own
+// mat-card-subtitle (title-medium, 500) — an inverted hierarchy. The three-knob
+// config cannot express §3.1 on its own; these overrides are what make it true.
+//
+// Both the `-weight` sub-variable and the `font:` shorthand have to be set: the
+// shorthand `mat.theme()` emits is a literal (`300 2rem / 2.5rem Poppins`), not a
+// composition of the sub-variables, so overriding `-weight` alone would not reach
+// any component using `font: var(--mat-sys-<role>)` — which is exactly what §3.1
+// tells components to use. The shorthand is rebuilt from the live sub-variables
+// rather than retyped, so sizes, line heights and family can never drift out of
+// step with what mat.theme() emits.
+$_role-weights: (
+  display-small: 400,
+  headline-large: 600,
+  headline-medium: 600,
+  headline-small: 600,
+  title-large: 500,
+);
+
+html {
+  @each $role, $weight in $_role-weights {
+    --mat-sys-#{$role}-weight: #{$weight};
+    --mat-sys-#{$role}:
+      var(--mat-sys-#{$role}-weight)
+      var(--mat-sys-#{$role}-size) / var(--mat-sys-#{$role}-line-height)
+      var(--mat-sys-#{$role}-font);
+  }
+}
+
 // Explicit user override, written by ThemeService to <html data-theme>.
 html[data-theme='light'] { color-scheme: light; }
 html[data-theme='dark']  { color-scheme: dark; }

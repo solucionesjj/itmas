@@ -42,6 +42,17 @@ Five of the 35 roles in design.md §2.3's table resolve to a different tone than
 
 All five emitted pairs pass WCAG AA comfortably, and the dark `on-surface-variant` is *higher* contrast than the table's value. Since these come from Angular Material's role mapping rather than from our palette, overriding them would mean writing colour literals into a stylesheet — which design.md §0 forbids and which would fight the framework at every upgrade. **The emitted values are accepted as correct and design.md §2.3's table is the stale side.**
 
+### Per-role type weights need explicit overrides
+
+`mat.theme()`'s typography config exposes three weight knobs — `regular-weight`, `medium-weight`, `bold-weight` — and Angular Material distributes the 14 MD3 type roles across them by its own fixed mapping. That mapping sends `display-*`, `headline-*` and `title-large` to **regular**, which design.md §3.1 deliberately sets to 300 because SAC's body copy is Light. The result is that §3.1's table and §13's config contradict each other: you cannot ask for headings at 600 and body at 300 through three knobs when headings and body resolve to the same knob.
+
+Five roles are therefore overridden explicitly in `styles.scss` (`display-small` → 400, the three `headline-*` → 600, `title-large` → 500). Two details make this less trivial than it looks:
+
+- **Both the `-weight` sub-variable and the `font:` shorthand must be set**, because they have different consumers. Angular's own components read the sub-variable (`.mat-mdc-card-title` uses `font-weight: var(--mat-card-title-text-weight, var(--mat-sys-title-large-weight))`), while §3.1 tells *our* components to use `font: var(--mat-sys-<role>)` — and the shorthand `mat.theme()` emits is a literal (`300 2rem / 2.5rem Poppins`), not a composition of the sub-variables. Overriding only one half silently fixes only half the app.
+- **The shorthand is rebuilt from the live sub-variables**, not retyped, so sizes, line heights and family cannot drift out of step with what `mat.theme()` emits on a future upgrade.
+
+The alternative — relaxing §3.1 to the Light 300 headings the three-knob config produces on its own — was put to the design system's owner and rejected in favour of keeping §3.1's stated intent. `frontend/src/styles/type-scale.spec.ts` now asserts all 15 roles against §3.1's table, so this class of silent drift is caught by the test suite rather than by eye. One item is knowingly left open: `headline-*` tracking emits `0` where §3.1 asks for −0.02em.
+
 ## Consequences
 
 - **The app now follows the operating system's colour-scheme preference by default.** `theme-type: color-scheme` plus `html { color-scheme: light dark; }` replaces the fixed `color-scheme: light`, so a user on a dark-mode OS gets a dark portal on first load without configuring anything. An explicit choice is written by `ThemeService` to `<html data-theme="light|dark">` and persisted in `localStorage` under `itmas.theme` (`system` | `light` | `dark`); `system` removes the attribute and hands control back to the OS. Two things follow:
