@@ -1,7 +1,7 @@
 .nav-links {
   display: flex;
-  gap: 0.25rem;
-  margin-left: 1.5rem;
+  gap: var(--sp-1);
+  margin-left: var(--sp-6);
 }
 
 .spacer {
@@ -9,11 +9,13 @@
 }
 
 .user-info {
-  margin-right: 1rem;
-  opacity: 0.85;
-  font-size: 0.9rem;
+  margin-right: var(--sp-4);
+  // A colour role rather than opacity: `on-surface-variant` is the secondary-text
+  // role and stays legible in both schemes, which a blanket 0.85 does not.
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
 }
 
 .shell-content {
-  padding: 1.5rem;
+  padding: var(--shell-gutter);
 }

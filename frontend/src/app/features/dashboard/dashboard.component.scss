@@ -1,53 +1,45 @@
 .loading {
   display: flex;
   justify-content: center;
-  padding: 48px;
+  padding: var(--sp-12);
 }
 
 .kpi-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
 }
 
 .stat-tile {
   flex: 1 1 200px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 16px;
+  gap: var(--sp-1);
+  padding: var(--sp-4);
 }
 
+// One value per role, no `prefers-color-scheme` branch: `--mat-sys-*` already
+// resolves per scheme through `light-dark()`, and unlike the media query it
+// follows the app's own theme rather than the operating system's.
 .stat-label {
-  font-size: 0.875rem;
-  color: #52514e;
-}
-
-@media (prefers-color-scheme: dark) {
-  .stat-label {
-    color: #c3c2b7;
-  }
+  font: var(--mat-sys-label-large);
+  color: var(--mat-sys-on-surface-variant);
 }
 
 .stat-value {
-  font-size: 2rem;
-  font-weight: 600;
-  color: #0b0b0b;
-}
-
-@media (prefers-color-scheme: dark) {
-  .stat-value {
-    color: #ffffff;
-  }
+  // 32px/600 — exactly headline-large in design.md §3.1's scale.
+  font: var(--mat-sys-headline-large);
+  color: var(--mat-sys-on-surface);
+  font-variant-numeric: tabular-nums;
 }
 
 .chart-card {
-  padding: 16px;
+  padding: var(--sp-4);
 
   h2 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin: 0 0 16px;
+    // §3.1 has no 16px/600 step; title-medium is the section-title role.
+    font: var(--mat-sys-title-medium);
+    margin: 0 0 var(--sp-4);
   }
 }

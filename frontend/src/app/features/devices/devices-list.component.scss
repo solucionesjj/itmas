@@ -2,14 +2,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: var(--sp-4);
 }
 
 .filters-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
 }
 
 .full-width {
@@ -17,6 +17,6 @@
 }
 
 .empty-state {
-  color: #52514e;
-  padding: 16px 0;
+  color: var(--mat-sys-on-surface-variant);
+  padding: var(--sp-4) 0;
 }

@@ -1,0 +1,59 @@
+// ============================================================
+// IT-MAS — status badge (design.md §9.7).
+//
+// A badge is a *state*, never an action: chips are interactive (filters),
+// badges are not. Never make a badge clickable, and never use a chip to
+// display a read-only status.
+//
+// Shared here rather than per-component so the four tones stay identical
+// across views — and so no component stylesheet approaches the 4 kB
+// anyComponentStyle budget carrying its own copy.
+// ============================================================
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 2px var(--sp-2);
+  border-radius: var(--mat-sys-corner-full);
+  font: var(--mat-sys-label-medium);
+  border: 1px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface-variant);
+  background: var(--mat-sys-surface-container);
+  white-space: nowrap;
+
+  &__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    flex: none;
+  }
+
+  // The four canonical tones. Their colours come from the severity token pairs,
+  // so they follow the theme (both the media query and html[data-theme]) without
+  // any component needing to know a hex.
+  &--online {
+    color: var(--sev-low-fg);
+    background: var(--sev-low-bg);
+    border-color: transparent;
+  }
+
+  &--degraded {
+    color: var(--sev-medium-fg);
+    background: var(--sev-medium-bg);
+    border-color: transparent;
+  }
+
+  &--offline {
+    color: var(--sev-critical-fg);
+    background: var(--sev-critical-bg);
+    border-color: transparent;
+  }
+
+  &--unknown {
+    color: var(--sev-info-fg);
+    background: var(--sev-info-bg);
+    border-color: transparent;
+  }
+}

@@ -1384,11 +1384,19 @@ token layer. Migrate in this order — each step is independently shippable.
 - [x] Verify every route renders in both schemes with `color-scheme` forced each way.
 - [x] `ThemeService` (§2.3) + toolbar toggle — without it dark mode is not verifiable.
 
-**Step 2 — purge hard-coded values.**
-- [ ] `grep -rEn '#[0-9a-fA-F]{3,8}|rgba?\(' frontend/src/app` → 0 results.
-- [ ] `grep -rn 'font-size' frontend/src/app` → only `.mono` contexts remain.
-- [ ] Replace ad-hoc margins/paddings with `--sp-*`.
-- [ ] Replace `outline: none` with the standard focus ring.
+**Step 2 — purge hard-coded values.** — **done**, see BL-029.
+- [x] `grep -rEn '#[0-9a-fA-F]{3,8}|rgba?\(' frontend/src/app` → 34 down to the 9 chart
+      slot colours, explicitly deferred to step 5.
+- [x] `grep -rn 'font-size' frontend/src/app` → 0; the only sizes left are `.mono`'s in
+      `styles.scss`.
+- [x] Replace ad-hoc margins/paddings with `--sp-*` → 43 declarations, 0 left.
+- [x] Replace `outline: none` with the standard focus ring. **Read this one carefully**: our
+      code never contained `outline: none`, so the item looks satisfied by inspection while the
+      ring still does not paint. Angular Material sets it on `.mdc-text-field__input:focus`,
+      `.mdc-button` and `.mdc-button:active`, injected after the global sheet, so `!important`
+      in `styles.scss` is what actually makes §8.2 hold.
+- [x] Retire every `@media (prefers-color-scheme: dark)` from component styles — it answers to
+      the OS, not the theme, so it desynchronised whenever a user chose one explicitly.
 
 **Step 3 — shell.**
 - [ ] Apply §9.10 to `core/layout/`: toolbar heights, nav item treatment, orange left bar

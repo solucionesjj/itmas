@@ -4,19 +4,19 @@
 
 .radio-row {
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
 }
 
 .filters-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 8px;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-2);
 }
 
 .inline-spinner {
   display: inline-block;
-  margin-right: 8px;
+  margin-right: var(--sp-2);
   vertical-align: middle;
 }
