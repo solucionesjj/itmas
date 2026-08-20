@@ -10,10 +10,13 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSortModule, Sort } from '@angular/material/sort';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Observable, debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/services/auth.service';
+import { ViewError, toViewError } from '../../core/utils/api-error.util';
 import { SecurityGroupRulesService } from './security-group-rules.service';
 import { SecurityGroupSyncService } from './security-group-sync.service';
 import {
@@ -47,6 +50,8 @@ const DEFAULT_SORT: SecurityGroupRuleSortField = 'securityGroupName';
     MatTableModule,
     MatPaginatorModule,
     MatSortModule,
+    MatIconModule,
+    MatProgressBarModule,
     MatProgressSpinnerModule,
     StatusChipComponent
   ],
@@ -80,7 +85,16 @@ export class SecurityGroupRulesListComponent {
 
   protected readonly items = signal<SecurityGroupRule[]>([]);
   protected readonly total = signal(0);
+  protected readonly error = signal<ViewError | null>(null);
+
+  // §10.4: skeletons on the first load, a 2px bar over stale rows on a refresh.
   protected readonly loading = signal(false);
+  protected readonly firstLoad = signal(true);
+  protected readonly showSkeletons = computed(() => this.loading() && this.firstLoad());
+  protected readonly refreshing = computed(() => this.loading() && !this.firstLoad());
+
+  /** Drives the two different empty messages §10.4 requires. */
+  protected readonly filtersActive = signal(false);
   protected readonly syncing = signal(false);
   protected readonly groups = signal<DistinctGroup[]>([]);
 
@@ -265,9 +279,26 @@ export class SecurityGroupRulesListComponent {
     this.rulesService.listGroups().subscribe((groups) => this.groups.set(groups));
   }
 
-  private reload(): void {
+  protected clearFilters(): void {
+    this.filters.reset({
+      q: '',
+      securityGroupId: '',
+      status: '',
+      createdFrom: '',
+      createdTo: '',
+      reviewedFrom: '',
+      reviewedTo: '',
+      authorizedFrom: '',
+      authorizedTo: ''
+    });
+  }
+
+  protected reload(): void {
     this.loading.set(true);
+    this.error.set(null);
     const raw = this.filters.getRawValue();
+    // Any of the eight filters being set changes which empty message applies.
+    this.filtersActive.set(Object.values(raw).some((value) => Boolean(value)));
     this.rulesService
       .list({
         q: raw.q || undefined,
@@ -289,8 +320,13 @@ export class SecurityGroupRulesListComponent {
           this.items.set(result.items);
           this.total.set(result.total);
           this.loading.set(false);
+          this.firstLoad.set(false);
         },
-        error: () => this.loading.set(false)
+        error: (err) => {
+          this.error.set(toViewError(err, 'No se pudieron cargar las reglas de firewall.'));
+          this.loading.set(false);
+          this.firstLoad.set(false);
+        }
       });
   }
 

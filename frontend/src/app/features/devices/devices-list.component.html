@@ -1,7 +1,8 @@
 <div class="header-row">
   <h1>Equipos</h1>
   @if (isAdmin) {
-    <button mat-flat-button color="primary" (click)="openCreateDialog()">
+    <button matButton="filled" (click)="openCreateDialog()">
+      <mat-icon>add</mat-icon>
       Crear dispositivo
     </button>
   }
@@ -28,59 +29,105 @@
   </mat-form-field>
 </form>
 
-<table mat-table [dataSource]="devices()" class="full-width">
-  <ng-container matColumnDef="hostname">
-    <th mat-header-cell *matHeaderCellDef>Hostname</th>
-    <td mat-cell *matCellDef="let device">{{ device.hostname }}</td>
-  </ng-container>
-
-  <ng-container matColumnDef="category">
-    <th mat-header-cell *matHeaderCellDef>Categoría</th>
-    <td mat-cell *matCellDef="let device">
-      {{ device.category === 'collaborator' ? 'Colaborador' : 'Infraestructura' }}
-    </td>
-  </ng-container>
-
-  <ng-container matColumnDef="os">
-    <th mat-header-cell *matHeaderCellDef>Sistema operativo</th>
-    <td mat-cell *matCellDef="let device">
-      {{ device.os ? device.os.name + ' ' + device.os.version : 'Sin datos' }}
-    </td>
-  </ng-container>
-
-  <ng-container matColumnDef="lastSeen">
-    <th mat-header-cell *matHeaderCellDef>Última conexión</th>
-    <td mat-cell *matCellDef="let device">
-      {{ device.lastSeen ? (device.lastSeen | date: 'medium') : 'Nunca' }}
-    </td>
-  </ng-container>
-
-  @if (isAdmin) {
-    <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef>Acciones</th>
-      <td mat-cell *matCellDef="let device">
-        <button
-          mat-icon-button
-          (click)="openRotateKeyDialog(device)"
-          [attr.aria-label]="'Rotar clave de API de ' + device.hostname"
-        >
-          <mat-icon>vpn_key</mat-icon>
+<!-- The four states of design.md §10.4. -->
+@if (error(); as err) {
+  <div class="state state--error" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ err.message }}</p>
+    @if (err.correlationId) {
+      <p class="mono state__id">Referencia: {{ err.correlationId }}</p>
+    }
+    <button matButton="outlined" (click)="reload()">Reintentar</button>
+  </div>
+} @else if (showSkeletons()) {
+  <div class="skeleton-table">
+    @for (row of [1, 2, 3, 4, 5, 6]; track row) {
+      <div class="skeleton skeleton--row" aria-hidden="true"></div>
+    }
+  </div>
+  <p class="sr-only" role="status">Cargando equipos…</p>
+} @else if (!devices().length) {
+  @if (filtersActive()) {
+    <div class="state state--empty">
+      <mat-icon aria-hidden="true">filter_list</mat-icon>
+      <h2>Ningún equipo coincide con los filtros</h2>
+      <p>Revisa la categoría, el hostname o el sistema operativo que estás buscando.</p>
+      <button matButton="filled" (click)="clearFilters()">Limpiar filtros</button>
+    </div>
+  } @else {
+    <div class="state state--empty">
+      <mat-icon aria-hidden="true">devices</mat-icon>
+      <h2>Todavía no hay equipos</h2>
+      <p>
+        Un equipo aparece aquí en cuanto se aprovisiona y su agente envía el primer
+        inventario.
+      </p>
+      @if (isAdmin) {
+        <button matButton="filled" (click)="openCreateDialog()">
+          <mat-icon>add</mat-icon>
+          Crear dispositivo
         </button>
-      </td>
-    </ng-container>
+      }
+    </div>
   }
+} @else {
+  <div class="table-shell" [class.table-shell--refreshing]="refreshing()">
+    @if (refreshing()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Actualizando equipos" />
+    }
 
-  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-  <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-</table>
+    <table mat-table [dataSource]="devices()" aria-label="Equipos inventariados">
+      <ng-container matColumnDef="hostname">
+        <th mat-header-cell *matHeaderCellDef>Hostname</th>
+        <!-- A hostname is compared character by character (§3.2). -->
+        <td mat-cell *matCellDef="let device" class="mono">{{ device.hostname }}</td>
+      </ng-container>
 
-@if (!loading() && devices().length === 0) {
-  <p class="empty-state">No hay equipos que coincidan con los filtros.</p>
+      <ng-container matColumnDef="category">
+        <th mat-header-cell *matHeaderCellDef>Categoría</th>
+        <td mat-cell *matCellDef="let device">
+          {{ device.category === 'collaborator' ? 'Colaborador' : 'Infraestructura' }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="os">
+        <th mat-header-cell *matHeaderCellDef>Sistema operativo</th>
+        <td mat-cell *matCellDef="let device" class="cell-nowrap">
+          {{ device.os ? device.os.name + ' ' + device.os.version : 'Sin datos' }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="lastSeen">
+        <th mat-header-cell *matHeaderCellDef>Última conexión</th>
+        <td mat-cell *matCellDef="let device" class="cell-time">
+          {{ device.lastSeen ? (device.lastSeen | date: 'medium') : 'Nunca' }}
+        </td>
+      </ng-container>
+
+      @if (isAdmin) {
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>Acciones</th>
+          <td mat-cell *matCellDef="let device">
+            <button
+              matIconButton
+              (click)="openRotateKeyDialog(device)"
+              [attr.aria-label]="'Rotar clave de API de ' + device.hostname"
+            >
+              <mat-icon>vpn_key</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+      }
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+    </table>
+
+    <mat-paginator
+      [length]="total()"
+      [pageSize]="20"
+      [pageSizeOptions]="[20, 50, 100]"
+      (page)="onPage($event)"
+    />
+  </div>
 }
-
-<mat-paginator
-  [length]="total()"
-  [pageSize]="20"
-  [pageSizeOptions]="[20, 50, 100]"
-  (page)="onPage($event)"
-/>

@@ -1,15 +1,7 @@
+// Layout only — the table, states and badges come from frontend/src/styles/.
 .filters-row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-3);
-  margin-bottom: var(--sp-2);
-}
-
-.full-width {
-  width: 100%;
-}
-
-.empty-state {
-  color: var(--mat-sys-on-surface-variant);
-  padding: var(--sp-4) 0;
+  margin-bottom: var(--sp-4);
 }

@@ -1422,12 +1422,36 @@ token layer. Migrate in this order — each step is independently shippable.
 - [x] Page header typography, and an `<h1>` on the dashboard, which had none (§11 wants one per route).
 
 **Step 4 — data views** (`devices`, `security-group-rules`, `alerts`, `reports`, `admin`).
-- [ ] Apply the §9.2 table treatment: sticky `title-small` header, no zebra, 52px rows,
-      `.mono` on identifier columns, `.cell-num` on numerics.
+*Partly done — see BL-029 for what landed and what is still open.*
+- [x] Apply the §9.2 table treatment: sticky `title-small` header, no zebra, 52px rows,
+      `.mono` on identifier columns, `.cell-num` on numerics. Shared in
+      `styles/_table.scss`; the rules target Material's generated classes, which a
+      component's scoped stylesheet cannot reach.
 - [ ] Adopt the five-level severity scale and delete any local status-color logic.
-- [ ] Add the four states from §10.4 to each view.
+      **Blocked**: no model carries a severity — not `alerts`, not `security_group_rules`,
+      not `devices`. Deriving one in the frontend would hardcode a risk judgement the
+      backend does not make; carrying one would change the API contract. Needs a decision
+      before it can be built. Status *badges* (§9.7) are in place meanwhile.
+- [x] Add the four states from §10.4 to each view, including separate copy for
+      "no data yet" and "the filters exclude everything", skeletons on first load, a 2px
+      indeterminate bar over stale rows on refresh, and the API's `requestId` as the
+      correlation id in the error panel.
 - [ ] Convert filter bars to `mat-chip-row` applied-filter display with URL reflection.
 - [ ] Small-screen card fallback (§10.3).
+
+> **Two tensions in the spec, found while applying §9.2.**
+>
+> 1. **§6.1's `--sp-3` vertical cell padding and §9.2's 52px row cannot both hold in a cell
+>    containing a control**: a 40px Material button plus 24px of padding is a 64px row. Text
+>    cells keep §6.1's padding; cells holding a button trade vertical padding for the row
+>    height, and keep their own 48px touch target either way.
+> 2. **`height` on a `tr` is a *minimum*** — a cell whose text wraps grows its row regardless.
+>    Identifiers (`.mono`), timestamps (`.cell-time`) and short bounded attributes
+>    (`.cell-nowrap`) are therefore kept on one line so the common case does land on 52px,
+>    and wide tables scroll inside `.table-shell` rather than clipping a value to hold the
+>    grid. Genuinely long free text still wraps and still grows its row: that is the right
+>    trade for an audit tool, and it is why the alerts table's raw-JSON `Detalle` column
+>    leaves those rows at 64px until that column is restructured.
 
 **Step 5 — dashboard and charts.**
 - [ ] KPI tiles per §10.2.

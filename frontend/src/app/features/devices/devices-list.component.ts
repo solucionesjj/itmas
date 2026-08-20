@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -6,6 +6,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
@@ -13,6 +14,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/services/auth.service';
+import { ViewError, toViewError } from '../../core/utils/api-error.util';
 import { DevicesService } from './devices.service';
 import { CreateDeviceRequest, Device, DeviceCategory } from './device.model';
 import { DeviceFormDialogComponent } from './device-form-dialog.component';
@@ -35,6 +37,7 @@ import {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatProgressBarModule,
     MatSelectModule,
     MatTableModule,
     MatPaginatorModule
@@ -60,13 +63,23 @@ export class DevicesListComponent {
     : ['hostname', 'category', 'os', 'lastSeen'];
   protected readonly devices = signal<Device[]>([]);
   protected readonly total = signal(0);
+  protected readonly error = signal<ViewError | null>(null);
+
+  // §10.4: the first load shows skeletons; a refresh keeps the stale rows under
+  // a 2px indeterminate bar.
   protected readonly loading = signal(false);
+  protected readonly firstLoad = signal(true);
+  protected readonly showSkeletons = computed(() => this.loading() && this.firstLoad());
+  protected readonly refreshing = computed(() => this.loading() && !this.firstLoad());
 
   protected readonly filters = this.fb.nonNullable.group({
     category: '' as '' | DeviceCategory,
     hostname: '',
     osName: ''
   });
+
+  /** Drives the two different empty messages §10.4 requires. */
+  protected readonly filtersActive = signal(false);
 
   private page = 0; // zero-based, MatPaginator convention
   private readonly pageSize = 20;
@@ -146,9 +159,15 @@ export class DevicesListComponent {
     );
   }
 
-  private reload(): void {
+  protected clearFilters(): void {
+    this.filters.reset({ category: '', hostname: '', osName: '' });
+  }
+
+  protected reload(): void {
     this.loading.set(true);
+    this.error.set(null);
     const raw = this.filters.getRawValue();
+    this.filtersActive.set(Boolean(raw.category || raw.hostname || raw.osName));
     this.devicesService
       .list({
         category: raw.category || undefined,
@@ -162,13 +181,21 @@ export class DevicesListComponent {
           this.devices.set(result.items);
           this.total.set(result.total);
           this.loading.set(false);
+          this.firstLoad.set(false);
         },
-        error: () => this.loading.set(false)
+        error: (err) => {
+          this.error.set(toViewError(err, 'No se pudieron cargar los equipos.'));
+          this.loading.set(false);
+          this.firstLoad.set(false);
+        }
       });
   }
 
-  private showError(err: { error?: { error?: { message?: string } } }): void {
-    const message = err.error?.error?.message ?? 'No se pudo completar la operación.';
-    this.snackBar.open(message, 'Cerrar', { duration: 4000 });
+  private showError(err: unknown): void {
+    this.snackBar.open(
+      toViewError(err, 'No se pudo completar la operación.').message,
+      'Cerrar',
+      { duration: 4000 }
+    );
   }
 }

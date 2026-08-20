@@ -1,56 +1,93 @@
 <div class="header-row">
   <h1>Usuarios</h1>
-  <button mat-flat-button color="primary" (click)="openCreateDialog()">
+  <button matButton="filled" (click)="openCreateDialog()">
+    <mat-icon>add</mat-icon>
     Nuevo usuario
   </button>
 </div>
 
-<table mat-table [dataSource]="users()" class="full-width">
-  <ng-container matColumnDef="username">
-    <th mat-header-cell *matHeaderCellDef>Usuario</th>
-    <td mat-cell *matCellDef="let user">{{ user.username }}</td>
-  </ng-container>
+<!-- The four states of design.md §10.4. -->
+@if (error(); as err) {
+  <div class="state state--error" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ err.message }}</p>
+    @if (err.correlationId) {
+      <p class="mono state__id">Referencia: {{ err.correlationId }}</p>
+    }
+    <button matButton="outlined" (click)="reload()">Reintentar</button>
+  </div>
+} @else if (showSkeletons()) {
+  <div class="skeleton-table">
+    @for (row of [1, 2, 3, 4]; track row) {
+      <div class="skeleton skeleton--row" aria-hidden="true"></div>
+    }
+  </div>
+  <p class="sr-only" role="status">Cargando usuarios…</p>
+} @else if (!users().length) {
+  <div class="state state--empty">
+    <mat-icon aria-hidden="true">manage_accounts</mat-icon>
+    <h2>No hay usuarios registrados</h2>
+    <p>No existe autoservicio de registro: solo un Administrador crea cuentas.</p>
+    <button matButton="filled" (click)="openCreateDialog()">
+      <mat-icon>add</mat-icon>
+      Nuevo usuario
+    </button>
+  </div>
+} @else {
+  <div class="table-shell" [class.table-shell--refreshing]="refreshing()">
+    @if (refreshing()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Actualizando usuarios" />
+    }
 
-  <ng-container matColumnDef="email">
-    <th mat-header-cell *matHeaderCellDef>Correo</th>
-    <td mat-cell *matCellDef="let user">{{ user.email }}</td>
-  </ng-container>
+    <table mat-table [dataSource]="users()" aria-label="Usuarios del portal">
+      <ng-container matColumnDef="username">
+        <th mat-header-cell *matHeaderCellDef>Usuario</th>
+        <td mat-cell *matCellDef="let user" class="mono">{{ user.username }}</td>
+      </ng-container>
 
-  <ng-container matColumnDef="role">
-    <th mat-header-cell *matHeaderCellDef>Perfil</th>
-    <td mat-cell *matCellDef="let user">{{ user.role }}</td>
-  </ng-container>
+      <ng-container matColumnDef="email">
+        <th mat-header-cell *matHeaderCellDef>Correo</th>
+        <td mat-cell *matCellDef="let user">{{ user.email }}</td>
+      </ng-container>
 
-  <ng-container matColumnDef="active">
-    <th mat-header-cell *matHeaderCellDef>Estado</th>
-    <td mat-cell *matCellDef="let user">{{ user.active ? 'Activo' : 'Inactivo' }}</td>
-  </ng-container>
+      <ng-container matColumnDef="role">
+        <th mat-header-cell *matHeaderCellDef>Perfil</th>
+        <td mat-cell *matCellDef="let user">{{ user.role }}</td>
+      </ng-container>
 
-  <ng-container matColumnDef="actions">
-    <th mat-header-cell *matHeaderCellDef>Acciones</th>
-    <td mat-cell *matCellDef="let user">
-      <button
-        mat-button
-        (click)="openEditDialog(user)"
-        [attr.aria-label]="'Editar usuario ' + user.username"
-      >
-        Editar
-      </button>
-      <button
-        mat-button
-        [disabled]="isSelf(user)"
-        (click)="toggleActive(user)"
-        [attr.aria-label]="(user.active ? 'Desactivar' : 'Activar') + ' usuario ' + user.username"
-      >
-        {{ user.active ? 'Desactivar' : 'Activar' }}
-      </button>
-    </td>
-  </ng-container>
+      <ng-container matColumnDef="active">
+        <th mat-header-cell *matHeaderCellDef>Estado</th>
+        <td mat-cell *matCellDef="let user">
+          <span [class]="'badge badge--' + (user.active ? 'online' : 'unknown')">
+            <span class="badge__dot" aria-hidden="true"></span>
+            {{ user.active ? 'Activo' : 'Inactivo' }}
+          </span>
+        </td>
+      </ng-container>
 
-  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-  <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-</table>
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef>Acciones</th>
+        <td mat-cell *matCellDef="let user">
+          <button
+            matButton
+            (click)="openEditDialog(user)"
+            [attr.aria-label]="'Editar usuario ' + user.username"
+          >
+            Editar
+          </button>
+          <button
+            matButton
+            [disabled]="isSelf(user)"
+            (click)="toggleActive(user)"
+            [attr.aria-label]="(user.active ? 'Desactivar' : 'Activar') + ' usuario ' + user.username"
+          >
+            {{ user.active ? 'Desactivar' : 'Activar' }}
+          </button>
+        </td>
+      </ng-container>
 
-@if (!loading() && users().length === 0) {
-  <p class="empty-state">No hay usuarios registrados.</p>
+      <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+    </table>
+  </div>
 }

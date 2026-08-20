@@ -1,0 +1,104 @@
+// ============================================================
+// IT-MAS — the four states every data view must have (design.md §10.4):
+// loaded, empty, loading, error.
+//
+// Shared so the four list views cannot drift apart, and so "empty because there
+// is no data" and "empty because the filters exclude everything" always look
+// like the same family while reading as different messages.
+// ============================================================
+
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-12) var(--sp-6);
+  text-align: center;
+  border-radius: var(--mat-sys-corner-medium);
+
+  // Centred, max 420px (§10.4).
+  > p,
+  > h2 {
+    max-width: 420px;
+    margin: 0;
+    text-wrap: pretty;
+  }
+
+  // 48px icon in the empty state, per §13.1's size scale.
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.state--empty {
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+  color: var(--mat-sys-on-surface);
+
+  h2 {
+    font: var(--mat-sys-title-medium);
+  }
+
+  p {
+    font: var(--mat-sys-body-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.state--error {
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+
+  mat-icon {
+    color: var(--mat-sys-on-error-container);
+  }
+
+  p {
+    font: var(--mat-sys-body-medium);
+  }
+
+  // The retry button sits *inside* the error container, so it takes that pair
+  // rather than the default `primary` label — which is off-palette here and
+  // measures lower against the red panel (5.45:1 vs 7.18:1).
+  .mat-mdc-outlined-button {
+    --mat-button-outlined-label-text-color: var(--mat-sys-on-error-container);
+    --mat-button-outlined-outline-color: var(--mat-sys-on-error-container);
+    --mat-button-outlined-state-layer-color: var(--mat-sys-on-error-container);
+  }
+}
+
+// The API's requestId, so a user can quote it in a support request (§10.4).
+.state__id {
+  font: var(--mat-sys-body-small);
+  opacity: 0.8;
+}
+
+// Skeletons matching the real row height and count, for first load only —
+// never a spinner replacing content that is already on screen (§9.11).
+.skeleton {
+  background: var(--mat-sys-surface-container-high);
+  border-radius: var(--mat-sys-corner-extra-small);
+  animation: skeleton-pulse 1.6s var(--ease-standard) infinite;
+}
+
+.skeleton--row {
+  height: 52px;
+  margin-bottom: 2px;
+}
+
+.skeleton-table {
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  overflow: hidden;
+  padding: 0;
+}
+
+@keyframes skeleton-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
