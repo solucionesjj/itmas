@@ -1486,10 +1486,22 @@ token layer. Migrate in this order — each step is independently shippable.
 - [x] The four states of §10.4 on the dashboard, which had only a spinner and no error path
       at all — it is a data view like any other.
 
-**Step 6 — auth screens** (`login`, `change-password`).
-- [ ] Centered `corner-extra-large` card on `surface`, max 420px, one filled action.
-- [ ] `display-large` product name; no orange fill anywhere.
-- [ ] Errors per §9.3: specific, actionable, `aria-describedby`.
+**Step 6 — auth screens** (`login`, `change-password`). — **done**, see BL-029.
+- [x] Centered `corner-extra-large` card on `surface`, max 420px, one filled action.
+      Radius and container colour go through `mat-card`'s own tokens
+      (`--mat-card-outlined-container-shape` / `-container-color`), not plain
+      `border-radius`/`background`: `.mat-mdc-card` outranks the page's own class, so
+      the declarations lost silently and the card kept the 12px default while sharing
+      the page's surface colour.
+- [x] `display-large` product name; no orange fill anywhere (verified by scanning every
+      computed colour on the page for `#F2982A`).
+- [x] Errors per §9.3: specific, actionable, `aria-describedby`. Validation moved from
+      `mat-hint` to `mat-error` — a failure shown as a neutral hint neither reads nor is
+      announced as an error, and only `mat-error` gets `aria-describedby` wired by
+      `mat-form-field`. The password policy is now a *persistent* hint instead of
+      appearing only once broken. Submit failures are mapped by HTTP status to localised,
+      actionable copy rather than passing the API's message through: a bad login used to
+      surface the backend's English "Invalid credentials", which §12 forbids.
 
 **Step 7 — i18n.**
 - [ ] Extract all user-visible strings to keys; `es-CO` as default locale.

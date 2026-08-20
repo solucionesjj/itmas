@@ -1,45 +1,53 @@
-<div class="login-page">
-  <mat-card class="login-card">
-    <mat-card-header>
-      <mat-card-title>IT-MAS</mat-card-title>
-      <mat-card-subtitle>Iniciar sesión</mat-card-subtitle>
-    </mat-card-header>
+<div class="auth-page">
+  <mat-card appearance="outlined" class="auth-card">
+    <!-- §3.1 reserves display-large for the login hero, and this is it. -->
+    <h1 class="auth-brand">IT-MAS</h1>
+    <p class="auth-subtitle">Inventario, monitoreo y auditoría de infraestructura</p>
 
-    <mat-card-content>
-      <form [formGroup]="form" (ngSubmit)="submit()">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Usuario</mat-label>
-          <input matInput formControlName="username" autocomplete="username" />
-        </mat-form-field>
-
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Contraseña</mat-label>
-          <input
-            matInput
-            type="password"
-            formControlName="password"
-            autocomplete="current-password"
-          />
-        </mat-form-field>
-
-        @if (errorMessage()) {
-          <p class="error">{{ errorMessage() }}</p>
+    <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
+      <mat-form-field appearance="outline">
+        <mat-label>Usuario</mat-label>
+        <input matInput formControlName="username" autocomplete="username" />
+        <!-- mat-error, not mat-hint: a validation failure has to read and be
+             announced as an error, and mat-form-field wires aria-describedby
+             to it automatically (§9.3). -->
+        @if (form.controls.username.hasError('required')) {
+          <mat-error>Escribe tu usuario.</mat-error>
         }
+      </mat-form-field>
 
-        <button
-          mat-flat-button
-          color="primary"
-          type="submit"
-          class="full-width"
-          [disabled]="form.invalid || loading()"
-        >
-          @if (loading()) {
-            <mat-spinner diameter="20"></mat-spinner>
-          } @else {
-            Ingresar
-          }
-        </button>
-      </form>
-    </mat-card-content>
+      <mat-form-field appearance="outline">
+        <mat-label>Contraseña</mat-label>
+        <input
+          matInput
+          type="password"
+          formControlName="password"
+          autocomplete="current-password"
+        />
+        @if (form.controls.password.hasError('required')) {
+          <mat-error>Escribe tu contraseña.</mat-error>
+        }
+      </mat-form-field>
+
+      @if (errorMessage(); as message) {
+        <p class="auth-error" role="alert">
+          <mat-icon aria-hidden="true">error</mat-icon>
+          {{ message }}
+        </p>
+      }
+
+      <!-- The one filled action on the page (§9.1). -->
+      <button
+        matButton="filled"
+        type="submit"
+        [disabled]="form.invalid || loading()"
+      >
+        @if (loading()) {
+          <mat-spinner diameter="20" />
+        } @else {
+          Ingresar
+        }
+      </button>
+    </form>
   </mat-card>
 </div>

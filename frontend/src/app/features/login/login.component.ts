@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
@@ -16,6 +17,7 @@ import { AuthService } from '../../core/services/auth.service';
     ReactiveFormsModule,
     MatCardModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatButtonModule,
     MatProgressSpinnerModule
@@ -52,10 +54,32 @@ export class LoginComponent {
       },
       error: (error: HttpErrorResponse) => {
         this.loading.set(false);
-        this.errorMessage.set(
-          error.error?.error?.message ?? 'Usuario o contraseña incorrectos.'
-        );
+        this.errorMessage.set(LoginComponent.messageFor(error));
       }
     });
+  }
+
+  /**
+   * §9.3: an error names the cause and the next step. The server's own message is
+   * deliberately *not* passed through here — the API answers a bad login with the
+   * English "Invalid credentials", which is neither localised nor actionable, and
+   * §12 forbids a user-visible string that is not ours. Mapping by status keeps
+   * the copy specific without leaking the wire language.
+   *
+   * Nothing here reveals whether the username exists: a wrong user and a wrong
+   * password give the same answer, which is also what the backend does.
+   */
+  private static messageFor(error: HttpErrorResponse): string {
+    switch (error.status) {
+      case 401:
+        return 'Usuario o contraseña incorrectos. Revisa ambos e inténtalo de nuevo.';
+      case 429:
+        // The backend rate-limits login attempts (LOGIN_RATE_LIMIT_*).
+        return 'Demasiados intentos fallidos. Espera un minuto antes de volver a intentarlo.';
+      case 0:
+        return 'No se pudo contactar el servidor. Revisa tu conexión e inténtalo de nuevo.';
+      default:
+        return 'No se pudo iniciar sesión. Inténtalo de nuevo en unos momentos.';
+    }
   }
 }

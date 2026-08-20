@@ -472,7 +472,7 @@ Estado por etapa:
 | 4c | Vistas de datos: fallback de tarjetas bajo 600px (§10.3) | **Hecho** |
 | 4d | Escala de severidad de 5 niveles (§2.6) | **Hecho** (por decisión: opción C) |
 | 5 | Dashboard y gráficas: tarjetas KPI §10.2, repuntar la gráfica a `--chart-1…8` | **Hecho** |
-| 6 | Pantallas de autenticación: `login`, `change-password` | Pendiente |
+| 6 | Pantallas de autenticación: `login`, `change-password` | **Hecho** |
 | 7 | i18n: extracción de cadenas a claves, `es-CO` como locale por defecto | Pendiente |
 
 Criterios de aceptación:
@@ -608,6 +608,26 @@ Notas de ejecución:
   máximo una comparación", de modo que ninguna es válido. Mismo criterio que en 4d: se acota a lo
   que el dato permite. `--delta-up`/`--delta-down` quedan sin uso hasta que la API traiga histórico
   — candidato a ítem propio.
+- **Etapa 6 (pantallas de autenticación).** `login` y `change-password` comparten
+  `styles/_auth.scss`: tarjeta centrada de 420px con radio `corner-extra-large` sobre la
+  superficie de la página, y una sola acción rellena. El radio y el color de contenedor van por
+  los **tokens de `mat-card`**, no por `border-radius`/`background` sueltos: `.mat-mdc-card` gana
+  a la clase de la página, así que las declaraciones perdían en silencio y la tarjeta se quedaba
+  con los 12px por defecto y con el mismo color que la página. El nombre del producto usa
+  `display-large`, el único lugar de la app donde §3.1 lo permite (7,36:1 en claro y 10,03:1 en
+  oscuro; como texto grande AA pide ≥3:1). Sin naranja en ninguna parte, comprobado recorriendo
+  todos los colores computados de la página.
+
+  Tres defectos reales, más allá del restyling: (i) la validación usaba `mat-hint` en vez de
+  `mat-error`, así que un fallo se mostraba como pista neutra —no se leía ni se anunciaba como
+  error— y no recibía el `aria-describedby` que `mat-form-field` sí conecta a un `mat-error`;
+  (ii) la política de contraseña solo aparecía **después** de incumplirla, cuando §9.3 pide
+  declarar el formato de entrada: ahora es una pista permanente y el incumplimiento es un error
+  aparte; (iii) el error de envío pasaba crudo desde el backend, de modo que un login fallido
+  mostraba el "Invalid credentials" **en inglés** de la API, que §12 prohíbe. Ahora se mapea por
+  estado HTTP a copia localizada y accionable (401, 429 con el límite de intentos, 400 de política,
+  0 sin red), sin revelar nunca si el usuario existe. Los fallos de envío van en un panel
+  `role="alert"` con el par `error-container` (7,18:1).
 - **Pendiente menor de §3.1**: el tracking de `headline-*` se emite en `0` donde la tabla pide
   −0.02em. El resto de la columna de tracking sí coincide. No corregido todavía: es el mismo
   mecanismo de override y conviene decidirlo junto con la etapa 3, que es la que restila

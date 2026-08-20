@@ -4,6 +4,7 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -32,6 +33,7 @@ function newPasswordMustDifferValidator(group: AbstractControl): ValidationError
     ReactiveFormsModule,
     MatCardModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatButtonModule
   ],
@@ -66,6 +68,28 @@ export class ChangePasswordComponent {
   readonly loading = signal(false);
   readonly errorMessage = signal<string | null>(null);
 
+  /**
+   * §9.3: an error names the cause and the next step. The server's message is not
+   * passed through — class-validator answers a policy violation in English
+   * ("newPassword must be longer than or equal to 8 characters"), which §12
+   * forbids surfacing. The client already enforces the same policy before submit,
+   * so a 400 here means the two drifted and the copy says what the rule is.
+   */
+  private static messageFor(error: HttpErrorResponse): string {
+    switch (error.status) {
+      case 400:
+        return 'La nueva contraseña no cumple la política: mínimo 8 caracteres, con mayúscula, minúscula y un dígito.';
+      case 401:
+        return 'La contraseña actual no es correcta.';
+      case 429:
+        return 'Demasiados intentos. Espera un minuto antes de volver a intentarlo.';
+      case 0:
+        return 'No se pudo contactar el servidor. Revisa tu conexión e inténtalo de nuevo.';
+      default:
+        return 'No se pudo cambiar la contraseña. Inténtalo de nuevo en unos momentos.';
+    }
+  }
+
   submit(): void {
     if (this.form.invalid || this.loading()) {
       return;
@@ -83,9 +107,7 @@ export class ChangePasswordComponent {
       },
       error: (error: HttpErrorResponse) => {
         this.loading.set(false);
-        this.errorMessage.set(
-          error.error?.error?.message ?? 'No se pudo cambiar la contraseña.'
-        );
+        this.errorMessage.set(ChangePasswordComponent.messageFor(error));
       }
     });
   }
