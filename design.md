@@ -366,6 +366,17 @@ typography: (
 ),
 ```
 
+> **This config alone does not produce the weights above.** `mat.theme()` exposes only three
+> weight knobs, and Angular Material maps every role onto one of them by its own fixed mapping —
+> which sends `display-*`, `headline-*` and `title-large` to *regular*, i.e. the 300 this table
+> reserves for body copy. Five roles (`display-small`, the three `headline-*`, `title-large`)
+> therefore need explicit per-role overrides, listed in §13. Without them a `mat-card-title`
+> renders at 300, *lighter* than its own `mat-card-subtitle` at 500. `styles/type-scale.spec.ts`
+> asserts this whole table against the emitted variables, so the two cannot silently drift again.
+>
+> Tracking is emitted in `rem` and matches this table's px values everywhere except `headline-*`,
+> which emit `0` rather than −0.02em. Not yet overridden — see BL-029.
+
 ### 3.2 Tabular data
 
 Roboto Mono 13/20, `font-variant-numeric: tabular-nums`, tracking 0, via `.mono`.
@@ -1288,6 +1299,31 @@ html {
   ));
 
   color-scheme: light dark;
+}
+
+// Per-role weights (§3.1). `mat.theme()` has only three weight knobs and Angular
+// Material maps display-*, headline-* and title-large onto *regular* — which §3.1
+// sets to 300 for SAC's Light body copy — so those five roles emit 300 instead of
+// the weight §3.1 asks for. Both halves are needed: Angular's own components read
+// the `-weight` sub-variable, while our components follow §3.1 and use the `font:`
+// shorthand, which mat.theme() emits as a literal. The shorthand is rebuilt from
+// the live sub-variables so sizes and family cannot drift.
+$_role-weights: (
+  display-small: 400,
+  headline-large: 600,
+  headline-medium: 600,
+  headline-small: 600,
+  title-large: 500,
+);
+
+html {
+  @each $role, $weight in $_role-weights {
+    --mat-sys-#{$role}-weight: #{$weight};
+    --mat-sys-#{$role}:
+      var(--mat-sys-#{$role}-weight)
+      var(--mat-sys-#{$role}-size) / var(--mat-sys-#{$role}-line-height)
+      var(--mat-sys-#{$role}-font);
+  }
 }
 
 html[data-theme='light'] { color-scheme: light; }

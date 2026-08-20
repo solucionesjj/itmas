@@ -441,6 +441,7 @@ Estado por etapa:
 | Etapa | Alcance (`design.md` §14) | Estado |
 |---|---|---|
 | 1 | Fundaciones: `_theme-colors.scss`, `_tokens.scss`, `styles.scss`, `index.html`, `ThemeService` | **Hecho** |
+| 1b | Corrección: pesos por rol de §3.1 (5 overrides) + prueba de regresión de la escala | **Hecho** |
 | 2 | Purga de valores fijos: colores, `font-size`, espaciado, `outline: none` | Pendiente |
 | 3 | Shell: `core/layout/` según §9.10, títulos de ruta, modos de sidenav por breakpoint | Pendiente |
 | 4 | Vistas de datos: tabla §9.2, escala de severidad §2.6, cuatro estados §10.4, filtros, fallback móvil | Pendiente |
@@ -474,5 +475,19 @@ Criterios de aceptación:
    de marcas, tabla espejo `.sr-only`) con los valores de `design.md` §2.7, y los colores de ranura no se
    usan nunca para texto.
 10. Al cerrar la última etapa, `design.md` §14 queda marcado como completado y este elemento pasa a `Hecho`.
+
+Notas de ejecución:
+
+- **Etapa 1b (pesos tipográficos).** Al verificar la etapa 1 se detectó que §3.1 y §13 se
+  contradecían: `mat.theme()` solo expone tres perillas de peso y Angular Material manda
+  `display-*`, `headline-*` y `title-large` a *regular*, que §3.1 fija en 300 para el cuerpo. Cinco
+  roles emitían 300 en vez del peso pedido, y por eso un `mat-card-title` (300) se veía más liviano
+  que su propio `mat-card-subtitle` (500). Resuelto con overrides por rol en `styles.scss` (opción
+  acordada con el responsable del sistema de diseño frente a rebajar §3.1), documentados en §13 y
+  anclados por `frontend/src/styles/type-scale.spec.ts`, que verifica los 15 roles contra la tabla.
+- **Pendiente menor de §3.1**: el tracking de `headline-*` se emite en `0` donde la tabla pide
+  −0.02em. El resto de la columna de tracking sí coincide. No corregido todavía: es el mismo
+  mecanismo de override y conviene decidirlo junto con la etapa 3, que es la que restila
+  encabezados.
 
 Dependencias: ninguna. Las etapas 2–7 dependen de la 1, ya entregada.
