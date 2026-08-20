@@ -1,0 +1,84 @@
+// ============================================================
+// IT-MAS — authentication screens (design.md §14 step 6).
+//
+// Shared because `login` and `change-password` are the same object: a centred
+// card on the page surface, capped at 420px, with exactly one filled action.
+// These two routes render outside the shell, so they own their own page frame.
+// ============================================================
+
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--sp-4);
+  background: var(--mat-sys-surface);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  padding: var(--sp-6);
+
+  // Driven through mat-card's own tokens, not `border-radius`/`background`:
+  // `.mat-mdc-card` outranks `.auth-card`, so a plain declaration lost and the
+  // card kept the 12px default while blending into the page surface.
+  //   - corner-extra-large is the login card's radius in §4's shape scale.
+  //   - surface-container-low is elevation 1 in §5, so the card lifts off the
+  //     page instead of sharing its colour.
+  --mat-card-outlined-container-shape: var(--mat-sys-corner-extra-large);
+  --mat-card-outlined-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-outlined-outline-color: var(--mat-sys-outline-variant);
+}
+
+// The product name as the login hero — §3.1 reserves display-large for exactly
+// this one place in the app.
+.auth-brand {
+  display: block;
+  font: var(--mat-sys-display-large);
+  color: var(--mat-sys-primary);
+  margin: 0;
+  line-height: 1.05;
+}
+
+.auth-title {
+  display: block;
+  font: var(--mat-sys-headline-small);
+  color: var(--mat-sys-on-surface);
+  margin: 0;
+}
+
+.auth-subtitle {
+  display: block;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+  margin: var(--sp-1) 0 0;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5); // §6.1's form-field vertical rhythm
+  margin-top: var(--sp-6);
+}
+
+// A submit failure is not tied to one field, so it sits above the action as its
+// own alert rather than in a `mat-error`.
+.auth-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-radius: var(--mat-sys-corner-small);
+  background: var(--mat-sys-error-container);
+  color: var(--mat-sys-on-error-container);
+  font: var(--mat-sys-body-medium);
+  margin: 0;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
+}
