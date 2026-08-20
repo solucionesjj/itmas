@@ -8,6 +8,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { MessageKey } from '../../core/i18n/messages.es-CO';
+import { TranslatePipe } from '../../core/i18n/t.pipe';
 import { AuthService } from '../../core/services/auth.service';
 
 @Component({
@@ -20,7 +23,8 @@ import { AuthService } from '../../core/services/auth.service';
     MatIconModule,
     MatInputModule,
     MatButtonModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    TranslatePipe
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss'
@@ -29,6 +33,7 @@ export class LoginComponent {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly i18n = inject(I18nService);
 
   readonly form = this.fb.nonNullable.group({
     username: ['', Validators.required],
@@ -54,7 +59,7 @@ export class LoginComponent {
       },
       error: (error: HttpErrorResponse) => {
         this.loading.set(false);
-        this.errorMessage.set(LoginComponent.messageFor(error));
+        this.errorMessage.set(this.i18n.translate(LoginComponent.messageKeyFor(error)));
       }
     });
   }
@@ -69,17 +74,17 @@ export class LoginComponent {
    * Nothing here reveals whether the username exists: a wrong user and a wrong
    * password give the same answer, which is also what the backend does.
    */
-  private static messageFor(error: HttpErrorResponse): string {
+  private static messageKeyFor(error: HttpErrorResponse): MessageKey {
     switch (error.status) {
       case 401:
-        return 'Usuario o contraseña incorrectos. Revisa ambos e inténtalo de nuevo.';
+        return 'login.errorInvalid';
       case 429:
         // The backend rate-limits login attempts (LOGIN_RATE_LIMIT_*).
-        return 'Demasiados intentos fallidos. Espera un minuto antes de volver a intentarlo.';
+        return 'login.errorThrottled';
       case 0:
-        return 'No se pudo contactar el servidor. Revisa tu conexión e inténtalo de nuevo.';
+        return 'login.errorOffline';
       default:
-        return 'No se pudo iniciar sesión. Inténtalo de nuevo en unos momentos.';
+        return 'login.errorGeneric';
     }
   }
 }

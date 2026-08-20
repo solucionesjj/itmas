@@ -18,6 +18,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Observable, debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/services/auth.service';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { MessageKey } from '../../core/i18n/messages.es-CO';
+import { TranslatePipe } from '../../core/i18n/t.pipe';
 import { ViewError, toViewError } from '../../core/utils/api-error.util';
 import {
   AppliedFilter,
@@ -46,24 +49,17 @@ import { StatusChipComponent } from './status-chip.component';
 
 const DEFAULT_SORT: SecurityGroupRuleSortField = 'securityGroupName';
 
-const STATUS_LABELS: Record<string, string> = {
-  pendiente: 'Pendiente',
-  revisado: 'Revisado',
-  autorizado: 'Autorizado',
-  eliminado: 'Eliminado'
-};
-
-/** Chip labels for the applied-filter bar (§10.1) — never a raw enum key. */
+/** Chip metadata as message keys (§10.1) — never a raw enum value. */
 const FILTER_META: FilterMetaMap = {
-  q: { label: 'Búsqueda' },
-  securityGroupId: { label: 'Grupo de seguridad' },
-  status: { label: 'Estado', format: (value) => STATUS_LABELS[value] ?? value },
-  createdFrom: { label: 'Creado desde' },
-  createdTo: { label: 'Creado hasta' },
-  reviewedFrom: { label: 'Revisado desde' },
-  reviewedTo: { label: 'Revisado hasta' },
-  authorizedFrom: { label: 'Autorizado desde' },
-  authorizedTo: { label: 'Autorizado hasta' }
+  q: { label: 'field.search' },
+  securityGroupId: { label: 'field.securityGroup' },
+  status: { label: 'field.status', valueKey: (value) => `status.${value}` },
+  createdFrom: { label: 'firewall.createdFrom' },
+  createdTo: { label: 'firewall.createdTo' },
+  reviewedFrom: { label: 'firewall.reviewedFrom' },
+  reviewedTo: { label: 'firewall.reviewedTo' },
+  authorizedFrom: { label: 'firewall.authorizedFrom' },
+  authorizedTo: { label: 'firewall.authorizedTo' }
 };
 
 @Component({
@@ -84,6 +80,7 @@ const FILTER_META: FilterMetaMap = {
     MatProgressBarModule,
     MatProgressSpinnerModule,
     MatChipsModule,
+    TranslatePipe,
     StatusChipComponent
   ],
   templateUrl: './security-group-rules-list.component.html',
@@ -96,6 +93,7 @@ export class SecurityGroupRulesListComponent {
   private readonly fb = inject(FormBuilder);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  protected readonly i18n = inject(I18nService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -197,7 +195,7 @@ export class SecurityGroupRulesListComponent {
 
   protected attachedResourceLabel(rule: SecurityGroupRule): string {
     if (rule.attachedResources.length === 0) {
-      return 'Sin recurso asociado';
+      return this.i18n.translate('value.noAttachedResource');
     }
     const [first, ...rest] = rule.attachedResources;
     const label = first.resourceName ?? first.resourceId;
@@ -206,7 +204,10 @@ export class SecurityGroupRulesListComponent {
 
   protected review(rule: SecurityGroupRule): void {
     this.openObservationDialog(
-      { title: 'Marcar como revisado', actionLabel: 'Marcar como revisado' },
+      {
+        title: this.i18n.translate('firewall.reviewTitle'),
+        actionLabel: this.i18n.translate('firewall.markReviewed')
+      },
       (observation) => this.rulesService.review(rule._id, observation)
     );
   }
@@ -214,8 +215,8 @@ export class SecurityGroupRulesListComponent {
   protected authorize(rule: SecurityGroupRule): void {
     this.openObservationDialog(
       {
-        title: 'Marcar como autorizado',
-        actionLabel: 'Marcar como autorizado'
+        title: this.i18n.translate('firewall.authorizeTitle'),
+        actionLabel: this.i18n.translate('firewall.markAuthorized')
       },
       (observation) => this.rulesService.authorize(rule._id, observation)
     );
@@ -231,8 +232,8 @@ export class SecurityGroupRulesListComponent {
         this.syncing.set(false);
         if (run.status === 'failure') {
           this.snackBar.open(
-            'No se pudo conectar con AWS — verifica las credenciales configuradas en el backend.',
-            'Cerrar',
+            this.i18n.translate('firewall.syncAwsFailed'),
+            this.i18n.translate('action.close'),
             { duration: 6000 }
           );
           return;
@@ -240,11 +241,17 @@ export class SecurityGroupRulesListComponent {
         const s = run.summary;
         const suffix =
           run.status === 'partial_failure'
-            ? ` (${s.groupsFailed} grupo(s) con error — revisar logs del backend)`
+            ? this.i18n.translate('firewall.syncPartialSuffix', { failed: s.groupsFailed })
             : '';
         this.snackBar.open(
-          `Sincronización completa: ${s.groupsProcessed} grupos, ${s.rulesProcessed} reglas, ${s.rulesCreated} nuevas, ${s.rulesMarkedDeleted} eliminada(s).${suffix}`,
-          'Cerrar',
+          this.i18n.translate('firewall.syncComplete', {
+            groups: s.groupsProcessed,
+            rules: s.rulesProcessed,
+            created: s.rulesCreated,
+            deleted: s.rulesMarkedDeleted,
+            suffix
+          }),
+          this.i18n.translate('action.close'),
           { duration: 5000 }
         );
         this.loadGroups();
@@ -252,9 +259,11 @@ export class SecurityGroupRulesListComponent {
       },
       error: (err) => {
         this.syncing.set(false);
-        const message =
-          err.error?.error?.message ?? 'No se pudo ejecutar la sincronización.';
-        this.snackBar.open(message, 'Cerrar', { duration: 4000 });
+        this.snackBar.open(
+          toViewError(err, this.i18n.translate('firewall.syncRunFailed')).message,
+          this.i18n.translate('action.close'),
+          { duration: 4000 }
+        );
       }
     });
   }
@@ -278,9 +287,11 @@ export class SecurityGroupRulesListComponent {
         next: (response) =>
           this.triggerDownload(response.body, this.filenameFrom(response, format)),
         error: (err) => {
-          const message =
-            err.error?.error?.message ?? 'No se pudo exportar el catálogo.';
-          this.snackBar.open(message, 'Cerrar', { duration: 4000 });
+          this.snackBar.open(
+            toViewError(err, this.i18n.translate('firewall.exportFailed')).message,
+            this.i18n.translate('action.close'),
+            { duration: 4000 }
+          );
         }
       });
   }
@@ -301,15 +312,19 @@ export class SecurityGroupRulesListComponent {
       }
       action(result.observation).subscribe({
         next: () => {
-          this.snackBar.open('Registro actualizado.', 'Cerrar', {
-            duration: 3000
-          });
+          this.snackBar.open(
+            this.i18n.translate('firewall.recordUpdated'),
+            this.i18n.translate('action.close'),
+            { duration: 3000 }
+          );
           this.reload();
         },
         error: (err) => {
-          const message =
-            err.error?.error?.message ?? 'No se pudo actualizar el registro.';
-          this.snackBar.open(message, 'Cerrar', { duration: 4000 });
+          this.snackBar.open(
+            toViewError(err, this.i18n.translate('firewall.recordUpdateFailed')).message,
+            this.i18n.translate('action.close'),
+            { duration: 4000 }
+          );
         }
       });
     });
@@ -337,8 +352,9 @@ export class SecurityGroupRulesListComponent {
     this.filters.get(key)?.setValue('');
   }
 
-  protected statusLabel(status: string): string {
-    return STATUS_LABELS[status] ?? status;
+  /** Enum value → message key, so the enum stays English in code (§12). */
+  protected statusKey(status: string): MessageKey {
+    return `status.${status}` as MessageKey;
   }
 
   protected reload(): void {
@@ -347,7 +363,9 @@ export class SecurityGroupRulesListComponent {
     const raw = this.filters.getRawValue();
     // Any of the nine filters being set changes which empty message applies.
     this.filtersActive.set(anyFilterActive(raw));
-    this.appliedFilters.set(describeFilters(raw, FILTER_META));
+    this.appliedFilters.set(
+      describeFilters(raw, FILTER_META, (key) => this.i18n.translate(key as MessageKey))
+    );
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: paramsFromFilters(raw),
@@ -377,7 +395,7 @@ export class SecurityGroupRulesListComponent {
           this.firstLoad.set(false);
         },
         error: (err) => {
-          this.error.set(toViewError(err, 'No se pudieron cargar las reglas de firewall.'));
+          this.error.set(toViewError(err, this.i18n.translate('firewall.error')));
           this.loading.set(false);
           this.firstLoad.set(false);
         }

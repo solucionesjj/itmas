@@ -2,7 +2,9 @@ import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { administradorGuard, adminOrAuditorGuard } from './core/guards/role.guard';
 
-// Page titles live here and nowhere else (design.md §7). The router's native
+// Page titles live here and nowhere else (design.md §7), as message *keys* since
+// step 7 — ItmasTitleStrategy translates them, so the tab title follows the
+// language like everything else. The router's native
 // `title` drives the document title through ItmasTitleStrategy (and so through
 // Angular's Title service), and the shell reads the same value for its toolbar;
 // each page's own <h1> matches it (§3.3). §7's snippet writes these under
@@ -13,14 +15,14 @@ import { administradorGuard, adminOrAuditorGuard } from './core/guards/role.guar
 export const routes: Routes = [
   {
     path: 'login',
-    title: 'Iniciar sesión',
+    title: 'login.title',
     loadComponent: () =>
       import('./features/login/login.component').then((m) => m.LoginComponent)
   },
   {
     path: 'change-password',
     canActivate: [authGuard],
-    title: 'Cambio de contraseña',
+    title: 'changePassword.title',
     loadComponent: () =>
       import('./features/change-password/change-password.component').then(
         (m) => m.ChangePasswordComponent
@@ -34,7 +36,7 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        title: 'Panel',
+        title: 'nav.dashboard',
         loadComponent: () =>
           import('./features/dashboard/dashboard.component').then(
             (m) => m.DashboardComponent
@@ -42,7 +44,7 @@ export const routes: Routes = [
       },
       {
         path: 'devices',
-        title: 'Equipos',
+        title: 'nav.devices',
         loadComponent: () =>
           import('./features/devices/devices-list.component').then(
             (m) => m.DevicesListComponent
@@ -51,7 +53,7 @@ export const routes: Routes = [
       {
         path: 'alerts',
         canActivate: [adminOrAuditorGuard],
-        title: 'Alertas',
+        title: 'nav.alerts',
         loadComponent: () =>
           import('./features/alerts/alerts-list.component').then(
             (m) => m.AlertsListComponent
@@ -60,7 +62,7 @@ export const routes: Routes = [
       {
         path: 'admin/users',
         canActivate: [administradorGuard],
-        title: 'Usuarios',
+        title: 'nav.users',
         loadComponent: () =>
           import('./features/admin/users/users-list.component').then(
             (m) => m.UsersListComponent
@@ -68,7 +70,7 @@ export const routes: Routes = [
       },
       {
         path: 'reports',
-        title: 'Reportes',
+        title: 'nav.reports',
         loadComponent: () =>
           import('./features/reports/reports.component').then(
             (m) => m.ReportsComponent
@@ -76,7 +78,7 @@ export const routes: Routes = [
       },
       {
         path: 'security-group-rules',
-        title: 'Reglas de Firewall AWS',
+        title: 'nav.firewallRules',
         loadComponent: () =>
           import(
             './features/security-group-rules/security-group-rules-list.component'

@@ -16,6 +16,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../core/services/auth.service';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { MessageKey } from '../../core/i18n/messages.es-CO';
+import { TranslatePipe } from '../../core/i18n/t.pipe';
 import { ViewError, toViewError } from '../../core/utils/api-error.util';
 import {
   AppliedFilter,
@@ -38,13 +41,14 @@ import {
 } from './rotate-key-confirm-dialog.component';
 
 /** Chip labels for the applied-filter bar (§10.1) — never a raw enum key. */
+/**
+ * Chip metadata as message *keys*: a chip shows a translated field name and a
+ * translated value, never an enum key (§10.1, §12).
+ */
 const FILTER_META: FilterMetaMap = {
-  category: {
-    label: 'Categoría',
-    format: (value) => (value === 'collaborator' ? 'Colaborador' : 'Infraestructura')
-  },
-  hostname: { label: 'Hostname' },
-  osName: { label: 'Sistema operativo' }
+  category: { label: 'field.category', valueKey: (value) => `category.${value}` },
+  hostname: { label: 'field.hostname' },
+  osName: { label: 'field.os' }
 };
 
 @Component({
@@ -60,6 +64,7 @@ const FILTER_META: FilterMetaMap = {
     MatProgressBarModule,
     MatSelectModule,
     MatChipsModule,
+    TranslatePipe,
     MatTableModule,
     MatPaginatorModule
   ],
@@ -72,6 +77,7 @@ export class DevicesListComponent {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly fb = inject(FormBuilder);
+  protected readonly i18n = inject(I18nService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -170,7 +176,7 @@ export class DevicesListComponent {
       }
       this.devicesService.rotateKey(device._id).subscribe({
         next: (rotated) => {
-          this.snackBar.open('Clave rotada correctamente.', 'Cerrar', {
+          this.snackBar.open(this.i18n.translate('devices.rotated'), this.i18n.translate('action.close'), {
             duration: 3000
           });
           this.openApiKeyReveal({
@@ -191,6 +197,11 @@ export class DevicesListComponent {
     );
   }
 
+  /** Enum value → message key, so the enum stays English in code (§12). */
+  protected categoryKey(category: string): MessageKey {
+    return `category.${category}` as MessageKey;
+  }
+
   protected clearFilters(): void {
     this.filters.reset({ category: '', hostname: '', osName: '' });
   }
@@ -204,7 +215,9 @@ export class DevicesListComponent {
     this.error.set(null);
     const raw = this.filters.getRawValue();
     this.filtersActive.set(anyFilterActive(raw));
-    this.appliedFilters.set(describeFilters(raw, FILTER_META));
+    this.appliedFilters.set(
+      describeFilters(raw, FILTER_META, (key) => this.i18n.translate(key as MessageKey))
+    );
     // replaceUrl so typing in a filter does not stack one history entry per
     // keystroke — the back button should leave the view, not undo a character.
     void this.router.navigate([], {
@@ -228,7 +241,7 @@ export class DevicesListComponent {
           this.firstLoad.set(false);
         },
         error: (err) => {
-          this.error.set(toViewError(err, 'No se pudieron cargar los equipos.'));
+          this.error.set(toViewError(err, this.i18n.translate('devices.error')));
           this.loading.set(false);
           this.firstLoad.set(false);
         }
@@ -237,8 +250,8 @@ export class DevicesListComponent {
 
   private showError(err: unknown): void {
     this.snackBar.open(
-      toViewError(err, 'No se pudo completar la operación.').message,
-      'Cerrar',
+      toViewError(err, this.i18n.translate('devices.operationFailed')).message,
+      this.i18n.translate('action.close'),
       { duration: 4000 }
     );
   }

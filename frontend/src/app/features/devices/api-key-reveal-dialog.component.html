@@ -1,23 +1,20 @@
-<h2 mat-dialog-title>Clave de API generada</h2>
+<h2 mat-dialog-title>{{ 'devices.keyTitle' | t }}</h2>
 
 <mat-dialog-content>
-  <p>
-    Dispositivo <strong>{{ data.hostname }}</strong> ({{ data.deviceId }})
-  </p>
+  <p>{{ 'devices.keyFor' | t: { hostname: data.hostname, id: data.deviceId } }}</p>
 
   <p class="warning">
     <mat-icon aria-hidden="true">warning</mat-icon>
-    Guarda esta clave ahora — no se mostrará de nuevo. Configúrala en el
-    agente como encabezado <code>X-Node-Api-Key</code>.
+    {{ 'devices.keyWarning' | t }} <code class="mono">X-Node-Api-Key</code>.
   </p>
 
   <div class="key-row">
     <code class="api-key mono">{{ data.apiKey }}</code>
     <button
-      mat-icon-button
+      matIconButton
       [cdkCopyToClipboard]="data.apiKey"
       (cdkCopyToClipboardCopied)="onCopied($event)"
-      aria-label="Copiar clave de API al portapapeles"
+      [attr.aria-label]="'action.copy' | t"
     >
       <mat-icon>content_copy</mat-icon>
     </button>
@@ -25,5 +22,5 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-flat-button color="primary" mat-dialog-close>Entendido</button>
+  <button matButton="filled" mat-dialog-close>{{ 'action.understood' | t }}</button>
 </mat-dialog-actions>

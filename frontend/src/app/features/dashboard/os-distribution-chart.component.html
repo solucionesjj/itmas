@@ -1,5 +1,5 @@
 @if (rows().length === 0) {
-  <p class="empty-state">No hay datos de sistemas operativos disponibles todavía.</p>
+  <p class="empty-state">{{ 'dashboard.chartEmpty' | t }}</p>
 } @else {
   <!-- The visual bars are one summarized image for assistive tech (role="img" +
        aria-label); the real per-row data lives in the visually-hidden table
@@ -23,11 +23,11 @@
   </div>
 
   <table class="sr-only">
-    <caption>Distribución de equipos por sistema operativo</caption>
+    <caption>{{ 'dashboard.chartCaption' | t }}</caption>
     <thead>
       <tr>
-        <th scope="col">Sistema operativo</th>
-        <th scope="col">Cantidad</th>
+        <th scope="col">{{ 'field.os' | t }}</th>
+        <th scope="col">{{ 'dashboard.chartCount' | t }}</th>
       </tr>
     </thead>
     <tbody>

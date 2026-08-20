@@ -8,7 +8,10 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../core/i18n/t.pipe';
 import { AuthService } from '../../core/services/auth.service';
+import { toViewError } from '../../core/utils/api-error.util';
 import { ReportsService } from './reports.service';
 import { ReportFormat, ReportType } from './report.model';
 import { AlertStatus } from '../alerts/alert.model';
@@ -25,7 +28,8 @@ import { DeviceCategory } from '../devices/device.model';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    TranslatePipe
   ],
   templateUrl: './reports.component.html',
   styleUrl: './reports.component.scss'
@@ -35,6 +39,7 @@ export class ReportsComponent {
   private readonly reportsService = inject(ReportsService);
   private readonly authService = inject(AuthService);
   private readonly snackBar = inject(MatSnackBar);
+  protected readonly i18n = inject(I18nService);
 
   protected readonly canExportAlerts = computed(() => {
     const role = this.authService.currentUser()?.role;
@@ -81,8 +86,11 @@ export class ReportsComponent {
         next: (response) => this.triggerDownload(response.body, this.filenameFrom(response, type, raw.format)),
         error: (err) => {
           this.downloading.set(false);
-          const message = err?.error?.error?.message ?? 'No se pudo generar el reporte.';
-          this.snackBar.open(message, 'Cerrar', { duration: 4000 });
+          this.snackBar.open(
+            toViewError(err, this.i18n.translate('reports.downloadFailed')).message,
+            this.i18n.translate('action.close'),
+            { duration: 4000 }
+          );
         },
         complete: () => this.downloading.set(false)
       });

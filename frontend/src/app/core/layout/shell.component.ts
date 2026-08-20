@@ -15,6 +15,10 @@ import {
   RouterOutlet
 } from '@angular/router';
 import { filter, startWith } from 'rxjs';
+import { I18nService } from '../i18n/i18n.service';
+import { LOCALES, Locale, LOCALE_NAMES } from '../i18n/locale';
+import { MessageKey } from '../i18n/messages.es-CO';
+import { TranslatePipe } from '../i18n/t.pipe';
 import { UserRole } from '../models/auth.models';
 import { AuthService } from '../services/auth.service';
 import { ThemeService } from '../services/theme.service';
@@ -25,7 +29,8 @@ const MEDIUM = '(min-width: 600px) and (max-width: 904.98px)';
 
 interface NavItem {
   readonly route: string;
-  readonly label: string;
+  /** A message key — the label is translated in the template. */
+  readonly label: MessageKey;
   /** Canonical icon per concept from design.md §13.1 — do not substitute synonyms. */
   readonly icon: string;
   /** Absent = every authenticated role. Hiding a link is UX only; the route's own
@@ -36,12 +41,17 @@ interface NavItem {
 }
 
 const NAV_ITEMS: readonly NavItem[] = [
-  { route: '/', label: 'Panel', icon: 'space_dashboard', exact: true },
-  { route: '/devices', label: 'Equipos', icon: 'devices' },
-  { route: '/alerts', label: 'Alertas', icon: 'notifications', roles: ['administrator', 'auditor'] },
-  { route: '/reports', label: 'Reportes', icon: 'assessment' },
-  { route: '/security-group-rules', label: 'Reglas de Firewall AWS', icon: 'shield' },
-  { route: '/admin/users', label: 'Usuarios', icon: 'manage_accounts', roles: ['administrator'] }
+  { route: '/', label: 'nav.dashboard', icon: 'space_dashboard', exact: true },
+  { route: '/devices', label: 'nav.devices', icon: 'devices' },
+  {
+    route: '/alerts',
+    label: 'nav.alerts',
+    icon: 'notifications',
+    roles: ['administrator', 'auditor']
+  },
+  { route: '/reports', label: 'nav.reports', icon: 'assessment' },
+  { route: '/security-group-rules', label: 'nav.firewallRules', icon: 'shield' },
+  { route: '/admin/users', label: 'nav.users', icon: 'manage_accounts', roles: ['administrator'] }
 ];
 
 @Component({
@@ -55,7 +65,8 @@ const NAV_ITEMS: readonly NavItem[] = [
     MatButtonModule,
     MatIconModule,
     MatMenuModule,
-    MatSidenavModule
+    MatSidenavModule,
+    TranslatePipe
   ],
   templateUrl: './shell.component.html',
   styleUrl: './shell.component.scss'
@@ -63,6 +74,7 @@ const NAV_ITEMS: readonly NavItem[] = [
 export class ShellComponent {
   protected readonly authService = inject(AuthService);
   protected readonly theme = inject(ThemeService);
+  protected readonly i18n = inject(I18nService);
   private readonly router = inject(Router);
   private readonly breakpoints = inject(BreakpointObserver);
 
@@ -76,7 +88,11 @@ export class ShellComponent {
     this.isCompact() ? 'over' : 'side'
   );
 
-  protected readonly pageTitle = signal('');
+  /** The active route's message key, translated in the toolbar. */
+  protected readonly pageTitleKey = signal<MessageKey | ''>('');
+
+  protected readonly locales = LOCALES;
+  protected readonly localeNames = LOCALE_NAMES;
   /** §7: the toolbar is flat at rest and gains elevation 2 once <main> scrolls. */
   protected readonly scrolled = signal(false);
 
@@ -107,19 +123,23 @@ export class ShellComponent {
       .subscribe(() => {
         // Same resolved value ItmasTitleStrategy puts in the document title, so the
         // toolbar and the tab can never disagree.
-        this.pageTitle.set(this.resolveTitle(this.router.routerState.snapshot.root));
+        this.pageTitleKey.set(this.resolveTitle(this.router.routerState.snapshot.root));
       });
   }
 
   /** Deepest route title wins, so a child overrides its parent's. */
-  private resolveTitle(route: ActivatedRouteSnapshot): string {
+  private resolveTitle(route: ActivatedRouteSnapshot): MessageKey | '' {
     let current: ActivatedRouteSnapshot | null = route;
-    let title = '';
+    let key: MessageKey | '' = '';
     while (current) {
-      title = current.title ?? title;
+      key = (current.title as MessageKey | undefined) ?? key;
       current = current.firstChild;
     }
-    return title;
+    return key;
+  }
+
+  protected selectLocale(locale: Locale): void {
+    this.i18n.set(locale);
   }
 
   /**

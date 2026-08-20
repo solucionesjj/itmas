@@ -85,31 +85,53 @@ writing or modifying anything under `frontend/src/`. It is normative, not adviso
 - **Component catalogue**: design.md §9 has the canonical markup for the twelve components
   in use. Copy from there rather than inventing a variant.
 
-### Adoption status (BL-029 / ADR-0017)
+### Adoption status (BL-029 / ADR-0017) — complete
 
-`design.md` §14 stages the retrofit into seven independently-shippable steps. **Only step 1
-(foundations) has landed**; steps 2–7 are tracked as [BL-029](docs/backlog.md#bl-029). Until they
-do, screens legitimately mix themed chrome with un-themed component internals — a planned
-condition, not drift. Three things to know before touching frontend code:
+`design.md` §14's seven-step retrofit is **done**; BL-029 is `Hecho`. The acceptance greps all
+return zero: no colour literal, no ad-hoc `font-size`, no raw px spacing, no
+`@media (prefers-color-scheme)` anywhere under `frontend/src/app`. Shared layers live in
+`frontend/src/styles/` (`_theme-colors`, `_tokens`, `_badges`, `_panel`, `_auth`, `_table`,
+`_states`) and component stylesheets are layout only.
+
+Traps worth knowing before touching frontend code — every one of these compiles, lints and
+passes the whole test suite while being wrong on screen:
 
 - **`mat.theme()` needs an assembled palette, not the raw ramp map.** `_theme-colors.scss`
   publishes its six ramps side by side; `styles.scss` merges them into the shape `mat.theme()`
-  expects (own tones at the top level, `secondary`/`neutral`/`neutral-variant`/`error` nested).
-  Passing `$itmas-palettes` straight through **compiles cleanly and silently emits
-  `light-dark(, )` for all 18 primary/tertiary roles** — don't "simplify" it back.
-- **`@media (prefers-color-scheme: dark)` is the wrong hook for a component.** It answers to the
-  OS, so it desynchronizes the moment a user picks a theme explicitly. `--mat-sys-*` and the
-  token layer already cover both the media query and `html[data-theme]`. Two dashboard
-  stylesheets still do this and visibly break; fixing them is step 2/5, not a free-for-all.
-- **Five `--mat-sys-*` roles resolve to a different tone than design.md §2.3's table predicts**
-  (the four light `on-*-container` roles, and dark `on-surface-variant`), because Angular Material
-  20 implements the current MD3 role mapping. All five still pass WCAG AA; the emitted values are
-  correct and the table is the stale side. Don't override them with literals.
+  expects. Passing `$itmas-palettes` straight through emits `light-dark(, )` for all 18
+  primary/tertiary roles — silently.
+- **Material's own classes outrank a page-level class.** `.mat-mdc-card` beat `.auth-card`'s
+  `border-radius`/`background`, and `.table-shell td.mat-mdc-cell`'s `font:` shorthand beat
+  `.mono`'s font-family. Go through Material's tokens (`--mat-card-outlined-*`) or add the
+  specificity deliberately.
+- **`.mdc-button`/`.mdc-text-field__input:focus` set `outline: none`** and are injected after
+  the global sheet, so §8.2's focus ring needs `!important` to paint at all.
+- **`height` on a `tr` is a minimum.** 52px rows only happen if content does not wrap, which is
+  why identifiers, timestamps and short attributes carry `nowrap` classes.
+- **A dangling `var()` is invalid at computed-value time**, so a renamed custom property makes
+  the whole declaration vanish rather than erroring. This is how the chart's bars once rendered
+  transparent.
+- **Five `--mat-sys-*` roles resolve to a different tone than §2.3's table predicts** (the four
+  light `on-*-container` roles and dark `on-surface-variant`), because Angular Material 20
+  implements the current MD3 mapping. All pass AA; the table is the stale side. Don't override
+  them with literals.
 
 `ThemeService` (`core/services/theme.service.ts`) owns the colour scheme: `system` | `light` |
-`dark`, persisted in `localStorage` under `itmas.theme`, written to `<html data-theme>` (removed
-for `system`, so `color-scheme: light dark` hands control back to the OS). It is injected at the
-app root, not only in the shell, so `login`/`change-password` honour the stored choice too.
+`dark`, persisted under `itmas.theme`, written to `<html data-theme>`. `I18nService`
+(`core/i18n/`) owns the language: `es-CO` (default) | `en-US`, persisted under `itmas.locale`,
+written to `<html lang>`. Both are injected at the app root so `login`/`change-password` honour
+them too.
+
+**No user-visible string may be hard-coded** (§12). Text goes through the `| t` pipe or
+`I18nService.translate`, with keys in `core/i18n/messages.es-CO.ts` — the single source of which
+keys exist — and `messages.en-US.ts` typed as `Record<MessageKey, string>` so a missing key is a
+compile error. Enum values stay English in code; only labels are translated. `date`/`number`
+pipes must receive `i18n.locale()` explicitly: `LOCALE_ID` is resolved once at bootstrap and
+cannot follow a runtime switch.
+
+Two things deliberately defined but unused, both awaiting data the API does not carry: §2.6's
+five-level **severity** scale (no model has a verdict field — workflow states use §9.7 badges
+instead) and §10.2's KPI **delta** tokens (`/stats/devices` has no history).
 
 ## Architecture
 

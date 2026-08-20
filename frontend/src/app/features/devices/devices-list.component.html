@@ -1,49 +1,49 @@
 <div class="header-row">
-  <h1>Equipos</h1>
+  <h1>{{ 'nav.devices' | t }}</h1>
   @if (isAdmin) {
     <button matButton="filled" (click)="openCreateDialog()">
       <mat-icon>add</mat-icon>
-      Crear dispositivo
+      {{ 'devices.create' | t }}
     </button>
   }
 </div>
 
 <form [formGroup]="filters" class="filters-row">
   <mat-form-field appearance="outline">
-    <mat-label>Categoría</mat-label>
+    <mat-label>{{ 'field.category' | t }}</mat-label>
     <mat-select formControlName="category">
-      <mat-option value="">Todas</mat-option>
-      <mat-option value="collaborator">Colaborador</mat-option>
-      <mat-option value="infrastructure">Infraestructura</mat-option>
+      <mat-option value="">{{ 'value.allFeminine' | t }}</mat-option>
+      <mat-option value="collaborator">{{ 'category.collaborator' | t }}</mat-option>
+      <mat-option value="infrastructure">{{ 'category.infrastructure' | t }}</mat-option>
     </mat-select>
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Hostname</mat-label>
-    <input matInput formControlName="hostname" placeholder="Buscar por hostname" />
+    <mat-label>{{ 'field.hostname' | t }}</mat-label>
+    <input matInput formControlName="hostname" [placeholder]="'devices.searchHostname' | t" />
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Sistema operativo</mat-label>
-    <input matInput formControlName="osName" placeholder="Buscar por SO" />
+    <mat-label>{{ 'field.os' | t }}</mat-label>
+    <input matInput formControlName="osName" [placeholder]="'devices.searchOs' | t" />
   </mat-form-field>
 </form>
 
 <!-- The active query as removable chips, plus "limpiar todo" (§10.1). -->
 @if (appliedFilters().length) {
   <div class="applied-filters">
-    <span class="applied-filters__label">Filtros aplicados:</span>
+    <span class="applied-filters__label">{{ 'state.appliedFilters' | t }}</span>
     <mat-chip-set>
       @for (filter of appliedFilters(); track filter.key) {
         <mat-chip-row (removed)="removeFilter(filter.key)">
           {{ filter.label }}: {{ filter.value }}
-          <button matChipRemove [attr.aria-label]="'Quitar el filtro ' + filter.label">
+          <button matChipRemove [attr.aria-label]="'action.removeFilter' | t: { name: filter.label }">
             <mat-icon>cancel</mat-icon>
           </button>
         </mat-chip-row>
       }
     </mat-chip-set>
-    <button matButton (click)="clearFilters()">Limpiar todo</button>
+    <button matButton (click)="clearFilters()">{{ 'action.clearAll' | t }}</button>
   </div>
 }
 
@@ -53,9 +53,9 @@
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ err.message }}</p>
     @if (err.correlationId) {
-      <p class="mono state__id">Referencia: {{ err.correlationId }}</p>
+      <p class="mono state__id">{{ 'state.errorReference' | t: { id: err.correlationId } }}</p>
     }
-    <button matButton="outlined" (click)="reload()">Reintentar</button>
+    <button matButton="outlined" (click)="reload()">{{ 'action.retry' | t }}</button>
   </div>
 } @else if (showSkeletons()) {
   <div class="skeleton-table">
@@ -63,27 +63,26 @@
       <div class="skeleton skeleton--row" aria-hidden="true"></div>
     }
   </div>
-  <p class="sr-only" role="status">Cargando equipos…</p>
+  <p class="sr-only" role="status">{{ 'state.loadingDevices' | t }}</p>
 } @else if (!devices().length) {
   @if (filtersActive()) {
     <div class="state state--empty">
       <mat-icon aria-hidden="true">filter_list</mat-icon>
-      <h2>Ningún equipo coincide con los filtros</h2>
-      <p>Revisa la categoría, el hostname o el sistema operativo que estás buscando.</p>
-      <button matButton="filled" (click)="clearFilters()">Limpiar filtros</button>
+      <h2>{{ 'devices.filteredEmptyTitle' | t }}</h2>
+      <p>{{ 'devices.filteredEmptyBody' | t }}</p>
+      <button matButton="filled" (click)="clearFilters()">{{ 'action.clearFilters' | t }}</button>
     </div>
   } @else {
     <div class="state state--empty">
       <mat-icon aria-hidden="true">devices</mat-icon>
-      <h2>Todavía no hay equipos</h2>
+      <h2>{{ 'devices.emptyTitle' | t }}</h2>
       <p>
-        Un equipo aparece aquí en cuanto se aprovisiona y su agente envía el primer
-        inventario.
+        {{ 'devices.emptyBody' | t }}
       </p>
       @if (isAdmin) {
         <button matButton="filled" (click)="openCreateDialog()">
           <mat-icon>add</mat-icon>
-          Crear dispositivo
+          {{ 'devices.create' | t }}
         </button>
       }
     </div>
@@ -91,45 +90,45 @@
 } @else {
   <div class="table-shell" [class.table-shell--refreshing]="refreshing()">
     @if (refreshing()) {
-      <mat-progress-bar mode="indeterminate" aria-label="Actualizando equipos" />
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.refreshingDevices' | t" />
     }
 
-    <table mat-table [dataSource]="devices()" aria-label="Equipos inventariados">
+    <table mat-table [dataSource]="devices()" [attr.aria-label]="'devices.tableLabel' | t">
       <ng-container matColumnDef="hostname">
-        <th mat-header-cell *matHeaderCellDef>Hostname</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.hostname' | t }}</th>
         <!-- A hostname is compared character by character (§3.2). -->
         <td mat-cell *matCellDef="let device" class="mono">{{ device.hostname }}</td>
       </ng-container>
 
       <ng-container matColumnDef="category">
-        <th mat-header-cell *matHeaderCellDef>Categoría</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.category' | t }}</th>
         <td mat-cell *matCellDef="let device">
-          {{ device.category === 'collaborator' ? 'Colaborador' : 'Infraestructura' }}
+          {{ categoryKey(device.category) | t }}
         </td>
       </ng-container>
 
       <ng-container matColumnDef="os">
-        <th mat-header-cell *matHeaderCellDef>Sistema operativo</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.os' | t }}</th>
         <td mat-cell *matCellDef="let device" class="cell-nowrap">
-          {{ device.os ? device.os.name + ' ' + device.os.version : 'Sin datos' }}
+          {{ device.os ? device.os.name + ' ' + device.os.version : ('value.none' | t) }}
         </td>
       </ng-container>
 
       <ng-container matColumnDef="lastSeen">
-        <th mat-header-cell *matHeaderCellDef>Última conexión</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.lastSeen' | t }}</th>
         <td mat-cell *matCellDef="let device" class="cell-time">
-          {{ device.lastSeen ? (device.lastSeen | date: 'medium') : 'Nunca' }}
+          {{ device.lastSeen ? (device.lastSeen | date: i18n.dateTimeFormat() : i18n.timeZone() : i18n.locale()) : ('value.never' | t) }}
         </td>
       </ng-container>
 
       @if (isAdmin) {
         <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef>Acciones</th>
+          <th mat-header-cell *matHeaderCellDef>{{ 'field.actions' | t }}</th>
           <td mat-cell *matCellDef="let device">
             <button
               matIconButton
               (click)="openRotateKeyDialog(device)"
-              [attr.aria-label]="'Rotar clave de API de ' + device.hostname"
+              [attr.aria-label]="'devices.rotateKeyFor' | t: { hostname: device.hostname }"
             >
               <mat-icon>vpn_key</mat-icon>
             </button>
@@ -157,22 +156,22 @@
       <article class="row-card">
         <h2 class="row-card__title mono">{{ device.hostname }}</h2>
         <dl class="row-card__attrs">
-          <dt>Categoría</dt>
-          <dd>{{ device.category === 'collaborator' ? 'Colaborador' : 'Infraestructura' }}</dd>
-          <dt>Sistema operativo</dt>
-          <dd>{{ device.os ? device.os.name + ' ' + device.os.version : 'Sin datos' }}</dd>
-          <dt>Última conexión</dt>
-          <dd>{{ device.lastSeen ? (device.lastSeen | date: 'medium') : 'Nunca' }}</dd>
+          <dt>{{ 'field.category' | t }}</dt>
+          <dd>{{ categoryKey(device.category) | t }}</dd>
+          <dt>{{ 'field.os' | t }}</dt>
+          <dd>{{ device.os ? device.os.name + ' ' + device.os.version : ('value.none' | t) }}</dd>
+          <dt>{{ 'field.lastSeen' | t }}</dt>
+          <dd>{{ device.lastSeen ? (device.lastSeen | date: i18n.dateTimeFormat() : i18n.timeZone() : i18n.locale()) : ('value.never' | t) }}</dd>
         </dl>
         @if (isAdmin) {
           <div class="row-card__actions">
             <button
               matButton="outlined"
               (click)="openRotateKeyDialog(device)"
-              [attr.aria-label]="'Rotar clave de API de ' + device.hostname"
+              [attr.aria-label]="'devices.rotateKeyFor' | t: { hostname: device.hostname }"
             >
               <mat-icon>vpn_key</mat-icon>
-              Rotar clave
+              {{ 'devices.rotateKey' | t }}
             </button>
           </div>
         }

@@ -10,6 +10,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MessageKey } from '../../../core/i18n/messages.es-CO';
+import { TranslatePipe } from '../../../core/i18n/t.pipe';
 import { UserRole } from '../../../core/models/auth.models';
 import { CreateUserRequest, UpdateUserRequest, User } from './user.model';
 
@@ -24,10 +26,10 @@ export interface UserFormDialogResult {
   update?: UpdateUserRequest;
 }
 
-const ROLES: { value: UserRole; label: string }[] = [
-  { value: 'administrator', label: 'Administrador' },
-  { value: 'user', label: 'Usuario' },
-  { value: 'auditor', label: 'Auditor' }
+const ROLES: { value: UserRole; labelKey: MessageKey }[] = [
+  { value: 'administrator', labelKey: 'role.administrator' },
+  { value: 'user', labelKey: 'role.user' },
+  { value: 'auditor', labelKey: 'role.auditor' }
 ];
 
 // Mirrors the backend's PASSWORD_POLICY_REGEX (min 8 chars, upper+lower+digit) —
@@ -37,7 +39,7 @@ const PASSWORD_POLICY_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/;
 @Component({
   selector: 'app-user-form-dialog',
   standalone: true,
-  imports: [
+  imports: [TranslatePipe, 
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,

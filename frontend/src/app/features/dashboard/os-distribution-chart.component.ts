@@ -1,4 +1,6 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../core/i18n/t.pipe';
 import { OsStat } from './stats.model';
 
 interface ChartRow {
@@ -38,10 +40,13 @@ const OTHER_SLOT = '--chart-8';
 @Component({
   selector: 'app-os-distribution-chart',
   standalone: true,
+  imports: [TranslatePipe],
   templateUrl: './os-distribution-chart.component.html',
   styleUrl: './os-distribution-chart.component.scss'
 })
 export class OsDistributionChartComponent {
+  private readonly i18n = inject(I18nService);
+
   readonly data = input<OsStat[]>([]);
 
   protected readonly rows = computed<ChartRow[]>(() => {
@@ -65,7 +70,7 @@ export class OsDistributionChartComponent {
     // guarantees (ADR-0009).
     if (tail.length > 0) {
       withColor.push({
-        os: 'Otros',
+        os: this.i18n.translate('dashboard.chartOther'),
         count: tail.reduce((sum, stat) => sum + stat.count, 0),
         colorVar: OTHER_SLOT
       });
@@ -86,9 +91,9 @@ export class OsDistributionChartComponent {
   protected readonly ariaSummary = computed(() => {
     const rows = this.rows();
     if (rows.length === 0) {
-      return 'Distribución de sistemas operativos: sin datos disponibles.';
+      return this.i18n.translate('dashboard.chartEmptySummary');
     }
     const parts = rows.map((row) => `${row.os} ${row.count}`).join(', ');
-    return `Distribución de sistemas operativos: ${parts}.`;
+    return this.i18n.translate('dashboard.chartSummary', { parts });
   });
 }

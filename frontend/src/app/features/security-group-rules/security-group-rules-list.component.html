@@ -1,15 +1,15 @@
-<h1>Reglas de Firewall AWS</h1>
+<h1>{{ 'nav.firewallRules' | t }}</h1>
 
 <form [formGroup]="filters" class="filters-row">
   <mat-form-field appearance="outline">
-    <mat-label>Buscar</mat-label>
-    <input matInput formControlName="q" placeholder="Grupo, regla, origen..." />
+    <mat-label>{{ 'field.search' | t }}</mat-label>
+    <input matInput formControlName="q" [placeholder]="'firewall.searchPlaceholder' | t" />
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Grupo de seguridad</mat-label>
+    <mat-label>{{ 'field.securityGroup' | t }}</mat-label>
     <mat-select formControlName="securityGroupId">
-      <mat-option value="">Todos</mat-option>
+      <mat-option value="">{{ 'value.all' | t }}</mat-option>
       @for (group of groups(); track group.securityGroupId) {
         <mat-option [value]="group.securityGroupId">
           {{ group.securityGroupName }} - {{ group.securityGroupId }}
@@ -19,40 +19,40 @@
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Estado</mat-label>
+    <mat-label>{{ 'field.status' | t }}</mat-label>
     <mat-select formControlName="status">
-      <mat-option value="">Todos</mat-option>
-      <mat-option value="pendiente">Pendiente</mat-option>
-      <mat-option value="revisado">Revisado</mat-option>
-      <mat-option value="autorizado">Autorizado</mat-option>
-      <mat-option value="eliminado">Eliminado</mat-option>
+      <mat-option value="">{{ 'value.all' | t }}</mat-option>
+      <mat-option value="pendiente">{{ 'status.pendiente' | t }}</mat-option>
+      <mat-option value="revisado">{{ 'status.revisado' | t }}</mat-option>
+      <mat-option value="autorizado">{{ 'status.autorizado' | t }}</mat-option>
+      <mat-option value="eliminado">{{ 'status.eliminado' | t }}</mat-option>
     </mat-select>
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Creado desde</mat-label>
+    <mat-label>{{ 'firewall.createdFrom' | t }}</mat-label>
     <input matInput type="date" formControlName="createdFrom" />
   </mat-form-field>
   <mat-form-field appearance="outline">
-    <mat-label>Creado hasta</mat-label>
+    <mat-label>{{ 'firewall.createdTo' | t }}</mat-label>
     <input matInput type="date" formControlName="createdTo" />
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Revisado desde</mat-label>
+    <mat-label>{{ 'firewall.reviewedFrom' | t }}</mat-label>
     <input matInput type="date" formControlName="reviewedFrom" />
   </mat-form-field>
   <mat-form-field appearance="outline">
-    <mat-label>Revisado hasta</mat-label>
+    <mat-label>{{ 'firewall.reviewedTo' | t }}</mat-label>
     <input matInput type="date" formControlName="reviewedTo" />
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Autorizado desde</mat-label>
+    <mat-label>{{ 'firewall.authorizedFrom' | t }}</mat-label>
     <input matInput type="date" formControlName="authorizedFrom" />
   </mat-form-field>
   <mat-form-field appearance="outline">
-    <mat-label>Autorizado hasta</mat-label>
+    <mat-label>{{ 'firewall.authorizedTo' | t }}</mat-label>
     <input matInput type="date" formControlName="authorizedTo" />
   </mat-form-field>
 </form>
@@ -60,18 +60,18 @@
 <!-- The active query as removable chips, plus "limpiar todo" (§10.1). -->
 @if (appliedFilters().length) {
   <div class="applied-filters">
-    <span class="applied-filters__label">Filtros aplicados:</span>
+    <span class="applied-filters__label">{{ 'state.appliedFilters' | t }}</span>
     <mat-chip-set>
       @for (filter of appliedFilters(); track filter.key) {
         <mat-chip-row (removed)="removeFilter(filter.key)">
           {{ filter.label }}: {{ filter.value }}
-          <button matChipRemove [attr.aria-label]="'Quitar el filtro ' + filter.label">
+          <button matChipRemove [attr.aria-label]="'action.removeFilter' | t: { name: filter.label }">
             <mat-icon>cancel</mat-icon>
           </button>
         </mat-chip-row>
       }
     </mat-chip-set>
-    <button matButton (click)="clearFilters()">Limpiar todo</button>
+    <button matButton (click)="clearFilters()">{{ 'action.clearAll' | t }}</button>
   </div>
 }
 
@@ -81,17 +81,17 @@
       @if (syncing()) {
         <mat-spinner diameter="18" />
       } @else {
-        Sincronizar ahora
+        {{ 'action.syncNow' | t }}
       }
     </button>
   }
   <button matButton="outlined" (click)="export('csv')">
     <mat-icon>download</mat-icon>
-    Exportar CSV
+    {{ 'action.exportCsv' | t }}
   </button>
   <button matButton="outlined" (click)="export('pdf')">
     <mat-icon>download</mat-icon>
-    Exportar PDF
+    {{ 'action.exportPdf' | t }}
   </button>
 </div>
 
@@ -101,9 +101,9 @@
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ err.message }}</p>
     @if (err.correlationId) {
-      <p class="mono state__id">Referencia: {{ err.correlationId }}</p>
+      <p class="mono state__id">{{ 'state.errorReference' | t: { id: err.correlationId } }}</p>
     }
-    <button matButton="outlined" (click)="reload()">Reintentar</button>
+    <button matButton="outlined" (click)="reload()">{{ 'action.retry' | t }}</button>
   </div>
 } @else if (showSkeletons()) {
   <div class="skeleton-table">
@@ -111,29 +111,28 @@
       <div class="skeleton skeleton--row" aria-hidden="true"></div>
     }
   </div>
-  <p class="sr-only" role="status">Cargando reglas de firewall…</p>
+  <p class="sr-only" role="status">{{ 'state.loadingRules' | t }}</p>
 } @else if (!items().length) {
   @if (filtersActive()) {
     <div class="state state--empty">
       <mat-icon aria-hidden="true">filter_list</mat-icon>
-      <h2>Ninguna regla coincide con los filtros</h2>
-      <p>Amplía los rangos de fecha, o revisa el grupo de seguridad y el estado elegidos.</p>
-      <button matButton="filled" (click)="clearFilters()">Limpiar filtros</button>
+      <h2>{{ 'firewall.filteredEmptyTitle' | t }}</h2>
+      <p>{{ 'firewall.filteredEmptyBody' | t }}</p>
+      <button matButton="filled" (click)="clearFilters()">{{ 'action.clearFilters' | t }}</button>
     </div>
   } @else {
     <div class="state state--empty">
       <mat-icon aria-hidden="true">shield</mat-icon>
-      <h2>Todavía no hay reglas inventariadas</h2>
+      <h2>{{ 'firewall.emptyTitle' | t }}</h2>
       <p>
-        El catálogo se llena con la sincronización diaria contra AWS, o ejecutando una
-        ahora mismo.
+        {{ 'firewall.emptyBody' | t }}
       </p>
     </div>
   }
 } @else {
   <div class="table-shell" [class.table-shell--refreshing]="refreshing()">
     @if (refreshing()) {
-      <mat-progress-bar mode="indeterminate" aria-label="Actualizando reglas" />
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.refreshingRules' | t" />
     }
 
   <table
@@ -145,95 +144,95 @@
     (matSortChange)="onSortChange($event)"
   >
     <ng-container matColumnDef="securityGroupName">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Grupo de seguridad</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.securityGroup' | t }}</th>
       <td mat-cell *matCellDef="let rule" class="cell-nowrap">{{ rule.securityGroupName }}</td>
     </ng-container>
 
     <ng-container matColumnDef="securityGroupId">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Id del grupo</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.groupId' | t }}</th>
       <td mat-cell *matCellDef="let rule" class="mono">{{ rule.securityGroupId }}</td>
     </ng-container>
 
     <ng-container matColumnDef="attachedResources">
-      <th mat-header-cell *matHeaderCellDef>Dispositivo asociado</th>
+      <th mat-header-cell *matHeaderCellDef>{{ 'field.attachedResource' | t }}</th>
       <td mat-cell *matCellDef="let rule" class="cell-nowrap">{{ attachedResourceLabel(rule) }}</td>
     </ng-container>
 
     <ng-container matColumnDef="ruleName">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre de la regla</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.ruleName' | t }}</th>
       <td mat-cell *matCellDef="let rule" class="cell-nowrap">{{ rule.ruleName ?? '—' }}</td>
     </ng-container>
 
     <ng-container matColumnDef="ruleId">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Id de la regla</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.ruleId' | t }}</th>
       <td mat-cell *matCellDef="let rule" class="mono">{{ rule.ruleId }}</td>
     </ng-container>
 
     <ng-container matColumnDef="source">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Origen</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.source' | t }}</th>
       <td mat-cell *matCellDef="let rule" class="mono">{{ rule.source }}</td>
     </ng-container>
 
     <ng-container matColumnDef="destination">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Destino</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.destination' | t }}</th>
       <td mat-cell *matCellDef="let rule" class="mono">{{ rule.destination }}</td>
     </ng-container>
 
     <ng-container matColumnDef="protocol">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Protocolo</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.protocol' | t }}</th>
       <td mat-cell *matCellDef="let rule" class="mono">{{ rule.protocol }}</td>
     </ng-container>
 
     <ng-container matColumnDef="portRange">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Puertos</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.ports' | t }}</th>
       <td mat-cell *matCellDef="let rule" class="mono">{{ rule.portRange ?? '—' }}</td>
     </ng-container>
 
     <ng-container matColumnDef="status">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Estado</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.status' | t }}</th>
       <td mat-cell *matCellDef="let rule">
         <app-status-chip [status]="rule.status" />
       </td>
     </ng-container>
 
     <ng-container matColumnDef="createdAt">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha de creación</th>
-      <td mat-cell *matCellDef="let rule" class="cell-time">{{ rule.createdAt | date: 'medium' }}</td>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.createdAt' | t }}</th>
+      <td mat-cell *matCellDef="let rule" class="cell-time">{{ rule.createdAt | date: i18n.dateTimeFormat() : i18n.timeZone() : i18n.locale() }}</td>
     </ng-container>
 
     <ng-container matColumnDef="reviewedAt">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha de revisión</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.reviewedAt' | t }}</th>
       <td mat-cell *matCellDef="let rule" class="cell-time">
-        {{ rule.reviewedAt ? (rule.reviewedAt | date: 'medium') : '—' }}
+        {{ rule.reviewedAt ? (rule.reviewedAt | date: i18n.dateTimeFormat() : i18n.timeZone() : i18n.locale()) : '—' }}
       </td>
     </ng-container>
 
     <ng-container matColumnDef="authorizedAt">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha de autorización</th>
+      <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.authorizedAt' | t }}</th>
       <td mat-cell *matCellDef="let rule" class="cell-time">
-        {{ rule.authorizedAt ? (rule.authorizedAt | date: 'medium') : '—' }}
+        {{ rule.authorizedAt ? (rule.authorizedAt | date: i18n.dateTimeFormat() : i18n.timeZone() : i18n.locale()) : '—' }}
       </td>
     </ng-container>
 
     <ng-container matColumnDef="actions">
-      <th mat-header-cell *matHeaderCellDef>Acciones</th>
+      <th mat-header-cell *matHeaderCellDef>{{ 'field.actions' | t }}</th>
       <td mat-cell *matCellDef="let rule">
         @if (rule.status === 'pendiente' && isAuditor()) {
           <button
             matButton
             (click)="review(rule)"
-            [attr.aria-label]="'Marcar como revisado el registro de ' + rule.securityGroupName + ' / ' + rule.ruleId"
+            [attr.aria-label]="'firewall.markReviewedFor' | t: { group: rule.securityGroupName, rule: rule.ruleId }"
           >
-            Marcar como revisado
+            {{ 'firewall.markReviewed' | t }}
           </button>
         }
         @if (rule.status === 'revisado' && isAdministrador()) {
           <button
             matButton
             (click)="authorize(rule)"
-            [attr.aria-label]="'Marcar como autorizado el registro de ' + rule.securityGroupName + ' / ' + rule.ruleId"
+            [attr.aria-label]="'firewall.markAuthorizedFor' | t: { group: rule.securityGroupName, rule: rule.ruleId }"
           >
-            Marcar como autorizado
+            {{ 'firewall.markAuthorized' | t }}
           </button>
         }
       </td>
@@ -264,12 +263,12 @@
           <app-status-chip [status]="rule.status" />
         </h2>
         <dl class="row-card__attrs">
-          <dt>Origen → destino</dt>
+          <dt>{{ 'field.sourceToDestination' | t }}</dt>
           <dd class="mono">{{ rule.source }} → {{ rule.destination }}</dd>
-          <dt>Protocolo y puertos</dt>
+          <dt>{{ 'field.protocolAndPorts' | t }}</dt>
           <dd class="mono">{{ rule.protocol }} {{ rule.portRange ?? '—' }}</dd>
-          <dt>Creación</dt>
-          <dd>{{ rule.createdAt | date: 'medium' }}</dd>
+          <dt>{{ 'field.creation' | t }}</dt>
+          <dd>{{ rule.createdAt | date: i18n.dateTimeFormat() : i18n.timeZone() : i18n.locale() }}</dd>
         </dl>
         @if ((rule.status === 'pendiente' && isAuditor()) || (rule.status === 'revisado' && isAdministrador())) {
           <div class="row-card__actions">
@@ -277,18 +276,18 @@
               <button
                 matButton="outlined"
                 (click)="review(rule)"
-                [attr.aria-label]="'Marcar como revisado el registro de ' + rule.securityGroupName + ' / ' + rule.ruleId"
+                [attr.aria-label]="'firewall.markReviewedFor' | t: { group: rule.securityGroupName, rule: rule.ruleId }"
               >
-                Marcar como revisado
+                {{ 'firewall.markReviewed' | t }}
               </button>
             }
             @if (rule.status === 'revisado' && isAdministrador()) {
               <button
                 matButton="outlined"
                 (click)="authorize(rule)"
-                [attr.aria-label]="'Marcar como autorizado el registro de ' + rule.securityGroupName + ' / ' + rule.ruleId"
+                [attr.aria-label]="'firewall.markAuthorizedFor' | t: { group: rule.securityGroupName, rule: rule.ruleId }"
               >
-                Marcar como autorizado
+                {{ 'firewall.markAuthorized' | t }}
               </button>
             }
           </div>

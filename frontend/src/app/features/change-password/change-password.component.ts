@@ -7,6 +7,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { MessageKey } from '../../core/i18n/messages.es-CO';
+import { TranslatePipe } from '../../core/i18n/t.pipe';
 import { AuthService } from '../../core/services/auth.service';
 
 // Group-level validators (not per-control): both need to compare sibling
@@ -35,7 +38,8 @@ function newPasswordMustDifferValidator(group: AbstractControl): ValidationError
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatButtonModule
+    MatButtonModule,
+    TranslatePipe
   ],
   templateUrl: './change-password.component.html',
   styleUrl: './change-password.component.scss'
@@ -44,6 +48,7 @@ export class ChangePasswordComponent {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly i18n = inject(I18nService);
 
   // Mirrors the backend's PASSWORD_POLICY_REGEX (min 8 chars, upper+lower+digit)
   // so the user sees a validation error before submitting, not just a 400 back.
@@ -75,18 +80,18 @@ export class ChangePasswordComponent {
    * forbids surfacing. The client already enforces the same policy before submit,
    * so a 400 here means the two drifted and the copy says what the rule is.
    */
-  private static messageFor(error: HttpErrorResponse): string {
+  private static messageKeyFor(error: HttpErrorResponse): MessageKey {
     switch (error.status) {
       case 400:
-        return 'La nueva contraseña no cumple la política: mínimo 8 caracteres, con mayúscula, minúscula y un dígito.';
+        return 'changePassword.errorPolicy';
       case 401:
-        return 'La contraseña actual no es correcta.';
+        return 'changePassword.errorWrongCurrent';
       case 429:
-        return 'Demasiados intentos. Espera un minuto antes de volver a intentarlo.';
+        return 'changePassword.errorThrottled';
       case 0:
-        return 'No se pudo contactar el servidor. Revisa tu conexión e inténtalo de nuevo.';
+        return 'login.errorOffline';
       default:
-        return 'No se pudo cambiar la contraseña. Inténtalo de nuevo en unos momentos.';
+        return 'changePassword.errorGeneric';
     }
   }
 
@@ -107,7 +112,7 @@ export class ChangePasswordComponent {
       },
       error: (error: HttpErrorResponse) => {
         this.loading.set(false);
-        this.errorMessage.set(ChangePasswordComponent.messageFor(error));
+        this.errorMessage.set(this.i18n.translate(ChangePasswordComponent.messageKeyFor(error)));
       }
     });
   }

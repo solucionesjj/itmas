@@ -1,8 +1,8 @@
 <div class="header-row">
-  <h1>Usuarios</h1>
+  <h1>{{ 'nav.users' | t }}</h1>
   <button matButton="filled" (click)="openCreateDialog()">
     <mat-icon>add</mat-icon>
-    Nuevo usuario
+    {{ 'users.create' | t }}
   </button>
 </div>
 
@@ -12,9 +12,9 @@
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ err.message }}</p>
     @if (err.correlationId) {
-      <p class="mono state__id">Referencia: {{ err.correlationId }}</p>
+      <p class="mono state__id">{{ 'state.errorReference' | t: { id: err.correlationId } }}</p>
     }
-    <button matButton="outlined" (click)="reload()">Reintentar</button>
+    <button matButton="outlined" (click)="reload()">{{ 'action.retry' | t }}</button>
   </div>
 } @else if (showSkeletons()) {
   <div class="skeleton-table">
@@ -22,66 +22,66 @@
       <div class="skeleton skeleton--row" aria-hidden="true"></div>
     }
   </div>
-  <p class="sr-only" role="status">Cargando usuarios…</p>
+  <p class="sr-only" role="status">{{ 'state.loadingUsers' | t }}</p>
 } @else if (!users().length) {
   <div class="state state--empty">
     <mat-icon aria-hidden="true">manage_accounts</mat-icon>
-    <h2>No hay usuarios registrados</h2>
-    <p>No existe autoservicio de registro: solo un Administrador crea cuentas.</p>
+    <h2>{{ 'users.emptyTitle' | t }}</h2>
+    <p>{{ 'users.emptyBody' | t }}</p>
     <button matButton="filled" (click)="openCreateDialog()">
       <mat-icon>add</mat-icon>
-      Nuevo usuario
+      {{ 'users.create' | t }}
     </button>
   </div>
 } @else {
   <div class="table-shell" [class.table-shell--refreshing]="refreshing()">
     @if (refreshing()) {
-      <mat-progress-bar mode="indeterminate" aria-label="Actualizando usuarios" />
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.refreshingUsers' | t" />
     }
 
-    <table mat-table [dataSource]="users()" aria-label="Usuarios del portal">
+    <table mat-table [dataSource]="users()" [attr.aria-label]="'users.tableLabel' | t">
       <ng-container matColumnDef="username">
-        <th mat-header-cell *matHeaderCellDef>Usuario</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.user' | t }}</th>
         <td mat-cell *matCellDef="let user" class="mono">{{ user.username }}</td>
       </ng-container>
 
       <ng-container matColumnDef="email">
-        <th mat-header-cell *matHeaderCellDef>Correo</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.email' | t }}</th>
         <td mat-cell *matCellDef="let user">{{ user.email }}</td>
       </ng-container>
 
       <ng-container matColumnDef="role">
-        <th mat-header-cell *matHeaderCellDef>Perfil</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.role' | t }}</th>
         <td mat-cell *matCellDef="let user">{{ user.role }}</td>
       </ng-container>
 
       <ng-container matColumnDef="active">
-        <th mat-header-cell *matHeaderCellDef>Estado</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.status' | t }}</th>
         <td mat-cell *matCellDef="let user">
           <span [class]="'badge badge--' + (user.active ? 'online' : 'unknown')">
             <span class="badge__dot" aria-hidden="true"></span>
-            {{ user.active ? 'Activo' : 'Inactivo' }}
+            {{ (user.active ? 'status.active' : 'status.inactive') | t }}
           </span>
         </td>
       </ng-container>
 
       <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Acciones</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.actions' | t }}</th>
         <td mat-cell *matCellDef="let user">
           <button
             matButton
             (click)="openEditDialog(user)"
-            [attr.aria-label]="'Editar usuario ' + user.username"
+            [attr.aria-label]="'users.editFor' | t: { user: user.username }"
           >
-            Editar
+            {{ 'action.edit' | t }}
           </button>
           <button
             matButton
             [disabled]="isSelf(user)"
             (click)="toggleActive(user)"
-            [attr.aria-label]="(user.active ? 'Desactivar' : 'Activar') + ' usuario ' + user.username"
+            [attr.aria-label]="(user.active ? 'users.deactivateFor' : 'users.activateFor') | t: { user: user.username }"
           >
-            {{ user.active ? 'Desactivar' : 'Activar' }}
+            {{ (user.active ? 'action.deactivate' : 'action.activate') | t }}
           </button>
         </td>
       </ng-container>
@@ -99,30 +99,30 @@
           {{ user.username }}
           <span [class]="'badge badge--' + (user.active ? 'online' : 'unknown')">
             <span class="badge__dot" aria-hidden="true"></span>
-            {{ user.active ? 'Activo' : 'Inactivo' }}
+            {{ (user.active ? 'status.active' : 'status.inactive') | t }}
           </span>
         </h2>
         <dl class="row-card__attrs">
-          <dt>Correo</dt>
+          <dt>{{ 'field.email' | t }}</dt>
           <dd>{{ user.email }}</dd>
-          <dt>Perfil</dt>
+          <dt>{{ 'field.role' | t }}</dt>
           <dd>{{ user.role }}</dd>
         </dl>
         <div class="row-card__actions">
           <button
             matButton="outlined"
             (click)="openEditDialog(user)"
-            [attr.aria-label]="'Editar usuario ' + user.username"
+            [attr.aria-label]="'users.editFor' | t: { user: user.username }"
           >
-            Editar
+            {{ 'action.edit' | t }}
           </button>
           <button
             matButton="outlined"
             [disabled]="isSelf(user)"
             (click)="toggleActive(user)"
-            [attr.aria-label]="(user.active ? 'Desactivar' : 'Activar') + ' usuario ' + user.username"
+            [attr.aria-label]="(user.active ? 'users.deactivateFor' : 'users.activateFor') | t: { user: user.username }"
           >
-            {{ user.active ? 'Desactivar' : 'Activar' }}
+            {{ (user.active ? 'action.deactivate' : 'action.activate') | t }}
           </button>
         </div>
       </article>

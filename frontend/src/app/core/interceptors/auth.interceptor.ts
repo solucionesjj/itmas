@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { Observable, catchError, switchMap, throwError } from 'rxjs';
 import { AuthTokens } from '../models/auth.models';
 import { AuthService } from '../services/auth.service';
+import { I18nService } from '../i18n/i18n.service';
 
 const AUTH_ENDPOINTS = ['/auth/login', '/auth/refresh'];
 
@@ -18,6 +19,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const authService = inject(AuthService);
   const router = inject(Router);
   const snackBar = inject(MatSnackBar);
+  const i18n = inject(I18nService);
 
   const accessToken = authService.getAccessToken();
   const authorizedReq =
@@ -50,8 +52,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       if (error.status === 403) {
-        const message = error.error?.error?.message ?? 'Acceso denegado para tu perfil.';
-        snackBar.open(message, 'Cerrar', { duration: 4000 });
+        const message = i18n.translate('error.forbidden');
+        snackBar.open(message, i18n.translate('action.close'), { duration: 4000 });
       }
 
       if (error.status === 401 && isAuthEndpoint(req.url)) {

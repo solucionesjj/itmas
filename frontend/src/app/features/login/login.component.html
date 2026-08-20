@@ -1,23 +1,23 @@
 <div class="auth-page">
   <mat-card appearance="outlined" class="auth-card">
     <!-- §3.1 reserves display-large for the login hero, and this is it. -->
-    <h1 class="auth-brand">IT-MAS</h1>
-    <p class="auth-subtitle">Inventario, monitoreo y auditoría de infraestructura</p>
+    <h1 class="auth-brand">{{ 'app.name' | t }}</h1>
+    <p class="auth-subtitle">{{ 'app.tagline' | t }}</p>
 
     <form [formGroup]="form" (ngSubmit)="submit()" class="auth-form">
       <mat-form-field appearance="outline">
-        <mat-label>Usuario</mat-label>
+        <mat-label>{{ 'field.user' | t }}</mat-label>
         <input matInput formControlName="username" autocomplete="username" />
         <!-- mat-error, not mat-hint: a validation failure has to read and be
              announced as an error, and mat-form-field wires aria-describedby
              to it automatically (§9.3). -->
         @if (form.controls.username.hasError('required')) {
-          <mat-error>Escribe tu usuario.</mat-error>
+          <mat-error>{{ 'login.errorRequiredUser' | t }}</mat-error>
         }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Contraseña</mat-label>
+        <mat-label>{{ 'field.password' | t }}</mat-label>
         <input
           matInput
           type="password"
@@ -25,7 +25,7 @@
           autocomplete="current-password"
         />
         @if (form.controls.password.hasError('required')) {
-          <mat-error>Escribe tu contraseña.</mat-error>
+          <mat-error>{{ 'login.errorRequiredPassword' | t }}</mat-error>
         }
       </mat-form-field>
 
@@ -45,7 +45,7 @@
         @if (loading()) {
           <mat-spinner diameter="20" />
         } @else {
-          Ingresar
+          {{ 'action.login' | t }}
         }
       </button>
     </form>

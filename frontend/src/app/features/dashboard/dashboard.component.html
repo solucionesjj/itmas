@@ -1,4 +1,4 @@
-<h1 class="page-title--hero">Panel</h1>
+<h1 class="page-title--hero">{{ 'nav.dashboard' | t }}</h1>
 
 <!-- The four states of design.md §10.4 — required of every data view, and the
      dashboard is one; it previously had only a spinner and no error path. -->
@@ -7,9 +7,9 @@
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ err.message }}</p>
     @if (err.correlationId) {
-      <p class="mono state__id">Referencia: {{ err.correlationId }}</p>
+      <p class="mono state__id">{{ 'state.errorReference' | t: { id: err.correlationId } }}</p>
     }
-    <button matButton="outlined" (click)="reload()">Reintentar</button>
+    <button matButton="outlined" (click)="reload()">{{ 'action.retry' | t }}</button>
   </div>
 } @else if (showSkeletons()) {
   <!-- Skeletons matching the real layout: three tiles, then the chart card. -->
@@ -19,33 +19,32 @@
     }
   </div>
   <div class="skeleton skeleton--chart" aria-hidden="true"></div>
-  <p class="sr-only" role="status">Cargando estadísticas…</p>
+  <p class="sr-only" role="status">{{ 'state.loadingStats' | t }}</p>
 } @else if (!hasData()) {
   <div class="state state--empty">
     <mat-icon aria-hidden="true">space_dashboard</mat-icon>
-    <h2>Todavía no hay nada que resumir</h2>
+    <h2>{{ 'dashboard.emptyTitle' | t }}</h2>
     <p>
-      Las cifras y la distribución por sistema operativo aparecen en cuanto el primer
-      equipo aprovisionado envía su inventario.
+      {{ 'dashboard.emptyBody' | t }}
     </p>
   </div>
 } @else {
   @if (refreshing()) {
-    <mat-progress-bar mode="indeterminate" aria-label="Actualizando estadísticas" />
+    <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.refreshingStats' | t" />
   }
 
   <!-- §6.2's KPI grid: 4-up on a wide window, 2-up at medium, 1 below. -->
   <div class="kpi-grid">
-    @for (kpi of kpis(); track kpi.label) {
+    @for (kpi of kpis(); track kpi.labelKey) {
       <mat-card appearance="outlined" class="kpi">
-        <span class="kpi__label">{{ kpi.label }}</span>
-        <span class="kpi__value">{{ kpi.value | number: '1.0-0' }}</span>
+        <span class="kpi__label">{{ kpi.labelKey | t }}</span>
+        <span class="kpi__value">{{ kpi.value | number: '1.0-0' : i18n.locale() }}</span>
       </mat-card>
     }
   </div>
 
   <mat-card appearance="outlined" class="panel chart-card">
-    <h2>Distribución por sistema operativo</h2>
+    <h2>{{ 'dashboard.osTitle' | t }}</h2>
     <app-os-distribution-chart [data]="osStats()" />
   </mat-card>
 }

@@ -1264,6 +1264,14 @@ Key structure: `feature.element` (`devices.tableLabel`), shared vocabulary under
 `field.*`, `action.*`, `status.*`, `severity.*`, `error.*`, `state.*`, `nav.*`.
 Enum keys stay English in code (`critical`, `online`); only labels are translated.
 
+> **Where this table lives.** The date/number patterns above are catalogue entries
+> (`format.date`, `format.dateTime`, `format.timeZone`), not constants in code — they are
+> locale data like any other string. `format.timeZone` is an *offset* rather than an IANA
+> name because Angular's `DatePipe` does not accept the latter: es-CO carries `-0500`
+> (Colombia, no DST since 1993) and en-US carries none, so an en-US reader sees their own
+> zone. Switching language therefore changes both the pattern and the displayed instant,
+> which is the intended behaviour and worth knowing when reading a timestamp across locales.
+
 **Voice** (from the SAC brand): direct, human, no jargon where a plain word works. Errors
 always name the cause and the next step. Buttons are verbs (`Guardar`, `Reintentar`,
 `Exportar`), never `OK`. Never blame the user. No exclamation marks in system messages.
@@ -1503,9 +1511,25 @@ token layer. Migrate in this order — each step is independently shippable.
       actionable copy rather than passing the API's message through: a bad login used to
       surface the backend's English "Invalid credentials", which §12 forbids.
 
-**Step 7 — i18n.**
-- [ ] Extract all user-visible strings to keys; `es-CO` as default locale.
-- [ ] Register `es-CO` locale data and set `LOCALE_ID`; audit every `date` / `number` pipe.
+**Step 7 — i18n.** — **done**, see BL-029.
+- [x] Extract all user-visible strings to keys; `es-CO` as default locale. 231 keys, and an
+      `en-US` catalogue alongside it — both locales ship in this step, with a language
+      switcher in the toolbar.
+- [x] Register both locales' data and set `LOCALE_ID`; audit every `date` / `number` pipe.
+      All 8 `date` pipes and the 1 `number` pipe now receive the active locale explicitly,
+      because `LOCALE_ID` is resolved once at bootstrap and could not follow a runtime
+      switch on its own. Date/number *patterns* live in the catalogue — they are locale
+      data, not code.
+
+> **Mechanism.** A ~60-line service plus an impure `| t` pipe, with no new dependency: this
+> is a key→string map with `{name}` interpolation, which does not justify a runtime library
+> (agent.md §5.1). The pipe is deliberately impure — a pure pipe caches by its arguments, so
+> it would keep serving the previous language after a switch, the key being unchanged.
+> `@angular/localize` was considered and rejected: it needs one build per locale (no runtime
+> switching, plus nginx changes to serve them) and its `i18n`/`$localize` syntax would leave
+> all ~40 markup examples in §9 divergent from the implementation, since the catalogue is
+> written with `| translate`. If ICU plurals or genders ever become a real requirement, that
+> is the point to migrate — not before.
 
 ---
 
