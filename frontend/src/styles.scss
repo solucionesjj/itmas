@@ -3,6 +3,8 @@
 @use './styles/theme-colors' as itmas;
 @use './styles/tokens' as *;
 @use './styles/badges';
+@use './styles/table';
+@use './styles/states';
 
 // ------------------------------------------------------------
 // IT-MAS theme — Material 3, SAC brand palette, Poppins.
@@ -136,6 +138,22 @@ main h1 {
 // The dashboard's title is one step larger (§7).
 main h1.page-title--hero {
   font: var(--mat-sys-headline-large);
+}
+
+// Page header row: title left, actions right-aligned on the same line, actions
+// wrapping below the title under 600px (§7). Shared because two views use it and
+// both need the h1's own bottom margin suppressed inside the row.
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-6);
+
+  h1 {
+    margin-bottom: 0;
+  }
 }
 
 // Tabular data: IDs, IPs, hostnames, hashes, timestamps, byte counts.

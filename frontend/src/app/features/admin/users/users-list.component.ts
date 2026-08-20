@@ -1,10 +1,12 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { AuthService } from '../../../core/services/auth.service';
+import { ViewError, toViewError } from '../../../core/utils/api-error.util';
 import { UsersService } from './users.service';
 import { User } from './user.model';
 import {
@@ -16,7 +18,13 @@ import {
 @Component({
   selector: 'app-users-list',
   standalone: true,
-  imports: [MatTableModule, MatButtonModule, MatIconModule, MatDialogModule],
+  imports: [
+    MatTableModule,
+    MatButtonModule,
+    MatIconModule,
+    MatDialogModule,
+    MatProgressBarModule
+  ],
   templateUrl: './users-list.component.html',
   styleUrl: './users-list.component.scss'
 })
@@ -34,20 +42,34 @@ export class UsersListComponent {
     'actions'
   ];
   protected readonly users = signal<User[]>([]);
+  protected readonly error = signal<ViewError | null>(null);
+
+  // §10.4: skeletons on the first load, a 2px bar over stale rows on a refresh.
   protected readonly loading = signal(false);
+  protected readonly firstLoad = signal(true);
+  protected readonly showSkeletons = computed(() => this.loading() && this.firstLoad());
+  protected readonly refreshing = computed(() => this.loading() && !this.firstLoad());
 
   constructor() {
     this.reload();
   }
 
-  private reload(): void {
+  // This view has no filters, so it only ever needs the "no data yet" empty
+  // state — there is no filtered-to-nothing case to distinguish.
+  protected reload(): void {
     this.loading.set(true);
+    this.error.set(null);
     this.usersService.list().subscribe({
       next: (users) => {
         this.users.set(users);
         this.loading.set(false);
+        this.firstLoad.set(false);
       },
-      error: () => this.loading.set(false)
+      error: (err) => {
+        this.error.set(toViewError(err, 'No se pudieron cargar los usuarios.'));
+        this.loading.set(false);
+        this.firstLoad.set(false);
+      }
     });
   }
 
@@ -111,8 +133,11 @@ export class UsersListComponent {
     });
   }
 
-  private showError(err: { error?: { error?: { message?: string } } }): void {
-    const message = err.error?.error?.message ?? 'No se pudo completar la operación.';
-    this.snackBar.open(message, 'Cerrar', { duration: 4000 });
+  private showError(err: unknown): void {
+    this.snackBar.open(
+      toViewError(err, 'No se pudo completar la operación.').message,
+      'Cerrar',
+      { duration: 4000 }
+    );
   }
 }

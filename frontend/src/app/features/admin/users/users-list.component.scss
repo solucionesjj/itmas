@@ -1,17 +1,2 @@
-.header-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--sp-4);
-}
-
-.full-width {
-  width: 100%;
-}
-
-.empty-state {
-  // Same treatment as the other three lists' empty states, by colour role rather
-  // than opacity.
-  color: var(--mat-sys-on-surface-variant);
-  padding: var(--sp-4) 0;
-}
+// Layout only — table, states, badges and the page-header row come from
+// frontend/src/styles/.

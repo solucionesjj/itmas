@@ -1,0 +1,117 @@
+// ============================================================
+// IT-MAS — data table (design.md §9.2).
+//
+// Global rather than per-component on purpose: the rules target Angular
+// Material's own generated classes (`.mat-mdc-header-cell`, `.mat-mdc-cell`,
+// `.mat-mdc-row`), which a component's scoped stylesheet cannot reach without
+// `::ng-deep`. Defining them once here also keeps every table identical and
+// keeps each component's own stylesheet far below the 4 kB budget.
+//
+// Everything is scoped under `.table-shell` so no stray <table> in the app
+// picks these up by accident.
+// ============================================================
+
+.table-shell {
+  background: var(--mat-sys-surface-container-low);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  overflow: hidden;
+  // A wide audit table scrolls inside its own container, never the page body.
+  overflow-x: auto;
+
+  table {
+    width: 100%;
+  }
+
+  th.mat-mdc-header-cell {
+    background: var(--mat-sys-surface-container-high);
+    font: var(--mat-sys-title-small);
+    color: var(--mat-sys-on-surface-variant);
+    white-space: nowrap;
+    border-bottom-color: var(--mat-sys-outline-variant);
+  }
+
+  td.mat-mdc-cell {
+    font: var(--mat-sys-body-medium);
+    border-bottom-color: var(--mat-sys-outline-variant);
+    padding: var(--sp-3) var(--sp-4);
+  }
+
+  // `.mono` has to survive the cell rule above: that `font:` shorthand resets
+  // font-family, and `.table-shell td.mat-mdc-cell` outranks a bare `.mono`, so
+  // identifier columns silently rendered in Poppins without this.
+  td.mat-mdc-cell.mono,
+  th.mat-mdc-header-cell.mono {
+    font-family: var(--itmas-font-mono);
+    font-size: 13px;
+    line-height: 20px;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
+    // An identifier split across two lines is unreadable, and §3.3 forbids
+    // truncating one without a way to read the whole value — so the cell grows
+    // and `.table-shell` scrolls horizontally instead.
+    white-space: nowrap;
+  }
+
+  // A timestamp is one logical value; wrapping it mid-date is the same problem.
+  // `.cell-nowrap` is the same treatment for any short, bounded attribute
+  // ("Ubuntu Server 22.04") that reads worse broken across lines. Long free text
+  // — an alert's detail, an observation — is deliberately left to wrap.
+  td.mat-mdc-cell.cell-time,
+  td.mat-mdc-cell.cell-nowrap {
+    white-space: nowrap;
+  }
+
+  // Row height 52px at density 0 (§9.2). In table layout this is a *minimum*:
+  // a cell whose free text genuinely wraps grows its row, which is the right
+  // trade for an audit tool — clipping a value to hold the grid would be worse.
+  // Identifiers and timestamps are kept on one line above so the common case
+  // does land on 52px.
+  tr.mat-mdc-row {
+    height: 52px;
+  }
+
+  // §6.1's `--sp-3` vertical cell padding and §9.2's 52px row cannot both hold in
+  // a cell containing a control: a 40px Material button plus 24px of padding
+  // makes the row 64px. Text cells keep the §6.1 padding — 24px + a 20px line is
+  // 44px, comfortably inside 52 — and only cells holding a button trade vertical
+  // padding for it. The button keeps its own 48px touch target either way (§6.4).
+  td.mat-mdc-cell:has(.mat-mdc-button-base) {
+    padding-block: var(--sp-1);
+    // A button label that wraps doubles the control's height and stacks
+    // side-by-side actions, which was pushing rows to 88px.
+    white-space: nowrap;
+  }
+
+  // No zebra striping — the row rule is enough, and stripes fight the severity
+  // bar a findings table will grow later (§9.2).
+  tr.mat-mdc-row:hover {
+    // A state layer of the row's own content colour, not a new background.
+    background: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent);
+  }
+
+  // The last row's rule would double up with the container border.
+  tr.mat-mdc-row:last-of-type td.mat-mdc-cell {
+    border-bottom: none;
+  }
+
+  .mat-mdc-paginator {
+    background: var(--mat-sys-surface-container-low);
+    border-top: 1px solid var(--mat-sys-outline-variant);
+  }
+}
+
+// A 2px indeterminate bar pinned to the top of the table container, for the
+// refresh case where stale data stays on screen (§9.11 / §10.4).
+.table-shell--refreshing {
+  position: relative;
+
+  .mat-mdc-progress-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1;
+    height: 2px;
+  }
+}

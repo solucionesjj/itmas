@@ -467,7 +467,10 @@ Estado por etapa:
 | 1b | Corrección: pesos por rol de §3.1 (5 overrides) + prueba de regresión de la escala | **Hecho** |
 | 2 | Purga de valores fijos: colores, `font-size`, espaciado, anillo de foco, `prefers-color-scheme` | **Hecho** |
 | 3 | Shell: `core/layout/` según §9.10, títulos de ruta, modos de sidenav por breakpoint | **Hecho** |
-| 4 | Vistas de datos: tabla §9.2, escala de severidad §2.6, cuatro estados §10.4, filtros, fallback móvil | Pendiente |
+| 4a | Vistas de datos: tabla §9.2 + los cuatro estados §10.4 | **Hecho** |
+| 4b | Vistas de datos: filtros como `mat-chip-row` con reflejo en la URL | Pendiente |
+| 4c | Vistas de datos: fallback de tarjetas bajo 600px (§10.3) | Pendiente |
+| 4d | Escala de severidad de 5 niveles (§2.6) | **Bloqueado** (ver nota) |
 | 5 | Dashboard y gráficas: tarjetas KPI §10.2, repuntar la gráfica a `--chart-1…8` | Pendiente |
 | 6 | Pantallas de autenticación: `login`, `change-password` | Pendiente |
 | 7 | i18n: extracción de cadenas a claves, `es-CO` como locale por defecto | Pendiente |
@@ -543,6 +546,31 @@ Notas de ejecución:
 
   Se añadió además una `<h1>` al panel, que no tenía ninguna (§11 exige una por ruta), y la
   tipografía del encabezado de página se define una sola vez en `styles.scss`.
+- **Etapa 4a (tabla + estados).** `styles/_table.scss` y `styles/_states.scss` centralizan el
+  tratamiento de §9.2 y los cuatro estados de §10.4 para las cuatro tablas (`devices`, `alerts`,
+  `security-group-rules`, `admin/users`). Va en global y no por componente porque las reglas apuntan
+  a las clases generadas por Angular Material (`.mat-mdc-header-cell`, `.mat-mdc-cell`,
+  `.mat-mdc-row`), inalcanzables desde una hoja con encapsulación sin `::ng-deep`. Cada vista
+  distingue "sin datos todavía" de "los filtros excluyen todo" con copias distintas, muestra
+  esqueletos en la primera carga y una barra indeterminada de 2px sobre datos rancios al refrescar, y
+  expone el `requestId` del backend como id de correlación en el panel de error. `toViewError`
+  (`core/utils/api-error.util.ts`) normaliza el envelope una sola vez para las cuatro vistas.
+
+  Dos tensiones del propio `design.md` salieron al aplicarlo, ambas anotadas allí: (i) el padding
+  vertical `--sp-3` de §6.1 y la fila de 52px de §9.2 son incompatibles en una celda con un control
+  de 40px; (ii) `height` en un `tr` es un mínimo, así que se mantienen en una línea los
+  identificadores, las marcas de tiempo y los atributos cortos acotados para que el caso común sí
+  caiga en 52px, y las tablas anchas scrollean dentro de `.table-shell` en vez de recortar un valor.
+  La columna `Detalle` de alertas vuelca JSON crudo y por eso deja esas filas en 64px hasta que se
+  reestructure — decisión de contenido, no de estilo.
+- **Etapa 4d bloqueada.** §2.6 dice que la escala de severidad aplica a alertas, hallazgos de
+  auditoría y veredictos de reglas por igual, pero **ningún modelo tiene campo `severity`**:
+  `alerts` tiene `type` y `status`; `security_group_rules` tiene `status` y booleanos de
+  validez/autorización; `devices` no tiene nada parecido. Derivarla en el frontend fijaría en código
+  un juicio de riesgo que el backend no emite (y `agent.md` §7 prohíbe hardcodear umbrales);
+  transportarla exige cambiar el contrato de la API, lo que pide ADR. Requiere decisión del
+  responsable antes de implementarse. Mientras tanto las vistas usan *badges* de estado (§9.7), que
+  sí corresponden a datos existentes.
 - **Pendiente menor de §3.1**: el tracking de `headline-*` se emite en `0` donde la tabla pide
   −0.02em. El resto de la columna de tracking sí coincide. No corregido todavía: es el mismo
   mecanismo de override y conviene decidirlo junto con la etapa 3, que es la que restila

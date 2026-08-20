@@ -59,7 +59,7 @@
 
 <div class="actions-row">
   @if (canSync()) {
-    <button mat-flat-button color="primary" (click)="sync()" [disabled]="syncing()">
+    <button matButton="filled" (click)="sync()" [disabled]="syncing()">
       @if (syncing()) {
         <mat-spinner diameter="18" />
       } @else {
@@ -67,11 +67,57 @@
       }
     </button>
   }
-  <button mat-stroked-button (click)="export('csv')">Exportar CSV</button>
-  <button mat-stroked-button (click)="export('pdf')">Exportar PDF</button>
+  <button matButton="outlined" (click)="export('csv')">
+    <mat-icon>download</mat-icon>
+    Exportar CSV
+  </button>
+  <button matButton="outlined" (click)="export('pdf')">
+    <mat-icon>download</mat-icon>
+    Exportar PDF
+  </button>
 </div>
 
-<div class="table-container">
+<!-- The four states of design.md §10.4. -->
+@if (error(); as err) {
+  <div class="state state--error" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ err.message }}</p>
+    @if (err.correlationId) {
+      <p class="mono state__id">Referencia: {{ err.correlationId }}</p>
+    }
+    <button matButton="outlined" (click)="reload()">Reintentar</button>
+  </div>
+} @else if (showSkeletons()) {
+  <div class="skeleton-table">
+    @for (row of [1, 2, 3, 4, 5, 6]; track row) {
+      <div class="skeleton skeleton--row" aria-hidden="true"></div>
+    }
+  </div>
+  <p class="sr-only" role="status">Cargando reglas de firewall…</p>
+} @else if (!items().length) {
+  @if (filtersActive()) {
+    <div class="state state--empty">
+      <mat-icon aria-hidden="true">filter_list</mat-icon>
+      <h2>Ninguna regla coincide con los filtros</h2>
+      <p>Amplía los rangos de fecha, o revisa el grupo de seguridad y el estado elegidos.</p>
+      <button matButton="filled" (click)="clearFilters()">Limpiar filtros</button>
+    </div>
+  } @else {
+    <div class="state state--empty">
+      <mat-icon aria-hidden="true">shield</mat-icon>
+      <h2>Todavía no hay reglas inventariadas</h2>
+      <p>
+        El catálogo se llena con la sincronización diaria contra AWS, o ejecutando una
+        ahora mismo.
+      </p>
+    </div>
+  }
+} @else {
+  <div class="table-shell" [class.table-shell--refreshing]="refreshing()">
+    @if (refreshing()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Actualizando reglas" />
+    }
+
   <table
     mat-table
     [dataSource]="items()"
@@ -79,51 +125,50 @@
     [matSortActive]="sortBy()"
     [matSortDirection]="sortDir()"
     (matSortChange)="onSortChange($event)"
-    class="full-width"
   >
     <ng-container matColumnDef="securityGroupName">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Grupo de seguridad</th>
-      <td mat-cell *matCellDef="let rule">{{ rule.securityGroupName }}</td>
+      <td mat-cell *matCellDef="let rule" class="cell-nowrap">{{ rule.securityGroupName }}</td>
     </ng-container>
 
     <ng-container matColumnDef="securityGroupId">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Id del grupo</th>
-      <td mat-cell *matCellDef="let rule">{{ rule.securityGroupId }}</td>
+      <td mat-cell *matCellDef="let rule" class="mono">{{ rule.securityGroupId }}</td>
     </ng-container>
 
     <ng-container matColumnDef="attachedResources">
       <th mat-header-cell *matHeaderCellDef>Dispositivo asociado</th>
-      <td mat-cell *matCellDef="let rule">{{ attachedResourceLabel(rule) }}</td>
+      <td mat-cell *matCellDef="let rule" class="cell-nowrap">{{ attachedResourceLabel(rule) }}</td>
     </ng-container>
 
     <ng-container matColumnDef="ruleName">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre de la regla</th>
-      <td mat-cell *matCellDef="let rule">{{ rule.ruleName ?? '—' }}</td>
+      <td mat-cell *matCellDef="let rule" class="cell-nowrap">{{ rule.ruleName ?? '—' }}</td>
     </ng-container>
 
     <ng-container matColumnDef="ruleId">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Id de la regla</th>
-      <td mat-cell *matCellDef="let rule">{{ rule.ruleId }}</td>
+      <td mat-cell *matCellDef="let rule" class="mono">{{ rule.ruleId }}</td>
     </ng-container>
 
     <ng-container matColumnDef="source">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Origen</th>
-      <td mat-cell *matCellDef="let rule">{{ rule.source }}</td>
+      <td mat-cell *matCellDef="let rule" class="mono">{{ rule.source }}</td>
     </ng-container>
 
     <ng-container matColumnDef="destination">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Destino</th>
-      <td mat-cell *matCellDef="let rule">{{ rule.destination }}</td>
+      <td mat-cell *matCellDef="let rule" class="mono">{{ rule.destination }}</td>
     </ng-container>
 
     <ng-container matColumnDef="protocol">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Protocolo</th>
-      <td mat-cell *matCellDef="let rule">{{ rule.protocol }}</td>
+      <td mat-cell *matCellDef="let rule" class="mono">{{ rule.protocol }}</td>
     </ng-container>
 
     <ng-container matColumnDef="portRange">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Puertos</th>
-      <td mat-cell *matCellDef="let rule">{{ rule.portRange ?? '—' }}</td>
+      <td mat-cell *matCellDef="let rule" class="mono">{{ rule.portRange ?? '—' }}</td>
     </ng-container>
 
     <ng-container matColumnDef="status">
@@ -135,19 +180,19 @@
 
     <ng-container matColumnDef="createdAt">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha de creación</th>
-      <td mat-cell *matCellDef="let rule">{{ rule.createdAt | date: 'medium' }}</td>
+      <td mat-cell *matCellDef="let rule" class="cell-time">{{ rule.createdAt | date: 'medium' }}</td>
     </ng-container>
 
     <ng-container matColumnDef="reviewedAt">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha de revisión</th>
-      <td mat-cell *matCellDef="let rule">
+      <td mat-cell *matCellDef="let rule" class="cell-time">
         {{ rule.reviewedAt ? (rule.reviewedAt | date: 'medium') : '—' }}
       </td>
     </ng-container>
 
     <ng-container matColumnDef="authorizedAt">
       <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha de autorización</th>
-      <td mat-cell *matCellDef="let rule">
+      <td mat-cell *matCellDef="let rule" class="cell-time">
         {{ rule.authorizedAt ? (rule.authorizedAt | date: 'medium') : '—' }}
       </td>
     </ng-container>
@@ -157,7 +202,7 @@
       <td mat-cell *matCellDef="let rule">
         @if (rule.status === 'pendiente' && isAuditor()) {
           <button
-            mat-button
+            matButton
             (click)="review(rule)"
             [attr.aria-label]="'Marcar como revisado el registro de ' + rule.securityGroupName + ' / ' + rule.ruleId"
           >
@@ -166,7 +211,7 @@
         }
         @if (rule.status === 'revisado' && isAdministrador()) {
           <button
-            mat-button
+            matButton
             (click)="authorize(rule)"
             [attr.aria-label]="'Marcar como autorizado el registro de ' + rule.securityGroupName + ' / ' + rule.ruleId"
           >
@@ -176,18 +221,15 @@
       </td>
     </ng-container>
 
-    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
     <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
   </table>
-</div>
 
-@if (!loading() && items().length === 0) {
-  <p class="empty-state">No hay reglas que coincidan con los filtros.</p>
+    <mat-paginator
+      [length]="total()"
+      [pageSize]="20"
+      [pageSizeOptions]="[20, 50, 100]"
+      (page)="onPage($event)"
+    />
+  </div>
 }
-
-<mat-paginator
-  [length]="total()"
-  [pageSize]="20"
-  [pageSizeOptions]="[20, 50, 100]"
-  (page)="onPage($event)"
-/>
