@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { DevicesService } from './devices.service';
@@ -38,6 +39,9 @@ describe('DevicesListComponent', () => {
       imports: [DevicesListComponent],
       providers: [
         provideAnimationsAsync(),
+        // The view reflects its filters into the URL (§10.1), so it injects
+        // Router/ActivatedRoute.
+        provideRouter([]),
         { provide: DevicesService, useValue: devicesServiceSpy },
         { provide: AuthService, useValue: authServiceSpy },
         { provide: MatDialog, useValue: dialogSpy },

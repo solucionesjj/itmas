@@ -30,6 +30,24 @@
   </mat-form-field>
 </form>
 
+<!-- The active query as removable chips, plus "limpiar todo" (§10.1). -->
+@if (appliedFilters().length) {
+  <div class="applied-filters">
+    <span class="applied-filters__label">Filtros aplicados:</span>
+    <mat-chip-set>
+      @for (filter of appliedFilters(); track filter.key) {
+        <mat-chip-row (removed)="removeFilter(filter.key)">
+          {{ filter.label }}: {{ filter.value }}
+          <button matChipRemove [attr.aria-label]="'Quitar el filtro ' + filter.label">
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </mat-chip-row>
+      }
+    </mat-chip-set>
+    <button matButton (click)="clearFilters()">Limpiar todo</button>
+  </div>
+}
+
 <!-- The four states of design.md §10.4, in the order that view resolves them. -->
 @if (error(); as err) {
   <div class="state state--error" role="alert">
@@ -75,7 +93,7 @@
       <ng-container matColumnDef="type">
         <th mat-header-cell *matHeaderCellDef>Tipo</th>
         <td mat-cell *matCellDef="let alert" class="cell-nowrap">
-          {{ alert.type === 'resource_change' ? 'Cambio de recursos' : 'Acceso fuera de horario' }}
+          {{ typeLabel(alert.type) }}
         </td>
       </ng-container>
 
@@ -124,6 +142,43 @@
       <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
     </table>
 
+    <mat-paginator
+      [length]="total()"
+      [pageSize]="20"
+      [pageSizeOptions]="[20, 50, 100]"
+      (page)="onPage($event)"
+    />
+  </div>
+
+  <!-- Below 600px (§10.3). The raw-JSON `Detalle` column is deliberately absent:
+       §10.3 allows three attribute pairs and a JSON blob is the worst candidate. -->
+  <div class="card-list">
+    @for (alert of alerts(); track alert._id) {
+      <article class="row-card">
+        <h2 class="row-card__title mono">
+          {{ alert.deviceId }}
+          <span [class]="'badge badge--' + (alert.status === 'open' ? 'degraded' : 'online')">
+            <span class="badge__dot" aria-hidden="true"></span>
+            {{ alert.status === 'open' ? 'Abierta' : 'Revisada' }}
+          </span>
+        </h2>
+        <dl class="row-card__attrs">
+          <dt>Tipo</dt>
+          <dd>{{ typeLabel(alert.type) }}</dd>
+          <dt>Fecha</dt>
+          <dd>{{ alert.createdAt | date: 'medium' }}</dd>
+        </dl>
+        <div class="row-card__actions">
+          <button
+            matButton="outlined"
+            (click)="toggleStatus(alert)"
+            [attr.aria-label]="(alert.status === 'open' ? 'Marcar revisada la alerta de ' : 'Reabrir la alerta de ') + alert.deviceId"
+          >
+            {{ alert.status === 'open' ? 'Marcar revisada' : 'Reabrir' }}
+          </button>
+        </div>
+      </article>
+    }
     <mat-paginator
       [length]="total()"
       [pageSize]="20"

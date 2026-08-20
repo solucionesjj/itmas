@@ -90,4 +90,42 @@
       <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
     </table>
   </div>
+
+  <!-- Below 600px (§10.3). This view has only two attributes worth carrying. -->
+  <div class="card-list">
+    @for (user of users(); track user._id) {
+      <article class="row-card">
+        <h2 class="row-card__title mono">
+          {{ user.username }}
+          <span [class]="'badge badge--' + (user.active ? 'online' : 'unknown')">
+            <span class="badge__dot" aria-hidden="true"></span>
+            {{ user.active ? 'Activo' : 'Inactivo' }}
+          </span>
+        </h2>
+        <dl class="row-card__attrs">
+          <dt>Correo</dt>
+          <dd>{{ user.email }}</dd>
+          <dt>Perfil</dt>
+          <dd>{{ user.role }}</dd>
+        </dl>
+        <div class="row-card__actions">
+          <button
+            matButton="outlined"
+            (click)="openEditDialog(user)"
+            [attr.aria-label]="'Editar usuario ' + user.username"
+          >
+            Editar
+          </button>
+          <button
+            matButton="outlined"
+            [disabled]="isSelf(user)"
+            (click)="toggleActive(user)"
+            [attr.aria-label]="(user.active ? 'Desactivar' : 'Activar') + ' usuario ' + user.username"
+          >
+            {{ user.active ? 'Desactivar' : 'Activar' }}
+          </button>
+        </div>
+      </article>
+    }
+  </div>
 }

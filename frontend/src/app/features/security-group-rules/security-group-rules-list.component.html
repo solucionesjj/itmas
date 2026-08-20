@@ -57,6 +57,24 @@
   </mat-form-field>
 </form>
 
+<!-- The active query as removable chips, plus "limpiar todo" (§10.1). -->
+@if (appliedFilters().length) {
+  <div class="applied-filters">
+    <span class="applied-filters__label">Filtros aplicados:</span>
+    <mat-chip-set>
+      @for (filter of appliedFilters(); track filter.key) {
+        <mat-chip-row (removed)="removeFilter(filter.key)">
+          {{ filter.label }}: {{ filter.value }}
+          <button matChipRemove [attr.aria-label]="'Quitar el filtro ' + filter.label">
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </mat-chip-row>
+      }
+    </mat-chip-set>
+    <button matButton (click)="clearFilters()">Limpiar todo</button>
+  </div>
+}
+
 <div class="actions-row">
   @if (canSync()) {
     <button matButton="filled" (click)="sync()" [disabled]="syncing()">
@@ -225,6 +243,58 @@
     <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
   </table>
 
+    <mat-paginator
+      [length]="total()"
+      [pageSize]="20"
+      [pageSizeOptions]="[20, 50, 100]"
+      (page)="onPage($event)"
+    />
+  </div>
+
+  <!-- Below 600px (§10.3). Twelve columns cannot go on a phone, so the card
+       carries identity + status plus the three attributes an auditor needs there:
+       what the rule exposes (origen/destino), how (protocolo y puertos), and
+       since when. Region, VPC, account and the review/authorization dates stay on
+       the desktop table. -->
+  <div class="card-list">
+    @for (rule of items(); track rule._id) {
+      <article class="row-card">
+        <h2 class="row-card__title mono">
+          {{ rule.securityGroupName }} / {{ rule.ruleId }}
+          <app-status-chip [status]="rule.status" />
+        </h2>
+        <dl class="row-card__attrs">
+          <dt>Origen → destino</dt>
+          <dd class="mono">{{ rule.source }} → {{ rule.destination }}</dd>
+          <dt>Protocolo y puertos</dt>
+          <dd class="mono">{{ rule.protocol }} {{ rule.portRange ?? '—' }}</dd>
+          <dt>Creación</dt>
+          <dd>{{ rule.createdAt | date: 'medium' }}</dd>
+        </dl>
+        @if ((rule.status === 'pendiente' && isAuditor()) || (rule.status === 'revisado' && isAdministrador())) {
+          <div class="row-card__actions">
+            @if (rule.status === 'pendiente' && isAuditor()) {
+              <button
+                matButton="outlined"
+                (click)="review(rule)"
+                [attr.aria-label]="'Marcar como revisado el registro de ' + rule.securityGroupName + ' / ' + rule.ruleId"
+              >
+                Marcar como revisado
+              </button>
+            }
+            @if (rule.status === 'revisado' && isAdministrador()) {
+              <button
+                matButton="outlined"
+                (click)="authorize(rule)"
+                [attr.aria-label]="'Marcar como autorizado el registro de ' + rule.securityGroupName + ' / ' + rule.ruleId"
+              >
+                Marcar como autorizado
+              </button>
+            }
+          </div>
+        }
+      </article>
+    }
     <mat-paginator
       [length]="total()"
       [pageSize]="20"

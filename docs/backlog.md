@@ -468,9 +468,9 @@ Estado por etapa:
 | 2 | Purga de valores fijos: colores, `font-size`, espaciado, anillo de foco, `prefers-color-scheme` | **Hecho** |
 | 3 | Shell: `core/layout/` según §9.10, títulos de ruta, modos de sidenav por breakpoint | **Hecho** |
 | 4a | Vistas de datos: tabla §9.2 + los cuatro estados §10.4 | **Hecho** |
-| 4b | Vistas de datos: filtros como `mat-chip-row` con reflejo en la URL | Pendiente |
-| 4c | Vistas de datos: fallback de tarjetas bajo 600px (§10.3) | Pendiente |
-| 4d | Escala de severidad de 5 niveles (§2.6) | **Bloqueado** (ver nota) |
+| 4b | Vistas de datos: filtros como `mat-chip-row` con reflejo en la URL | **Hecho** |
+| 4c | Vistas de datos: fallback de tarjetas bajo 600px (§10.3) | **Hecho** |
+| 4d | Escala de severidad de 5 niveles (§2.6) | **Hecho** (por decisión: opción C) |
 | 5 | Dashboard y gráficas: tarjetas KPI §10.2, repuntar la gráfica a `--chart-1…8` | Pendiente |
 | 6 | Pantallas de autenticación: `login`, `change-password` | Pendiente |
 | 7 | i18n: extracción de cadenas a claves, `es-CO` como locale por defecto | Pendiente |
@@ -563,14 +563,30 @@ Notas de ejecución:
   caiga en 52px, y las tablas anchas scrollean dentro de `.table-shell` en vez de recortar un valor.
   La columna `Detalle` de alertas vuelca JSON crudo y por eso deja esas filas en 64px hasta que se
   reestructure — decisión de contenido, no de estilo.
-- **Etapa 4d bloqueada.** §2.6 dice que la escala de severidad aplica a alertas, hallazgos de
-  auditoría y veredictos de reglas por igual, pero **ningún modelo tiene campo `severity`**:
-  `alerts` tiene `type` y `status`; `security_group_rules` tiene `status` y booleanos de
-  validez/autorización; `devices` no tiene nada parecido. Derivarla en el frontend fijaría en código
-  un juicio de riesgo que el backend no emite (y `agent.md` §7 prohíbe hardcodear umbrales);
-  transportarla exige cambiar el contrato de la API, lo que pide ADR. Requiere decisión del
-  responsable antes de implementarse. Mientras tanto las vistas usan *badges* de estado (§9.7), que
-  sí corresponden a datos existentes.
+- **Etapa 4d resuelta por decisión (opción C).** §2.6 decía que la escala de severidad aplica a
+  alertas, hallazgos y veredictos de reglas por igual, pero **ningún modelo tiene campo `severity`**.
+  El responsable del sistema de diseño decidió **acotar el alcance de §2.6** en vez de inventar el
+  dato: la escala aplica solo donde el backend registre un **veredicto** real, y los estados de
+  flujo o de ciclo de vida (abierta/revisada, pendiente/revisado/autorizado/eliminado,
+  activo/inactivo) usan el *badge* de estado de §9.7, cuyos cuatro tonos ya toman esos mismos pares
+  de tokens. Así los cinco niveles quedan **definidos y sin uso**, esperando el primer campo de
+  veredicto genuino, sin fijar en código un juicio de riesgo que el backend no emite (`agent.md` §7).
+  Anotado en §2.6. La lógica de color de estado local ya había desaparecido en la etapa 2, cuando
+  `status-chip` pasó a ser un badge.
+- **Etapas 4b y 4c.** Los filtros de las tres vistas que los tienen se reflejan en la URL
+  (`core/utils/filter-url.util.ts`): la URL es la fuente de verdad al entrar, así que una vista
+  filtrada es enlazable y sobrevive a un refresco; se escribe con `replaceUrl` para que teclear no
+  apile una entrada de historial por pulsación, y un filtro limpiado **sale** de la query en vez de
+  quedar como `?hostname=`. Los valores activos se muestran como `mat-chip-row` removibles con
+  etiquetas humanas (nunca la clave del enum) más un "Limpiar todo". El fallback de tarjetas de
+  §10.3 lleva los dos marcados en la plantilla y deja que una media query elija, así ninguna vista
+  necesita su propia lógica de breakpoint y `display: none` mantiene el oculto fuera del árbol de
+  accesibilidad. **Con esto desaparece el desborde horizontal de tablas bajo 600px que estaba
+  abierto desde la etapa 1.** Curaduría por vista (§10.3 admite máximo tres pares): equipos
+  categoría/SO/última conexión; usuarios correo/perfil; alertas tipo/fecha —dejando fuera el volcado
+  JSON de `Detalle`, que era el peor candidato—; firewall origen→destino, protocolo y puertos, y
+  creación, decidido con el responsable frente a alternativas que priorizaban el recurso expuesto o
+  el flujo de auditoría.
 - **Pendiente menor de §3.1**: el tracking de `headline-*` se emite en `0` donde la tabla pide
   −0.02em. El resto de la columna de tracking sí coincide. No corregido todavía: es el mismo
   mecanismo de override y conviene decidirlo junto con la etapa 3, que es la que restila

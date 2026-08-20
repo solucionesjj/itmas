@@ -10,11 +10,34 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatChipsModule } from '@angular/material/chips';
+import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ViewError, toViewError } from '../../core/utils/api-error.util';
+import {
+  AppliedFilter,
+  FilterMetaMap,
+  anyFilterActive,
+  describeFilters,
+  filtersFromParams,
+  paramsFromFilters
+} from '../../core/utils/filter-url.util';
 import { AlertsService } from './alerts.service';
 import { Alert, AlertStatus, AlertType } from './alert.model';
+
+const TYPE_LABELS: Record<string, string> = {
+  resource_change: 'Cambio de recursos',
+  off_hours_access: 'Acceso fuera de horario'
+};
+
+/** Chip labels for the applied-filter bar (§10.1) — never a raw enum key. */
+const FILTER_META: FilterMetaMap = {
+  type: { label: 'Tipo', format: (value) => TYPE_LABELS[value] ?? value },
+  status: { label: 'Estado', format: (value) => (value === 'open' ? 'Abierta' : 'Revisada') },
+  from: { label: 'Desde' },
+  to: { label: 'Hasta' }
+};
 
 @Component({
   selector: 'app-alerts-list',
@@ -29,7 +52,8 @@ import { Alert, AlertStatus, AlertType } from './alert.model';
     MatProgressBarModule,
     MatSelectModule,
     MatTableModule,
-    MatPaginatorModule
+    MatPaginatorModule,
+    MatChipsModule
   ],
   templateUrl: './alerts-list.component.html',
   styleUrl: './alerts-list.component.scss'
@@ -38,6 +62,8 @@ export class AlertsListComponent {
   private readonly alertsService = inject(AlertsService);
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly displayedColumns = [
     'type',
@@ -71,11 +97,18 @@ export class AlertsListComponent {
 
   /** Drives the two different empty messages §10.4 requires. */
   protected readonly filtersActive = signal(false);
+  /** The active query, shown above the data as removable chips (§10.1). */
+  protected readonly appliedFilters = signal<AppliedFilter[]>([]);
 
   private page = 0;
   private readonly pageSize = 20;
 
   constructor() {
+    // The URL is the source of truth on entry, so a filtered view is linkable.
+    this.filters.patchValue(
+      filtersFromParams(this.route.snapshot.queryParams, Object.keys(this.filters.controls)),
+      { emitEvent: false }
+    );
     this.reload();
 
     this.filters.valueChanges
@@ -93,6 +126,14 @@ export class AlertsListComponent {
 
   protected clearFilters(): void {
     this.filters.reset({ type: '', status: '', from: '', to: '' });
+  }
+
+  protected removeFilter(key: string): void {
+    this.filters.get(key)?.setValue('');
+  }
+
+  protected typeLabel(type: string): string {
+    return TYPE_LABELS[type] ?? type;
   }
 
   protected detailSummary(detail: Record<string, unknown>): string {
@@ -124,7 +165,13 @@ export class AlertsListComponent {
     this.loading.set(true);
     this.error.set(null);
     const raw = this.filters.getRawValue();
-    this.filtersActive.set(Boolean(raw.type || raw.status || raw.from || raw.to));
+    this.filtersActive.set(anyFilterActive(raw));
+    this.appliedFilters.set(describeFilters(raw, FILTER_META));
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: paramsFromFilters(raw),
+      replaceUrl: true
+    });
 
     this.alertsService
       .list({

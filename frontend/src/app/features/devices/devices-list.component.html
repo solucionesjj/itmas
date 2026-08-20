@@ -29,6 +29,24 @@
   </mat-form-field>
 </form>
 
+<!-- The active query as removable chips, plus "limpiar todo" (§10.1). -->
+@if (appliedFilters().length) {
+  <div class="applied-filters">
+    <span class="applied-filters__label">Filtros aplicados:</span>
+    <mat-chip-set>
+      @for (filter of appliedFilters(); track filter.key) {
+        <mat-chip-row (removed)="removeFilter(filter.key)">
+          {{ filter.label }}: {{ filter.value }}
+          <button matChipRemove [attr.aria-label]="'Quitar el filtro ' + filter.label">
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </mat-chip-row>
+      }
+    </mat-chip-set>
+    <button matButton (click)="clearFilters()">Limpiar todo</button>
+  </div>
+}
+
 <!-- The four states of design.md §10.4. -->
 @if (error(); as err) {
   <div class="state state--error" role="alert">
@@ -123,6 +141,43 @@
       <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
     </table>
 
+    <mat-paginator
+      [length]="total()"
+      [pageSize]="20"
+      [pageSizeOptions]="[20, 50, 100]"
+      (page)="onPage($event)"
+    />
+  </div>
+
+  <!-- Below 600px the table becomes this card list (§10.3): identity as the
+       title, at most three attribute pairs, actions as a full-width row. CSS
+       picks which of the two is displayed. -->
+  <div class="card-list">
+    @for (device of devices(); track device._id) {
+      <article class="row-card">
+        <h2 class="row-card__title mono">{{ device.hostname }}</h2>
+        <dl class="row-card__attrs">
+          <dt>Categoría</dt>
+          <dd>{{ device.category === 'collaborator' ? 'Colaborador' : 'Infraestructura' }}</dd>
+          <dt>Sistema operativo</dt>
+          <dd>{{ device.os ? device.os.name + ' ' + device.os.version : 'Sin datos' }}</dd>
+          <dt>Última conexión</dt>
+          <dd>{{ device.lastSeen ? (device.lastSeen | date: 'medium') : 'Nunca' }}</dd>
+        </dl>
+        @if (isAdmin) {
+          <div class="row-card__actions">
+            <button
+              matButton="outlined"
+              (click)="openRotateKeyDialog(device)"
+              [attr.aria-label]="'Rotar clave de API de ' + device.hostname"
+            >
+              <mat-icon>vpn_key</mat-icon>
+              Rotar clave
+            </button>
+          </div>
+        }
+      </article>
+    }
     <mat-paginator
       [length]="total()"
       [pageSize]="20"
