@@ -1,6 +1,5 @@
-// Chart chrome — surface, text and gridlines. The eight categorical slot colours
-// still come from the component's own constant; repointing those to --chart-1…8
-// with their dark variants is design.md §14 step 5, deliberately not done here.
+// Chart chrome — surface, text and gridlines. The categorical slot colours come
+// from §2.7's `--chart-1…8` tokens, assigned in order by the component.
 //
 // Every branch on `prefers-color-scheme` is gone: that query answers to the
 // operating system, so it desynchronised from the app the moment a user chose a
@@ -47,11 +46,10 @@
 .bar {
   height: 16px;
   min-width: 2px;
-  // `light-dark()` picks between the two slot colours the component sets inline,
-  // using the resolved colour scheme — the same mechanism mat.theme() uses. This
-  // is what replaces the `prefers-color-scheme` branch that used to swap them, so
-  // the bars follow the theme toggle instead of the OS.
-  background: light-dark(var(--bar-color-light), var(--bar-color-dark));
+  // One variable, not two: §2.7's `--chart-*` slot tokens carry their own light and
+  // dark values, so the token layer switches with the theme and the component no
+  // longer picks between a pair. The row sets `--bar-color` to its assigned slot.
+  background: var(--bar-color);
   // Square at the baseline (left), 4px rounded cap at the data end (right).
   border-radius: 0 4px 4px 0;
 }

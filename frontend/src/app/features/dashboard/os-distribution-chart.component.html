@@ -13,8 +13,7 @@
           <div
             class="bar"
             [style.width.%]="row.widthPercent"
-            [style.--bar-color-light]="row.colorLight"
-            [style.--bar-color-dark]="row.colorDark"
+            [style.--bar-color]="'var(' + row.colorVar + ')'"
             [attr.title]="row.os + ': ' + row.count"
           ></div>
         </div>

@@ -471,7 +471,7 @@ Estado por etapa:
 | 4b | Vistas de datos: filtros como `mat-chip-row` con reflejo en la URL | **Hecho** |
 | 4c | Vistas de datos: fallback de tarjetas bajo 600px (§10.3) | **Hecho** |
 | 4d | Escala de severidad de 5 niveles (§2.6) | **Hecho** (por decisión: opción C) |
-| 5 | Dashboard y gráficas: tarjetas KPI §10.2, repuntar la gráfica a `--chart-1…8` | Pendiente |
+| 5 | Dashboard y gráficas: tarjetas KPI §10.2, repuntar la gráfica a `--chart-1…8` | **Hecho** |
 | 6 | Pantallas de autenticación: `login`, `change-password` | Pendiente |
 | 7 | i18n: extracción de cadenas a claves, `es-CO` como locale por defecto | Pendiente |
 
@@ -587,6 +587,27 @@ Notas de ejecución:
   JSON de `Detalle`, que era el peor candidato—; firewall origen→destino, protocolo y puertos, y
   creación, decidido con el responsable frente a alternativas que priorizaban el recurso expuesto o
   el flujo de auditoría.
+- **Etapa 5 (dashboard y gráficas).** La gráfica de SO pasa a las ocho ranuras de §2.7,
+  asignadas en orden por el componente; la ranura 8 ("Other / unknown") queda **reservada** para
+  el bucket *Otros*, así que la cabeza usa 1–7 y el bucket nunca puede suplantar a una categoría
+  real. Desaparece el mecanismo de dos valores por fila: los tokens `--chart-*` ya traen su valor
+  claro y oscuro, así que basta un `--bar-color`. Se conserva intacto el contrato de ADR-0009
+  (orden fijo, bucket neutro, barras ≤24px con cap redondeado solo al final, gridline de 1px,
+  `role="img"`, aria-label calculado y tabla espejo `.sr-only`). Verificado token por token en
+  ambos esquemas: las 8 ranuras coinciden exactamente y las marcas miden ≥7,4:1 contra la
+  superficie de la gráfica, muy por encima del 3:1 que §11 pide para no-texto.
+
+  **Con esto el grep de literales de color del criterio 2 llega a 0** — era el único ítem que
+  quedaba diferido a propósito.
+
+  Tarjetas KPI según §10.2 (etiqueta `label-small` en mayúsculas, valor `display-small` a 700 con
+  cifras tabulares, barra naranja de 3px como único detalle del panel) en la rejilla de §6.2, y
+  los cuatro estados de §10.4 en el panel, que antes solo tenía un spinner y **ningún** camino de
+  error. **Sin delta**: `GET /stats/devices` solo trae conteos actuales y §10.2 exige que un delta
+  declare su periodo de comparación, así que inventarlo era el peor trato; §10.2 admite "como
+  máximo una comparación", de modo que ninguna es válido. Mismo criterio que en 4d: se acota a lo
+  que el dato permite. `--delta-up`/`--delta-down` quedan sin uso hasta que la API traiga histórico
+  — candidato a ítem propio.
 - **Pendiente menor de §3.1**: el tracking de `headline-*` se emite en `0` donde la tabla pide
   −0.02em. El resto de la columna de tracking sí coincide. No corregido todavía: es el mismo
   mecanismo de override y conviene decidirlo junto con la etapa 3, que es la que restila

@@ -5,28 +5,35 @@ interface ChartRow {
   os: string;
   count: number;
   widthPercent: number;
-  colorLight: string;
-  colorDark: string;
+  /** The CSS custom property holding this row's slot colour. */
+  colorVar: string;
 }
 
-// Neutral gray for the folded "Otros" bucket — deliberately NOT a categorical
-// hue, since it doesn't represent one identity and must not collide with (or
-// impersonate) any real category's assigned color.
-const OTHER_COLOR = { light: '#898781', dark: '#898781' };
+/**
+ * The eight fixed categorical slots of design.md §2.7, assigned in this exact
+ * order and never cycled or regenerated (ADR-0009). Each token already carries
+ * its own light and dark value, so nothing here knows a hex and the bars follow
+ * the theme without a second variable per row.
+ *
+ * §2.7 notes that slots 5/6/7 are *also* the compliance triad; in a plain
+ * categorical series like this one they are simply slots 5, 6 and 7.
+ */
+const SLOTS = [
+  '--chart-1',
+  '--chart-2',
+  '--chart-3',
+  '--chart-4',
+  '--chart-5',
+  '--chart-6',
+  '--chart-7'
+] as const;
 
-// Fixed-order validated categorical palette (light/dark) — assign in this exact
-// order, never cycled or regenerated. Beyond 8 categories, fold the tail into
-// "Other" rather than manufacture a 9th hue (breaks CVD separation guarantees).
-const PALETTE: { light: string; dark: string }[] = [
-  { light: '#2a78d6', dark: '#3987e5' }, // blue
-  { light: '#eb6834', dark: '#d95926' }, // orange
-  { light: '#1baf7a', dark: '#199e70' }, // aqua
-  { light: '#eda100', dark: '#c98500' }, // yellow
-  { light: '#e87ba4', dark: '#d55181' }, // magenta
-  { light: '#008300', dark: '#008300' }, // green
-  { light: '#4a3aa7', dark: '#9085e9' }, // violet
-  { light: '#e34948', dark: '#e66767' } // red
-];
+/**
+ * Slot 8 is §2.7's "Other / unknown" and is reserved for the folded bucket, so
+ * it can never collide with — or impersonate — a real category's colour. That is
+ * why SLOTS above stops at seven.
+ */
+const OTHER_SLOT = '--chart-8';
 
 @Component({
   selector: 'app-os-distribution-chart',
@@ -39,28 +46,28 @@ export class OsDistributionChartComponent {
 
   protected readonly rows = computed<ChartRow[]>(() => {
     const sorted = [...this.data()].sort((a, b) => b.count - a.count);
-    const hasOverflow = sorted.length > PALETTE.length;
-    // Reserve one slot for "Otros" when folding is needed, so it never reuses
-    // (and is never confused for) the last real category's assigned hue.
-    const headSize = hasOverflow ? PALETTE.length - 1 : PALETTE.length;
 
-    const head = sorted.slice(0, headSize);
-    const tail = sorted.slice(headSize);
+    const head = sorted.slice(0, SLOTS.length);
+    const tail = sorted.slice(SLOTS.length);
 
-    const withColor: { os: string; count: number; light: string; dark: string }[] =
-      head.map((stat, index) => ({
+    // Typed explicitly: `SLOTS` is `as const`, so an inferred element type would
+    // exclude the OTHER_SLOT pushed below.
+    const withColor: { os: string; count: number; colorVar: string }[] = head.map(
+      (stat, index) => ({
         os: stat.os,
         count: stat.count,
-        light: PALETTE[index].light,
-        dark: PALETTE[index].dark
-      }));
+        colorVar: SLOTS[index]
+      })
+    );
 
+    // A ninth category folds into a neutral "Otros" bucket rather than
+    // manufacturing a ninth hue, which would break the palette's separation
+    // guarantees (ADR-0009).
     if (tail.length > 0) {
       withColor.push({
         os: 'Otros',
         count: tail.reduce((sum, stat) => sum + stat.count, 0),
-        light: OTHER_COLOR.light,
-        dark: OTHER_COLOR.dark
+        colorVar: OTHER_SLOT
       });
     }
 
@@ -69,8 +76,7 @@ export class OsDistributionChartComponent {
       os: row.os,
       count: row.count,
       widthPercent: (row.count / max) * 100,
-      colorLight: row.light,
-      colorDark: row.dark
+      colorVar: row.colorVar
     }));
   });
 
