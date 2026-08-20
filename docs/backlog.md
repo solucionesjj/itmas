@@ -70,6 +70,7 @@ claro, sin bloqueo) · **Baja** (mejora a largo plazo, alto costo o poco valor i
 | [BL-027](#bl-027) | G | Verificación en navegador de CA-08 | Baja | Pendiente | — | CA-08 |
 | [BL-028](#bl-028) | G | Corregir la testabilidad de `UsersListComponent` | Baja | Pendiente | — | — |
 | [BL-029](#bl-029) | H | Adopción del sistema de diseño Material 3 (`design.md`) | Alta | En curso | — | ADR-0017, ADR-0009 |
+| [BL-030](#bl-030) | G | `ng serve` no alcanza la API local (sin CORS ni proxy de desarrollo) | Alta | Hecho | — | — |
 
 **Temas:** A · Auditoría y trazabilidad — B · Notificaciones — C · Identidad y control de acceso —
 D · Monitoreo y detección — E · Integraciones externas — F · Gestión de activos — G · Calidad y deuda técnica —
@@ -417,6 +418,28 @@ import (su plantilla no usa directivas `mat-dialog-*`).
 Criterios de aceptación:
 1. `MatDialogModule` retirado de los imports si la plantilla no usa sus directivas.
 2. Prueba unitaria que verifica la apertura del diálogo con un `MatDialog` simulado.
+
+### BL-030
+**`ng serve` no alcanza la API local (sin CORS ni proxy de desarrollo)** · Alta · Hecho
+
+`environment.development.ts` apuntaba `apiBaseUrl` a `http://localhost:3000/api/v1`, una URL **cross-origin**
+frente al `ng serve` de :4200. El backend no habilita CORS —y no necesita hacerlo, porque en producción
+`environment.ts` usa el relativo `/api/v1` y `frontend/nginx.conf` lo reenvía a `backend:3000`, de modo que
+todo es same-origin—, así que en desarrollo el preflight `OPTIONS /api/v1/auth/login` devolvía `404` y **toda**
+petición fallaba antes de salir: no se podía ni iniciar sesión. Detectado al verificar la etapa 1 de BL-029,
+donde hubo que habilitar CORS a mano de forma temporal para poder recorrer las rutas.
+
+Se descartó habilitar CORS en el backend: añadiría superficie de ataque en producción para resolver un problema
+que producción no tiene. La corrección alinea desarrollo con producción en vez de divergir de ella.
+
+Criterios de aceptación:
+1. `environment.development.ts` usa el relativo `/api/v1`, igual que `environment.ts`. ✔
+2. `frontend/proxy.conf.json` reenvía `/api` a `http://localhost:3000`, declarado en
+   `angular.json` → `serve.options.proxyConfig` para que aplique a ambas configuraciones. ✔
+3. El backend queda intacto: sin `enableCors`, sin cambios de dependencias. ✔
+4. Inicio de sesión y navegación por todas las rutas comprobados en navegador real contra el backend local. ✔
+5. Cambiar el puerto del backend se hace en `proxy.conf.json`, no en el archivo de entorno; documentado en
+   `CLAUDE.md`. ✔
 
 ---
 
