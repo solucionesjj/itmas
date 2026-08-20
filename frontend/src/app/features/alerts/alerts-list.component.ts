@@ -14,6 +14,9 @@ import { MatChipsModule } from '@angular/material/chips';
 import { ActivatedRoute, Router } from '@angular/router';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { MessageKey } from '../../core/i18n/messages.es-CO';
+import { TranslatePipe } from '../../core/i18n/t.pipe';
 import { ViewError, toViewError } from '../../core/utils/api-error.util';
 import {
   AppliedFilter,
@@ -26,17 +29,12 @@ import {
 import { AlertsService } from './alerts.service';
 import { Alert, AlertStatus, AlertType } from './alert.model';
 
-const TYPE_LABELS: Record<string, string> = {
-  resource_change: 'Cambio de recursos',
-  off_hours_access: 'Acceso fuera de horario'
-};
-
-/** Chip labels for the applied-filter bar (§10.1) — never a raw enum key. */
+/** Chip metadata as message keys (§10.1) — never a raw enum value. */
 const FILTER_META: FilterMetaMap = {
-  type: { label: 'Tipo', format: (value) => TYPE_LABELS[value] ?? value },
-  status: { label: 'Estado', format: (value) => (value === 'open' ? 'Abierta' : 'Revisada') },
-  from: { label: 'Desde' },
-  to: { label: 'Hasta' }
+  type: { label: 'field.type', valueKey: (value) => `alertType.${value}` },
+  status: { label: 'field.status', valueKey: (value) => `status.${value}` },
+  from: { label: 'field.from' },
+  to: { label: 'field.to' }
 };
 
 @Component({
@@ -53,7 +51,8 @@ const FILTER_META: FilterMetaMap = {
     MatSelectModule,
     MatTableModule,
     MatPaginatorModule,
-    MatChipsModule
+    MatChipsModule,
+    TranslatePipe
   ],
   templateUrl: './alerts-list.component.html',
   styleUrl: './alerts-list.component.scss'
@@ -62,6 +61,7 @@ export class AlertsListComponent {
   private readonly alertsService = inject(AlertsService);
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
+  protected readonly i18n = inject(I18nService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -132,8 +132,13 @@ export class AlertsListComponent {
     this.filters.get(key)?.setValue('');
   }
 
-  protected typeLabel(type: string): string {
-    return TYPE_LABELS[type] ?? type;
+  /** Enum value → message key, so the enum stays English in code (§12). */
+  protected typeKey(type: string): MessageKey {
+    return `alertType.${type}` as MessageKey;
+  }
+
+  protected statusKey(status: string): MessageKey {
+    return `status.${status}` as MessageKey;
   }
 
   protected detailSummary(detail: Record<string, unknown>): string {
@@ -146,15 +151,17 @@ export class AlertsListComponent {
     const next: AlertStatus = alert.status === 'open' ? 'reviewed' : 'open';
     this.alertsService.updateStatus(alert._id, next).subscribe({
       next: () => {
-        this.snackBar.open('Estado de la alerta actualizado.', 'Cerrar', {
-          duration: 3000
-        });
+        this.snackBar.open(
+          this.i18n.translate('alerts.statusUpdated'),
+          this.i18n.translate('action.close'),
+          { duration: 3000 }
+        );
         this.reload();
       },
       error: (err) => {
         this.snackBar.open(
-          toViewError(err, 'No se pudo actualizar la alerta.').message,
-          'Cerrar',
+          toViewError(err, this.i18n.translate('alerts.updateFailed')).message,
+          this.i18n.translate('action.close'),
           { duration: 4000 }
         );
       }
@@ -166,7 +173,9 @@ export class AlertsListComponent {
     this.error.set(null);
     const raw = this.filters.getRawValue();
     this.filtersActive.set(anyFilterActive(raw));
-    this.appliedFilters.set(describeFilters(raw, FILTER_META));
+    this.appliedFilters.set(
+      describeFilters(raw, FILTER_META, (key) => this.i18n.translate(key as MessageKey))
+    );
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: paramsFromFilters(raw),
@@ -190,7 +199,7 @@ export class AlertsListComponent {
           this.firstLoad.set(false);
         },
         error: (err) => {
-          this.error.set(toViewError(err, 'No se pudieron cargar las alertas.'));
+          this.error.set(toViewError(err, this.i18n.translate('alerts.error')));
           this.loading.set(false);
           this.firstLoad.set(false);
         }

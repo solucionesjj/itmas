@@ -1,19 +1,19 @@
-<h2 mat-dialog-title>{{ isEdit ? 'Editar usuario' : 'Nuevo usuario' }}</h2>
+<h2 mat-dialog-title>{{ (isEdit ? 'users.editTitle' : 'users.newTitle') | t }}</h2>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
   <mat-dialog-content>
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Usuario</mat-label>
+      <mat-label>{{ 'field.user' | t }}</mat-label>
       <input matInput formControlName="username" autocomplete="off" />
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Correo</mat-label>
+      <mat-label>{{ 'field.email' | t }}</mat-label>
       <input matInput type="email" formControlName="email" autocomplete="off" />
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>{{ isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña' }}</mat-label>
+      <mat-label>{{ (isEdit ? 'users.newPasswordOptional' : 'field.password') | t }}</mat-label>
       <input
         matInput
         type="password"
@@ -21,28 +21,28 @@
         autocomplete="new-password"
       />
       @if (form.controls.password.hasError('pattern') && form.controls.password.touched) {
-        <mat-hint>Debe incluir mayúscula, minúscula y un dígito (mín. 8 caracteres)</mat-hint>
+        <mat-error>{{ 'users.policyHint' | t }}</mat-error>
       }
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Perfil</mat-label>
+      <mat-label>{{ 'field.role' | t }}</mat-label>
       <mat-select formControlName="role">
         @for (r of roles; track r.value) {
-          <mat-option [value]="r.value">{{ r.label }}</mat-option>
+          <mat-option [value]="r.value">{{ r.labelKey | t }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
 
     @if (isEdit) {
-      <mat-slide-toggle formControlName="active">Activo</mat-slide-toggle>
+      <mat-slide-toggle formControlName="active">{{ 'status.active' | t }}</mat-slide-toggle>
     }
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">
-    <button mat-button type="button" (click)="cancel()">Cancelar</button>
-    <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid">
-      Guardar
+    <button matButton type="button" (click)="cancel()">{{ 'action.cancel' | t }}</button>
+    <button matButton="filled" type="submit" [disabled]="form.invalid">
+      {{ 'users.save' | t }}
     </button>
   </mat-dialog-actions>
 </form>

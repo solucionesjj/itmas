@@ -3,16 +3,15 @@
 <form [formGroup]="form" (ngSubmit)="submit()">
   <mat-dialog-content>
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Observación</mat-label>
+      <mat-label>{{ 'field.observation' | t }}</mat-label>
       <textarea matInput formControlName="observation" rows="4"></textarea>
     </mat-form-field>
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">
-    <button mat-button type="button" (click)="cancel()">Cancelar</button>
+    <button matButton type="button" (click)="cancel()">{{ 'action.cancel' | t }}</button>
     <button
-      mat-flat-button
-      color="primary"
+      matButton="filled"
       type="submit"
       [disabled]="form.invalid"
     >

@@ -4,6 +4,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../core/i18n/t.pipe';
 
 export interface ApiKeyRevealDialogData {
   hostname: string;
@@ -19,18 +21,19 @@ export interface ApiKeyRevealDialogData {
 @Component({
   selector: 'app-api-key-reveal-dialog',
   standalone: true,
-  imports: [MatDialogModule, MatButtonModule, MatIconModule, ClipboardModule],
+  imports: [TranslatePipe, MatDialogModule, MatButtonModule, MatIconModule, ClipboardModule],
   templateUrl: './api-key-reveal-dialog.component.html',
   styleUrl: './api-key-reveal-dialog.component.scss'
 })
 export class ApiKeyRevealDialogComponent {
   protected readonly data = inject<ApiKeyRevealDialogData>(MAT_DIALOG_DATA);
   private readonly snackBar = inject(MatSnackBar);
+  private readonly i18n = inject(I18nService);
 
   protected onCopied(success: boolean): void {
     this.snackBar.open(
-      success ? 'Clave copiada al portapapeles.' : 'No se pudo copiar la clave.',
-      'Cerrar',
+      this.i18n.translate(success ? 'devices.keyCopied' : 'devices.keyCopyFailed'),
+      this.i18n.translate('action.close'),
       { duration: 3000 }
     );
   }

@@ -1,31 +1,31 @@
-<h1>Alertas</h1>
+<h1>{{ 'nav.alerts' | t }}</h1>
 
 <form [formGroup]="filters" class="filters-row">
   <mat-form-field appearance="outline">
-    <mat-label>Tipo</mat-label>
+    <mat-label>{{ 'field.type' | t }}</mat-label>
     <mat-select formControlName="type">
-      <mat-option value="">Todos</mat-option>
-      <mat-option value="resource_change">Cambio de recursos</mat-option>
-      <mat-option value="off_hours_access">Acceso fuera de horario</mat-option>
+      <mat-option value="">{{ 'value.all' | t }}</mat-option>
+      <mat-option value="resource_change">{{ 'alertType.resource_change' | t }}</mat-option>
+      <mat-option value="off_hours_access">{{ 'alertType.off_hours_access' | t }}</mat-option>
     </mat-select>
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Estado</mat-label>
+    <mat-label>{{ 'field.status' | t }}</mat-label>
     <mat-select formControlName="status">
-      <mat-option value="">Todos</mat-option>
-      <mat-option value="open">Abierta</mat-option>
-      <mat-option value="reviewed">Revisada</mat-option>
+      <mat-option value="">{{ 'value.all' | t }}</mat-option>
+      <mat-option value="open">{{ 'status.open' | t }}</mat-option>
+      <mat-option value="reviewed">{{ 'status.reviewed' | t }}</mat-option>
     </mat-select>
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Desde</mat-label>
+    <mat-label>{{ 'field.from' | t }}</mat-label>
     <input matInput type="date" formControlName="from" />
   </mat-form-field>
 
   <mat-form-field appearance="outline">
-    <mat-label>Hasta</mat-label>
+    <mat-label>{{ 'field.to' | t }}</mat-label>
     <input matInput type="date" formControlName="to" />
   </mat-form-field>
 </form>
@@ -33,18 +33,18 @@
 <!-- The active query as removable chips, plus "limpiar todo" (§10.1). -->
 @if (appliedFilters().length) {
   <div class="applied-filters">
-    <span class="applied-filters__label">Filtros aplicados:</span>
+    <span class="applied-filters__label">{{ 'state.appliedFilters' | t }}</span>
     <mat-chip-set>
       @for (filter of appliedFilters(); track filter.key) {
         <mat-chip-row (removed)="removeFilter(filter.key)">
           {{ filter.label }}: {{ filter.value }}
-          <button matChipRemove [attr.aria-label]="'Quitar el filtro ' + filter.label">
+          <button matChipRemove [attr.aria-label]="'action.removeFilter' | t: { name: filter.label }">
             <mat-icon>cancel</mat-icon>
           </button>
         </mat-chip-row>
       }
     </mat-chip-set>
-    <button matButton (click)="clearFilters()">Limpiar todo</button>
+    <button matButton (click)="clearFilters()">{{ 'action.clearAll' | t }}</button>
   </div>
 }
 
@@ -54,9 +54,9 @@
     <mat-icon aria-hidden="true">error</mat-icon>
     <p>{{ err.message }}</p>
     @if (err.correlationId) {
-      <p class="mono state__id">Referencia: {{ err.correlationId }}</p>
+      <p class="mono state__id">{{ 'state.errorReference' | t: { id: err.correlationId } }}</p>
     }
-    <button matButton="outlined" (click)="reload()">Reintentar</button>
+    <button matButton="outlined" (click)="reload()">{{ 'action.retry' | t }}</button>
   </div>
 } @else if (showSkeletons()) {
   <div class="skeleton-table">
@@ -64,76 +64,75 @@
       <div class="skeleton skeleton--row" aria-hidden="true"></div>
     }
   </div>
-  <p class="sr-only" role="status">Cargando alertas…</p>
+  <p class="sr-only" role="status">{{ 'state.loadingAlerts' | t }}</p>
 } @else if (!alerts().length) {
   @if (filtersActive()) {
     <div class="state state--empty">
       <mat-icon aria-hidden="true">filter_list</mat-icon>
-      <h2>Ninguna alerta coincide con los filtros</h2>
-      <p>Prueba con un rango de fechas más amplio, u otro tipo o estado.</p>
-      <button matButton="filled" (click)="clearFilters()">Limpiar filtros</button>
+      <h2>{{ 'alerts.filteredEmptyTitle' | t }}</h2>
+      <p>{{ 'alerts.filteredEmptyBody' | t }}</p>
+      <button matButton="filled" (click)="clearFilters()">{{ 'action.clearFilters' | t }}</button>
     </div>
   } @else {
     <div class="state state--empty">
       <mat-icon aria-hidden="true">notifications</mat-icon>
-      <h2>Sin alertas registradas</h2>
+      <h2>{{ 'alerts.emptyTitle' | t }}</h2>
       <p>
-        Las alertas se generan solas cuando un equipo cambia de recursos o registra un
-        acceso fuera del horario habitual.
+        {{ 'alerts.emptyBody' | t }}
       </p>
     </div>
   }
 } @else {
   <div class="table-shell" [class.table-shell--refreshing]="refreshing()">
     @if (refreshing()) {
-      <mat-progress-bar mode="indeterminate" aria-label="Actualizando alertas" />
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'state.refreshingAlerts' | t" />
     }
 
-    <table mat-table [dataSource]="alerts()" aria-label="Alertas del inventario">
+    <table mat-table [dataSource]="alerts()" [attr.aria-label]="'alerts.tableLabel' | t">
       <ng-container matColumnDef="type">
-        <th mat-header-cell *matHeaderCellDef>Tipo</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.type' | t }}</th>
         <td mat-cell *matCellDef="let alert" class="cell-nowrap">
-          {{ typeLabel(alert.type) }}
+          {{ typeKey(alert.type) | t }}
         </td>
       </ng-container>
 
       <ng-container matColumnDef="deviceId">
-        <th mat-header-cell *matHeaderCellDef>Equipo</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.device' | t }}</th>
         <!-- A host uuid: an identifier compared character by character (§3.2). -->
         <td mat-cell *matCellDef="let alert" class="mono">{{ alert.deviceId }}</td>
       </ng-container>
 
       <ng-container matColumnDef="detail">
-        <th mat-header-cell *matHeaderCellDef>Detalle</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.detail' | t }}</th>
         <td mat-cell *matCellDef="let alert">{{ detailSummary(alert.detail) }}</td>
       </ng-container>
 
       <ng-container matColumnDef="createdAt">
-        <th mat-header-cell *matHeaderCellDef>Fecha</th>
-        <td mat-cell *matCellDef="let alert" class="cell-time">{{ alert.createdAt | date: 'medium' }}</td>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.date' | t }}</th>
+        <td mat-cell *matCellDef="let alert" class="cell-time">{{ alert.createdAt | date: i18n.dateTimeFormat() : i18n.timeZone() : i18n.locale() }}</td>
       </ng-container>
 
       <ng-container matColumnDef="status">
-        <th mat-header-cell *matHeaderCellDef>Estado</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.status' | t }}</th>
         <td mat-cell *matCellDef="let alert">
           <!-- A state, so a badge and not a chip (§9.7). Dot plus label: never
                colour alone. -->
           <span [class]="'badge badge--' + (alert.status === 'open' ? 'degraded' : 'online')">
             <span class="badge__dot" aria-hidden="true"></span>
-            {{ alert.status === 'open' ? 'Abierta' : 'Revisada' }}
+            {{ statusKey(alert.status) | t }}
           </span>
         </td>
       </ng-container>
 
       <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef>Acciones</th>
+        <th mat-header-cell *matHeaderCellDef>{{ 'field.actions' | t }}</th>
         <td mat-cell *matCellDef="let alert">
           <button
             matButton
             (click)="toggleStatus(alert)"
-            [attr.aria-label]="(alert.status === 'open' ? 'Marcar revisada la alerta de ' : 'Reabrir la alerta de ') + alert.deviceId"
+            [attr.aria-label]="(alert.status === 'open' ? 'alerts.markReviewedFor' : 'alerts.reopenFor') | t: { device: alert.deviceId }"
           >
-            {{ alert.status === 'open' ? 'Marcar revisada' : 'Reabrir' }}
+            {{ (alert.status === 'open' ? 'alerts.markReviewed' : 'alerts.reopen') | t }}
           </button>
         </td>
       </ng-container>
@@ -159,22 +158,22 @@
           {{ alert.deviceId }}
           <span [class]="'badge badge--' + (alert.status === 'open' ? 'degraded' : 'online')">
             <span class="badge__dot" aria-hidden="true"></span>
-            {{ alert.status === 'open' ? 'Abierta' : 'Revisada' }}
+            {{ statusKey(alert.status) | t }}
           </span>
         </h2>
         <dl class="row-card__attrs">
-          <dt>Tipo</dt>
-          <dd>{{ typeLabel(alert.type) }}</dd>
-          <dt>Fecha</dt>
-          <dd>{{ alert.createdAt | date: 'medium' }}</dd>
+          <dt>{{ 'field.type' | t }}</dt>
+          <dd>{{ typeKey(alert.type) | t }}</dd>
+          <dt>{{ 'field.date' | t }}</dt>
+          <dd>{{ alert.createdAt | date: i18n.dateTimeFormat() : i18n.timeZone() : i18n.locale() }}</dd>
         </dl>
         <div class="row-card__actions">
           <button
             matButton="outlined"
             (click)="toggleStatus(alert)"
-            [attr.aria-label]="(alert.status === 'open' ? 'Marcar revisada la alerta de ' : 'Reabrir la alerta de ') + alert.deviceId"
+            [attr.aria-label]="(alert.status === 'open' ? 'alerts.markReviewedFor' : 'alerts.reopenFor') | t: { device: alert.deviceId }"
           >
-            {{ alert.status === 'open' ? 'Marcar revisada' : 'Reabrir' }}
+            {{ (alert.status === 'open' ? 'alerts.markReviewed' : 'alerts.reopen') | t }}
           </button>
         </div>
       </article>

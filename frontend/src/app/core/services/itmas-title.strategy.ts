@@ -1,6 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { RouterStateSnapshot, TitleStrategy } from '@angular/router';
+import { I18nService } from '../i18n/i18n.service';
+import { MessageKey } from '../i18n/messages.es-CO';
 
 /**
  * Formats the document title as `IT-MAS · <page>` from each route's own `title`.
@@ -15,9 +17,13 @@ import { RouterStateSnapshot, TitleStrategy } from '@angular/router';
 @Injectable({ providedIn: 'root' })
 export class ItmasTitleStrategy extends TitleStrategy {
   private readonly title = inject(Title);
+  private readonly i18n = inject(I18nService);
 
   override updateTitle(snapshot: RouterStateSnapshot): void {
-    const page = this.buildTitle(snapshot);
-    this.title.setTitle(page ? `IT-MAS · ${page}` : 'IT-MAS');
+    // The route carries a message key, not a label, so the tab title changes with
+    // the language along with everything else.
+    const key = this.buildTitle(snapshot) as MessageKey | undefined;
+    const product = this.i18n.translate('app.name');
+    this.title.setTitle(key ? `${product} · ${this.i18n.translate(key)}` : product);
   }
 }

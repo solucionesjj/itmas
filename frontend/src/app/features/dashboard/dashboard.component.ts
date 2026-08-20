@@ -5,13 +5,17 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { forkJoin } from 'rxjs';
+import { I18nService } from '../../core/i18n/i18n.service';
+import { MessageKey } from '../../core/i18n/messages.es-CO';
+import { TranslatePipe } from '../../core/i18n/t.pipe';
 import { ViewError, toViewError } from '../../core/utils/api-error.util';
 import { DashboardService } from './dashboard.service';
 import { DeviceStats, OsStat } from './stats.model';
 import { OsDistributionChartComponent } from './os-distribution-chart.component';
 
 interface Kpi {
-  readonly label: string;
+  /** A message key; the label is translated in the template. */
+  readonly labelKey: MessageKey;
   readonly value: number;
 }
 
@@ -24,13 +28,15 @@ interface Kpi {
     MatCardModule,
     MatIconModule,
     MatProgressBarModule,
-    OsDistributionChartComponent
+    OsDistributionChartComponent,
+    TranslatePipe
   ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent {
   private readonly dashboardService = inject(DashboardService);
+  protected readonly i18n = inject(I18nService);
 
   protected readonly deviceStats = signal<DeviceStats | null>(null);
   protected readonly osStats = signal<OsStat[]>([]);
@@ -52,9 +58,9 @@ export class DashboardComponent {
   protected readonly kpis = computed<Kpi[]>(() => {
     const stats = this.deviceStats();
     return [
-      { label: 'Equipos totales', value: stats?.total ?? 0 },
-      { label: 'Equipos de colaboradores', value: stats?.collaborator ?? 0 },
-      { label: 'Equipos de infraestructura', value: stats?.infrastructure ?? 0 }
+      { labelKey: 'dashboard.kpiTotal', value: stats?.total ?? 0 },
+      { labelKey: 'dashboard.kpiCollaborator', value: stats?.collaborator ?? 0 },
+      { labelKey: 'dashboard.kpiInfrastructure', value: stats?.infrastructure ?? 0 }
     ];
   });
 
@@ -83,7 +89,7 @@ export class DashboardComponent {
         this.firstLoad.set(false);
       },
       error: (err) => {
-        this.error.set(toViewError(err, 'No se pudieron cargar las estadísticas.'));
+        this.error.set(toViewError(err, this.i18n.translate('dashboard.error')));
         this.loading.set(false);
         this.firstLoad.set(false);
       }

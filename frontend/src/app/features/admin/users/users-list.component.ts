@@ -6,6 +6,8 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { AuthService } from '../../../core/services/auth.service';
+import { I18nService } from '../../../core/i18n/i18n.service';
+import { TranslatePipe } from '../../../core/i18n/t.pipe';
 import { ViewError, toViewError } from '../../../core/utils/api-error.util';
 import { UsersService } from './users.service';
 import { User } from './user.model';
@@ -23,7 +25,8 @@ import {
     MatButtonModule,
     MatIconModule,
     MatDialogModule,
-    MatProgressBarModule
+    MatProgressBarModule,
+    TranslatePipe
   ],
   templateUrl: './users-list.component.html',
   styleUrl: './users-list.component.scss'
@@ -33,6 +36,7 @@ export class UsersListComponent {
   private readonly authService = inject(AuthService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
+  protected readonly i18n = inject(I18nService);
 
   protected readonly displayedColumns = [
     'username',
@@ -66,7 +70,7 @@ export class UsersListComponent {
         this.firstLoad.set(false);
       },
       error: (err) => {
-        this.error.set(toViewError(err, 'No se pudieron cargar los usuarios.'));
+        this.error.set(toViewError(err, this.i18n.translate('users.error')));
         this.loading.set(false);
         this.firstLoad.set(false);
       }
@@ -90,7 +94,7 @@ export class UsersListComponent {
       }
       this.usersService.create(result.create).subscribe({
         next: () => {
-          this.snackBar.open('Usuario creado.', 'Cerrar', { duration: 3000 });
+          this.snackBar.open(this.i18n.translate('users.created'), this.i18n.translate('action.close'), { duration: 3000 });
           this.reload();
         },
         error: (err) => this.showError(err)
@@ -111,7 +115,7 @@ export class UsersListComponent {
       }
       this.usersService.update(user._id, result.update).subscribe({
         next: () => {
-          this.snackBar.open('Usuario actualizado.', 'Cerrar', { duration: 3000 });
+          this.snackBar.open(this.i18n.translate('users.updated'), this.i18n.translate('action.close'), { duration: 3000 });
           this.reload();
         },
         error: (err) => this.showError(err)
@@ -123,8 +127,8 @@ export class UsersListComponent {
     this.usersService.update(user._id, { active: !user.active }).subscribe({
       next: () => {
         this.snackBar.open(
-          user.active ? 'Usuario desactivado.' : 'Usuario activado.',
-          'Cerrar',
+          this.i18n.translate(user.active ? 'users.deactivated' : 'users.activated'),
+          this.i18n.translate('action.close'),
           { duration: 3000 }
         );
         this.reload();
@@ -135,8 +139,8 @@ export class UsersListComponent {
 
   private showError(err: unknown): void {
     this.snackBar.open(
-      toViewError(err, 'No se pudo completar la operación.').message,
-      'Cerrar',
+      toViewError(err, this.i18n.translate('devices.operationFailed')).message,
+      this.i18n.translate('action.close'),
       { duration: 4000 }
     );
   }

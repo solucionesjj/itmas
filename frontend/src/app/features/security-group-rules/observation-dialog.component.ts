@@ -8,6 +8,7 @@ import {
 } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { TranslatePipe } from '../../core/i18n/t.pipe';
 
 export interface ObservationDialogData {
   title: string;
@@ -25,7 +26,7 @@ export interface ObservationDialogResult {
 @Component({
   selector: 'app-observation-dialog',
   standalone: true,
-  imports: [
+  imports: [TranslatePipe, 
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,

@@ -69,7 +69,7 @@ claro, sin bloqueo) · **Baja** (mejora a largo plazo, alto costo o poco valor i
 | [BL-026](#bl-026) | G | Elevar la cobertura de pruebas a ≥ 80 % en lógica crítica | Media | Pendiente | — | Quality Gates §11 |
 | [BL-027](#bl-027) | G | Verificación en navegador de CA-08 | Baja | Pendiente | — | CA-08 |
 | [BL-028](#bl-028) | G | Corregir la testabilidad de `UsersListComponent` | Baja | Pendiente | — | — |
-| [BL-029](#bl-029) | H | Adopción del sistema de diseño Material 3 (`design.md`) | Alta | En curso | — | ADR-0017, ADR-0009 |
+| [BL-029](#bl-029) | H | Adopción del sistema de diseño Material 3 (`design.md`) | Alta | Hecho | — | ADR-0017, ADR-0009 |
 | [BL-030](#bl-030) | G | `ng serve` no alcanza la API local (sin CORS ni proxy de desarrollo) | Alta | Hecho | — | — |
 
 **Temas:** A · Auditoría y trazabilidad — B · Notificaciones — C · Identidad y control de acceso —
@@ -446,7 +446,7 @@ Criterios de aceptación:
 ## H. Sistema de diseño
 
 ### BL-029
-**Adopción del sistema de diseño Material 3 (`design.md`)** · Alta · En curso · Trazabilidad: ADR-0017, ADR-0009
+**Adopción del sistema de diseño Material 3 (`design.md`)** · Alta · **Hecho** · Trazabilidad: ADR-0017, ADR-0009
 
 El frontend se entregó con el tema por defecto del CLI de Angular (`mat.$azure-palette` / `mat.$blue-palette`,
 `typography: Roboto`, Material Icons) y sin capa de tokens: 34 literales de color en las carpetas de features,
@@ -473,7 +473,7 @@ Estado por etapa:
 | 4d | Escala de severidad de 5 niveles (§2.6) | **Hecho** (por decisión: opción C) |
 | 5 | Dashboard y gráficas: tarjetas KPI §10.2, repuntar la gráfica a `--chart-1…8` | **Hecho** |
 | 6 | Pantallas de autenticación: `login`, `change-password` | **Hecho** |
-| 7 | i18n: extracción de cadenas a claves, `es-CO` como locale por defecto | Pendiente |
+| 7 | i18n: extracción de cadenas a claves, `es-CO` como locale por defecto | **Hecho** |
 
 Criterios de aceptación:
 
@@ -628,6 +628,34 @@ Notas de ejecución:
   estado HTTP a copia localizada y accionable (401, 429 con el límite de intentos, 400 de política,
   0 sin red), sin revelar nunca si el usuario existe. Los fallos de envío van en un panel
   `role="alert"` con el par `error-container` (7,18:1).
+- **Etapa 7 (i18n).** 231 claves extraídas y **dos catálogos**, `es-CO` (fuente de verdad de la
+  redacción) y `en-US`, más un selector de idioma en la barra superior. Mecanismo: un servicio de
+  ~60 líneas y un pipe `| t`, **sin dependencia nueva** — esto es un mapa clave→texto con
+  interpolación `{nombre}`, que no justifica una librería en runtime (`agent.md` §5.1). Se descartó
+  `@angular/localize` porque exige un build por idioma (sin cambio en runtime, más cambios en nginx)
+  y porque su sintaxis `i18n`/`$localize` dejaría divergentes los ~40 ejemplos de marcado de §9,
+  escritos con `| translate`.
+
+  El catálogo `en-US` está tipado como `Record<MessageKey, string>`, así que **omitir o escribir mal
+  una clave es error de compilación**, no una etiqueta vacía en runtime; `es-CO` es la única fuente
+  de qué claves existen. Las pruebas verifican además que ambos lados tengan los mismos
+  marcadores de posición y que ningún mensaje quede vacío.
+
+  Dos cosas no obvias: (i) el pipe es **impuro a propósito** — uno puro cachea por argumentos y
+  seguiría sirviendo el idioma anterior tras un cambio, porque la clave no varía; (ii) `LOCALE_ID`
+  se resuelve una sola vez en el arranque y no puede seguir un cambio en runtime, así que los 8
+  pipes `date` y el `number` reciben el locale **explícitamente**, que es justo la auditoría que
+  pedía §14. Los patrones de fecha viven en el catálogo porque son datos de locale, no código, y
+  `format.timeZone` es un offset (`-0500`) y no un nombre IANA porque `DatePipe` no acepta estos
+  últimos.
+
+  Verificado en navegador: cambio de idioma **en vivo sin recargar**, `<html lang>` actualizado,
+  título del documento traducido vía `ItmasTitleStrategy`, y la fecha pasando de
+  `08/20/2026 5:39 PM` a `20/08/2026 17:39` — cambia el patrón *y* el instante mostrado, porque
+  es-CO fuerza la zona de Bogotá y en-US usa la del lector, los dos casos de la tabla de §12.
+
+  **Coste**: los dos catálogos y los datos de ambos locales suman ~33 kB crudos al bundle inicial,
+  que es la consecuencia directa de elegir bilingüe en un solo bundle. Ver la nota de presupuesto.
 - **Pendiente menor de §3.1**: el tracking de `headline-*` se emite en `0` donde la tabla pide
   −0.02em. El resto de la columna de tracking sí coincide. No corregido todavía: es el mismo
   mecanismo de override y conviene decidirlo junto con la etapa 3, que es la que restila

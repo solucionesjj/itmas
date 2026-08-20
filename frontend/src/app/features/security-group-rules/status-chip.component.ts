@@ -1,13 +1,16 @@
 import { Component, computed, input } from '@angular/core';
+import { MessageKey } from '../../core/i18n/messages.es-CO';
+import { TranslatePipe } from '../../core/i18n/t.pipe';
 import { SecurityGroupRuleStatus } from './security-group-rule.model';
 
 // Plain constant object, no framework abstraction — same style as the ROLES
 // const in UserFormDialogComponent.
-const STATUS_LABELS: Record<SecurityGroupRuleStatus, string> = {
-  pendiente: 'Pendiente',
-  revisado: 'Revisado',
-  autorizado: 'Autorizado',
-  eliminado: 'Eliminado'
+/** Message keys — the enum stays English-free in code, the label is translated (§12). */
+const STATUS_LABEL_KEYS: Record<SecurityGroupRuleStatus, MessageKey> = {
+  pendiente: 'status.pendiente',
+  revisado: 'status.revisado',
+  autorizado: 'status.autorizado',
+  eliminado: 'status.eliminado'
 };
 
 /**
@@ -30,18 +33,19 @@ const STATUS_TONES: Record<SecurityGroupRuleStatus, string> = {
 @Component({
   selector: 'app-status-chip',
   standalone: true,
+  imports: [TranslatePipe],
   // A badge, not a chip: chips are interactive (filters), badges are read-only
   // state (§9.7). The previous `<mat-chip disabled>` was also announced as a
   // disabled control to screen readers, which it never was.
   template: `
     <span [class]="'badge badge--' + tone()">
-      <span class="badge__dot" aria-hidden="true"></span>{{ label() }}
+      <span class="badge__dot" aria-hidden="true"></span>{{ labelKey() | t }}
     </span>
   `
 })
 export class StatusChipComponent {
   readonly status = input.required<SecurityGroupRuleStatus>();
 
-  protected readonly label = computed(() => STATUS_LABELS[this.status()]);
+  protected readonly labelKey = computed(() => STATUS_LABEL_KEYS[this.status()]);
   protected readonly tone = computed(() => STATUS_TONES[this.status()]);
 }

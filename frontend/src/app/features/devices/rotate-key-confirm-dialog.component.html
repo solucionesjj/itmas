@@ -1,14 +1,10 @@
-<h2 mat-dialog-title>Rotar clave de API</h2>
+<h2 mat-dialog-title>{{ 'devices.rotateConfirmTitle' | t }}</h2>
 
 <mat-dialog-content>
-  <p>
-    ¿Rotar la clave de API de <strong>{{ data.hostname }}</strong>?
-    La clave anterior dejará de funcionar inmediatamente y el dispositivo
-    deberá reconfigurarse con la nueva clave.
-  </p>
+  <p>{{ 'devices.rotateConfirmQuestion' | t: { hostname: data.hostname } }}</p>
 </mat-dialog-content>
 
 <mat-dialog-actions align="end">
-  <button mat-button type="button" (click)="cancel()">Cancelar</button>
-  <button mat-flat-button color="primary" (click)="confirm()">Rotar clave</button>
+  <button matButton type="button" (click)="cancel()">{{ 'action.cancel' | t }}</button>
+  <button matButton="filled" (click)="confirm()">{{ 'devices.rotateKey' | t }}</button>
 </mat-dialog-actions>

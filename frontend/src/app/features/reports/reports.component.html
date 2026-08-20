@@ -1,16 +1,16 @@
-<h1>Reportes</h1>
+<h1>{{ 'reports.title' | t }}</h1>
 
-<mat-card class="reports-card">
+<mat-card appearance="outlined" class="panel reports-card">
   <mat-card-content>
     <form [formGroup]="form">
-      <mat-radio-group formControlName="type" class="radio-row" aria-label="Tipo de reporte">
-        <mat-radio-button value="devices">Equipos</mat-radio-button>
+      <mat-radio-group formControlName="type" class="radio-row" [attr.aria-label]="'reports.typeLabel' | t">
+        <mat-radio-button value="devices">{{ 'reports.devices' | t }}</mat-radio-button>
         @if (canExportAlerts()) {
-          <mat-radio-button value="alerts">Alertas</mat-radio-button>
+          <mat-radio-button value="alerts">{{ 'reports.alerts' | t }}</mat-radio-button>
         }
       </mat-radio-group>
 
-      <mat-radio-group formControlName="format" class="radio-row" aria-label="Formato">
+      <mat-radio-group formControlName="format" class="radio-row" [attr.aria-label]="'reports.formatLabel' | t">
         <mat-radio-button value="csv">CSV</mat-radio-button>
         <mat-radio-button value="pdf">PDF</mat-radio-button>
       </mat-radio-group>
@@ -18,50 +18,49 @@
       @if (form.controls.type.value === 'devices') {
         <div class="filters-row">
           <mat-form-field appearance="outline">
-            <mat-label>Categoría</mat-label>
+            <mat-label>{{ 'field.category' | t }}</mat-label>
             <mat-select formControlName="category">
-              <mat-option value="">Todas</mat-option>
-              <mat-option value="collaborator">Colaborador</mat-option>
-              <mat-option value="infrastructure">Infraestructura</mat-option>
+              <mat-option value="">{{ 'value.allFeminine' | t }}</mat-option>
+              <mat-option value="collaborator">{{ 'category.collaborator' | t }}</mat-option>
+              <mat-option value="infrastructure">{{ 'category.infrastructure' | t }}</mat-option>
             </mat-select>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Hostname</mat-label>
-            <input matInput formControlName="hostname" placeholder="Buscar por hostname" />
+            <mat-label>{{ 'field.hostname' | t }}</mat-label>
+            <input matInput formControlName="hostname" [placeholder]="'devices.searchHostname' | t" />
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Sistema operativo</mat-label>
-            <input matInput formControlName="osName" placeholder="Buscar por SO" />
+            <mat-label>{{ 'field.os' | t }}</mat-label>
+            <input matInput formControlName="osName" [placeholder]="'devices.searchOs' | t" />
           </mat-form-field>
         </div>
       } @else {
         <div class="filters-row">
           <mat-form-field appearance="outline">
-            <mat-label>Estado</mat-label>
+            <mat-label>{{ 'field.status' | t }}</mat-label>
             <mat-select formControlName="status">
-              <mat-option value="">Todos</mat-option>
-              <mat-option value="open">Abierta</mat-option>
-              <mat-option value="reviewed">Revisada</mat-option>
+              <mat-option value="">{{ 'value.all' | t }}</mat-option>
+              <mat-option value="open">{{ 'status.open' | t }}</mat-option>
+              <mat-option value="reviewed">{{ 'status.reviewed' | t }}</mat-option>
             </mat-select>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Desde</mat-label>
+            <mat-label>{{ 'field.from' | t }}</mat-label>
             <input matInput type="date" formControlName="from" />
           </mat-form-field>
 
           <mat-form-field appearance="outline">
-            <mat-label>Hasta</mat-label>
+            <mat-label>{{ 'field.to' | t }}</mat-label>
             <input matInput type="date" formControlName="to" />
           </mat-form-field>
         </div>
       }
 
       <button
-        mat-flat-button
-        color="primary"
+        matButton="filled"
         type="button"
         [disabled]="downloading()"
         (click)="download()"
@@ -69,7 +68,7 @@
         @if (downloading()) {
           <mat-spinner diameter="18" class="inline-spinner" />
         }
-        Descargar
+        {{ 'action.download' | t }}
       </button>
     </form>
   </mat-card-content>

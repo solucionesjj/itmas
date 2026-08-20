@@ -2,17 +2,21 @@ import { Params } from '@angular/router';
 
 /**
  * How one filter control presents itself as an applied-filter chip (design.md §10.1).
- * `format` turns a wire value into the label a user recognises — `collaborator`
- * into "Colaborador" — so the chip never shows an enum key.
+ *
+ * `label` is always a message key. `valueKey` maps a wire value to a message key
+ * for the closed sets (`collaborator` → `category.collaborator`); its absence means
+ * the value is free text the user typed, which must be shown verbatim and never
+ * run through the catalogue. Making that explicit here is what keeps a template
+ * from having to guess which of the two it holds.
  */
 export interface FilterMeta {
   readonly label: string;
-  readonly format?: (value: string) => string;
+  readonly valueKey?: (value: string) => string;
 }
 
 export type FilterMetaMap = Readonly<Record<string, FilterMeta>>;
 
-/** One chip: which control it belongs to, and what it reads as. */
+/** One chip, fully resolved: nothing left for the template to translate. */
 export interface AppliedFilter {
   readonly key: string;
   readonly label: string;
@@ -55,10 +59,15 @@ export function anyFilterActive(raw: Record<string, string>): boolean {
   return Object.values(raw).some((value) => value !== '');
 }
 
-/** The set of chips to render above the data (§10.1). */
+/**
+ * The set of chips to render above the data (§10.1), with every string already
+ * resolved through `translate`. Kept pure — the caller passes the lookup — so it
+ * stays testable without a TestBed.
+ */
 export function describeFilters(
   raw: Record<string, string>,
-  meta: FilterMetaMap
+  meta: FilterMetaMap,
+  translate: (key: string) => string
 ): AppliedFilter[] {
   const applied: AppliedFilter[] = [];
   for (const [key, value] of Object.entries(raw)) {
@@ -68,8 +77,9 @@ export function describeFilters(
     const entry = meta[key];
     applied.push({
       key,
-      label: entry?.label ?? key,
-      value: entry?.format ? entry.format(value) : value
+      label: entry ? translate(entry.label) : key,
+      // No `valueKey` means free text the user typed: show it as they wrote it.
+      value: entry?.valueKey ? translate(entry.valueKey(value)) : value
     });
   }
   return applied;

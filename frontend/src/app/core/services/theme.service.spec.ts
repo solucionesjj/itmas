@@ -76,7 +76,7 @@ describe('ThemeService', () => {
     expect(service.mode()).toBe('system');
   });
 
-  it('exposes the icon and accessible name of the current mode', () => {
+  it('exposes the icon and the accessible-name key of the current mode', () => {
     const service = makeService();
 
     expect(service.icon()).toBe('brightness_auto');
@@ -86,6 +86,7 @@ describe('ThemeService', () => {
 
     service.set('dark');
     expect(service.icon()).toBe('dark_mode');
-    expect(service.label()).toContain('oscuro');
+    // A message key since step 7; the template translates it.
+    expect(service.labelKey()).toBe('theme.dark');
   });
 });

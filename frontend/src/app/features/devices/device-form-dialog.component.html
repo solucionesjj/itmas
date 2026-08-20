@@ -1,26 +1,26 @@
-<h2 mat-dialog-title>Nuevo dispositivo</h2>
+<h2 mat-dialog-title>{{ 'devices.newTitle' | t }}</h2>
 
 <form [formGroup]="form" (ngSubmit)="submit()">
   <mat-dialog-content>
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Hostname</mat-label>
+      <mat-label>{{ 'field.hostname' | t }}</mat-label>
       <input matInput formControlName="hostname" autocomplete="off" />
     </mat-form-field>
 
     <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Categoría</mat-label>
+      <mat-label>{{ 'field.category' | t }}</mat-label>
       <mat-select formControlName="category">
         @for (c of categories; track c.value) {
-          <mat-option [value]="c.value">{{ c.label }}</mat-option>
+          <mat-option [value]="c.value">{{ c.labelKey | t }}</mat-option>
         }
       </mat-select>
     </mat-form-field>
   </mat-dialog-content>
 
   <mat-dialog-actions align="end">
-    <button mat-button type="button" (click)="cancel()">Cancelar</button>
-    <button mat-flat-button color="primary" type="submit" [disabled]="form.invalid">
-      Crear
+    <button matButton type="button" (click)="cancel()">{{ 'action.cancel' | t }}</button>
+    <button matButton="filled" type="submit" [disabled]="form.invalid">
+      {{ 'action.create' | t }}
     </button>
   </mat-dialog-actions>
 </form>

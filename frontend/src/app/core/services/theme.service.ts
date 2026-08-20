@@ -17,10 +17,11 @@ const ICONS: Record<ThemeMode, string> = {
   dark: 'dark_mode'
 };
 
-const LABELS: Record<ThemeMode, string> = {
-  system: 'Tema: seguir el sistema',
-  light: 'Tema: claro',
-  dark: 'Tema: oscuro'
+/** Message keys, not labels: the accessible name is translated at the template. */
+const LABEL_KEYS: Record<ThemeMode, 'theme.system' | 'theme.light' | 'theme.dark'> = {
+  system: 'theme.system',
+  light: 'theme.light',
+  dark: 'theme.dark'
 };
 
 @Injectable({ providedIn: 'root' })
@@ -32,8 +33,8 @@ export class ThemeService {
   /** Icon ligature for the toolbar toggle (design.md §9.10). */
   readonly icon = computed(() => ICONS[this.mode()]);
 
-  /** Accessible name for the toolbar toggle, naming the *current* mode. */
-  readonly label = computed(() => LABELS[this.mode()]);
+  /** Message key for the toggle's accessible name, naming the *current* mode. */
+  readonly labelKey = computed(() => LABEL_KEYS[this.mode()]);
 
   constructor() {
     effect(() => {

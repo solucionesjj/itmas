@@ -5,20 +5,22 @@ import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MessageKey } from '../../core/i18n/messages.es-CO';
+import { TranslatePipe } from '../../core/i18n/t.pipe';
 import { CreateDeviceRequest } from './device.model';
 
-// Spanish labels reused verbatim from the devices-list filter's category
+// Message keys, shared with the devices-list filter's category
 // select, so "Colaborador"/"Infraestructura" mean the same thing everywhere
 // in the portal.
-const CATEGORIES: { value: CreateDeviceRequest['category']; label: string }[] = [
-  { value: 'collaborator', label: 'Colaborador' },
-  { value: 'infrastructure', label: 'Infraestructura' }
+const CATEGORIES: { value: CreateDeviceRequest['category']; labelKey: MessageKey }[] = [
+  { value: 'collaborator', labelKey: 'category.collaborator' },
+  { value: 'infrastructure', labelKey: 'category.infrastructure' }
 ];
 
 @Component({
   selector: 'app-device-form-dialog',
   standalone: true,
-  imports: [
+  imports: [TranslatePipe, 
     ReactiveFormsModule,
     MatDialogModule,
     MatFormFieldModule,

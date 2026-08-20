@@ -5,22 +5,22 @@
     [mode]="sidenavMode()"
     [opened]="sidenavOpen()"
     (closedStart)="sidenavOpen.set(false)"
-    [attr.aria-label]="'Navegación principal'"
+    [attr.aria-label]="'nav.primary' | t"
   >
-    <nav aria-label="Navegación principal">
+    <nav [attr.aria-label]="'nav.primary' | t">
       @for (item of navItems(); track item.route) {
         <a
           class="nav-item"
           [routerLink]="item.route"
           routerLinkActive="nav-item--active"
           [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
-          [attr.title]="isRail() ? item.label : null"
+          [attr.title]="isRail() ? (item.label | t) : null"
           (click)="closeIfOver()"
         >
           <mat-icon aria-hidden="true">{{ item.icon }}</mat-icon>
           <!-- In rail mode the label is visually hidden but never removed from the
                a11y tree, so the link keeps its accessible name at every breakpoint. -->
-          <span class="nav-item__label" [class.sr-only]="isRail()">{{ item.label }}</span>
+          <span class="nav-item__label" [class.sr-only]="isRail()">{{ item.label | t }}</span>
         </a>
       }
     </nav>
@@ -29,25 +29,43 @@
   <mat-sidenav-content (scroll)="onContentScroll($event)">
     <mat-toolbar class="shell__bar" [class.shell__bar--scrolled]="scrolled()">
       @if (isCompact()) {
-        <button matIconButton aria-label="Abrir o cerrar la navegación" (click)="toggleSidenav()">
+        <button matIconButton [attr.aria-label]="'nav.toggle' | t" (click)="toggleSidenav()">
           <mat-icon>menu</mat-icon>
         </button>
       }
-      <span class="shell__brand">IT-MAS</span>
-      @if (pageTitle()) {
+      <span class="shell__brand">{{ 'app.name' | t }}</span>
+      @if (pageTitleKey(); as titleKey) {
         <span class="shell__separator" aria-hidden="true">·</span>
-        <span class="shell__title">{{ pageTitle() }}</span>
+        <span class="shell__title">{{ titleKey | t }}</span>
       }
       <span class="shell__spacer"></span>
 
-      <button matIconButton [attr.aria-label]="theme.label()" (click)="theme.cycle()">
+      <button matIconButton [attr.aria-label]="theme.labelKey() | t" (click)="theme.cycle()">
         <mat-icon>{{ theme.icon() }}</mat-icon>
       </button>
+
+      <button matIconButton [matMenuTriggerFor]="localeMenu" [attr.aria-label]="'locale.change' | t">
+        <mat-icon>translate</mat-icon>
+      </button>
+      <mat-menu #localeMenu>
+        @for (option of locales; track option) {
+          <button
+            mat-menu-item
+            (click)="selectLocale(option)"
+            [attr.aria-current]="i18n.locale() === option ? 'true' : null"
+          >
+            @if (i18n.locale() === option) {
+              <mat-icon>check</mat-icon>
+            }
+            <span>{{ localeNames[option] }}</span>
+          </button>
+        }
+      </mat-menu>
 
       <button
         matIconButton
         [matMenuTriggerFor]="userMenu"
-        aria-label="Menú de usuario"
+        [attr.aria-label]="'user.menu' | t"
       >
         <mat-icon>account_circle</mat-icon>
       </button>
@@ -60,7 +78,7 @@
         }
         <button mat-menu-item (click)="logout()">
           <mat-icon>logout</mat-icon>
-          <span>Cerrar sesión</span>
+          <span>{{ 'action.logout' | t }}</span>
         </button>
       </mat-menu>
     </mat-toolbar>
