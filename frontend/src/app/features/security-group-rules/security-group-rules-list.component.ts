@@ -28,7 +28,7 @@ import {
   anyFilterActive,
   describeFilters,
   filtersFromParams,
-  paramsFromFilters
+  syncFiltersToUrl
 } from '../../core/utils/filter-url.util';
 import { SecurityGroupRulesService } from './security-group-rules.service';
 import { SecurityGroupSyncService } from './security-group-sync.service';
@@ -172,6 +172,8 @@ export class SecurityGroupRulesListComponent {
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
       .subscribe(() => {
         this.page = 0;
+        // Only a filter change writes the URL — see syncFiltersToUrl's warning.
+        syncFiltersToUrl(this.router, this.route, this.filters.getRawValue());
         this.reload();
       });
   }
@@ -366,11 +368,6 @@ export class SecurityGroupRulesListComponent {
     this.appliedFilters.set(
       describeFilters(raw, FILTER_META, (key) => this.i18n.translate(key as MessageKey))
     );
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: paramsFromFilters(raw),
-      replaceUrl: true
-    });
     this.rulesService
       .list({
         q: raw.q || undefined,

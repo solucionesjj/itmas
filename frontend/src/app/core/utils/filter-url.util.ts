@@ -1,4 +1,4 @@
-import { Params } from '@angular/router';
+import { ActivatedRoute, Params, Router } from '@angular/router';
 
 /**
  * How one filter control presents itself as an applied-filter chip (design.md §10.1).
@@ -46,12 +46,48 @@ export function filtersFromParams(params: Params, keys: readonly string[]): Reco
  * uses to remove a param, so cleared keys are explicitly set to it — omitting
  * them would leave the previous value in place.
  */
-export function paramsFromFilters(raw: Record<string, string>): Params {
+function paramsFromFilters(raw: Record<string, string>): Params {
   const params: Params = {};
   for (const [key, value] of Object.entries(raw)) {
     params[key] = value === '' ? undefined : value;
   }
   return params;
+}
+
+/**
+ * Writes the current filters into the URL, so a filtered view is linkable and
+ * survives a refresh.
+ *
+ * **Never call this while the view is being routed to** — not from a component
+ * constructor, `ngOnInit`, or anything else that runs during route activation.
+ * Angular instantiates a routed component *inside* the navigation that is bringing
+ * it in, before that navigation has emitted `NavigationEnd`. A `router.navigate()`
+ * from there supersedes the in-flight navigation, which then ends as
+ * `NavigationCancel`; the replacement navigation resolves to the very same URL and
+ * so ends as `NavigationSkipped` (`onSameUrlNavigation` defaults to `ignore`).
+ * Neither of those is a `NavigationEnd`, and `NavigationEnd` is the only event
+ * `RouterLinkActive` and the shell's toolbar title listen for — so the page
+ * changed on screen while the sidebar kept highlighting the previous item. The
+ * observed event order is:
+ *
+ *     … ResolveEnd → NavigationCancel → NavigationSkipped → ActivationEnd
+ *
+ * A filter change is a user action on an already-activated route, which is why
+ * that is the only place this is called from.
+ *
+ * `replaceUrl` so typing in a filter does not stack one history entry per
+ * keystroke — the back button should leave the view, not undo a character.
+ */
+export function syncFiltersToUrl(
+  router: Router,
+  route: ActivatedRoute,
+  raw: Record<string, string>
+): void {
+  void router.navigate([], {
+    relativeTo: route,
+    queryParams: paramsFromFilters(raw),
+    replaceUrl: true
+  });
 }
 
 /** True when any filter is set — decides which of §10.4's two empty states applies. */
