@@ -1,44 +1,44 @@
-.loading {
-  display: flex;
-  justify-content: center;
-  padding: var(--sp-12);
-}
+// KPI tiles per design.md §10.2, and the §6.2 KPI grid. Component-scoped because
+// the dashboard is the only view with tiles; the states, skeletons and card
+// treatment all come from frontend/src/styles/.
 
-.kpi-row {
-  display: flex;
-  flex-wrap: wrap;
+.kpi-grid {
+  display: grid;
   gap: var(--sp-4);
-  margin-bottom: var(--sp-4);
+  // §6.2: 4 columns on a wide window, 2 at medium, 1 below — expressed as a
+  // minimum tile width so it also holds for three tiles instead of four.
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  margin-bottom: var(--sp-8);
 }
 
-.stat-tile {
-  flex: 1 1 200px;
+.kpi {
   display: flex;
   flex-direction: column;
   gap: var(--sp-1);
-  padding: var(--sp-4);
+  padding: var(--sp-5);
+  // The one orange element on the dashboard — a 3px bar, never a fill (§2.5).
+  border-left: 3px solid var(--itmas-accent-detail);
 }
 
-// One value per role, no `prefers-color-scheme` branch: `--mat-sys-*` already
-// resolves per scheme through `light-dark()`, and unlike the media query it
-// follows the app's own theme rather than the operating system's.
-.stat-label {
-  font: var(--mat-sys-label-large);
+.kpi__label {
+  font: var(--mat-sys-label-small);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   color: var(--mat-sys-on-surface-variant);
 }
 
-.stat-value {
-  // 32px/600 — exactly headline-large in design.md §3.1's scale.
-  font: var(--mat-sys-headline-large);
-  color: var(--mat-sys-on-surface);
+.kpi__value {
+  font: var(--mat-sys-display-small);
+  // §10.2 asks for a heavier, tighter figure than display-small carries, and
+  // tabular numerals so a column of KPIs lines up digit for digit.
+  font-weight: 700;
+  letter-spacing: -0.04em;
   font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface);
 }
 
 .chart-card {
-  padding: var(--sp-4);
-
   h2 {
-    // §3.1 has no 16px/600 step; title-medium is the section-title role.
     font: var(--mat-sys-title-medium);
     margin: 0 0 var(--sp-4);
   }

@@ -1409,8 +1409,9 @@ token layer. Migrate in this order — each step is independently shippable.
 - [x] `ThemeService` (§2.3) + toolbar toggle — without it dark mode is not verifiable.
 
 **Step 2 — purge hard-coded values.** — **done**, see BL-029.
-- [x] `grep -rEn '#[0-9a-fA-F]{3,8}|rgba?\(' frontend/src/app` → 34 down to the 9 chart
-      slot colours, explicitly deferred to step 5.
+- [x] `grep -rEn '#[0-9a-fA-F]{3,8}|rgba?\(' frontend/src/app` → **0**. Reached 9 in step 2
+      (the chart's slot colours, deferred by agreement) and 0 once step 5 repointed them to
+      `--chart-1…8`.
 - [x] `grep -rn 'font-size' frontend/src/app` → 0; the only sizes left are `.mono`'s in
       `styles.scss`.
 - [x] Replace ad-hoc margins/paddings with `--sp-*` → 43 declarations, 0 left.
@@ -1471,10 +1472,19 @@ token layer. Migrate in this order — each step is independently shippable.
 >    trade for an audit tool, and it is why the alerts table's raw-JSON `Detalle` column
 >    leaves those rows at 64px until that column is restructured.
 
-**Step 5 — dashboard and charts.**
-- [ ] KPI tiles per §10.2.
-- [ ] Repoint the OS-distribution chart to `--chart-1…8`, add dark variants, keep the
-      ADR-0009 mark spec and the `.sr-only` mirror table.
+**Step 5 — dashboard and charts.** — **done**, see BL-029.
+- [x] KPI tiles per §10.2, in the §6.2 KPI grid — **without a delta**: `GET /stats/devices`
+      carries only current counts, and §10.2 requires a delta to state its comparison
+      period, so inventing one was the wrong trade. §10.2 already allows "at most one
+      comparison", so no-comparison is within spec; `--delta-up`/`--delta-down` stay unused
+      alongside §2.6's levels until the API can supply a history.
+- [x] Repoint the OS-distribution chart to `--chart-1…8`, add dark variants, keep the
+      ADR-0009 mark spec and the `.sr-only` mirror table. Slot 8 ("Other / unknown") is
+      reserved for the folded *Otros* bucket, so the head uses slots 1–7 and the bucket can
+      never impersonate a real category. The two-value-per-row mechanism is gone: the slot
+      tokens carry their own light and dark values, so one `--bar-color` suffices.
+- [x] The four states of §10.4 on the dashboard, which had only a spinner and no error path
+      at all — it is a data view like any other.
 
 **Step 6 — auth screens** (`login`, `change-password`).
 - [ ] Centered `corner-extra-large` card on `surface`, max 420px, one filled action.

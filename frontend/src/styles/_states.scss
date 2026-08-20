@@ -89,6 +89,18 @@
   margin-bottom: 2px;
 }
 
+// Matching the real dashboard layout (§9.11): a tile is as tall as a KPI card,
+// and the chart placeholder as tall as the chart card.
+.skeleton--kpi {
+  height: 104px;
+  border-radius: var(--mat-sys-corner-medium);
+}
+
+.skeleton--chart {
+  height: 200px;
+  border-radius: var(--mat-sys-corner-medium);
+}
+
 .skeleton-table {
   background: var(--mat-sys-surface-container-low);
   border: 1px solid var(--mat-sys-outline-variant);

@@ -1,0 +1,14 @@
+// ============================================================
+// IT-MAS — card / panel (design.md §9.4).
+//
+// `appearance="outlined"` is the default in IT-MAS; `elevated` is only for a card
+// that floats over another surface. Shared so every panel in the app shares one
+// container colour, outline and radius, and so no component restates them.
+// ============================================================
+
+.panel {
+  --mat-card-outlined-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-outlined-outline-color: var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  padding: var(--sp-6);
+}
