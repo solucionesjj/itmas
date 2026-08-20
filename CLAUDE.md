@@ -111,6 +111,13 @@ passes the whole test suite while being wrong on screen:
 - **A dangling `var()` is invalid at computed-value time**, so a renamed custom property makes
   the whole declaration vanish rather than erroring. This is how the chart's bars once rendered
   transparent.
+- **Navigating from a routed component's constructor breaks the sidebar.** Angular builds a routed
+  component *inside* the navigation that is activating it; a `router.navigate()` from there
+  supersedes that navigation (`NavigationCancel`) and its same-URL replacement is skipped
+  (`NavigationSkipped`). Neither is `NavigationEnd`, which is all `routerLinkActive` and the shell's
+  toolbar title listen for — so the page changes while the menu keeps highlighting the previous
+  section. This is why `syncFiltersToUrl` is called only from the filter-change path; read its
+  comment before moving it.
 - **Five `--mat-sys-*` roles resolve to a different tone than §2.3's table predicts** (the four
   light `on-*-container` roles and dark `on-surface-variant`), because Angular Material 20
   implements the current MD3 mapping. All pass AA; the table is the stale side. Don't override

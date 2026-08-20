@@ -26,7 +26,7 @@ import {
   anyFilterActive,
   describeFilters,
   filtersFromParams,
-  paramsFromFilters
+  syncFiltersToUrl
 } from '../../core/utils/filter-url.util';
 import { DevicesService } from './devices.service';
 import { CreateDeviceRequest, Device, DeviceCategory } from './device.model';
@@ -129,6 +129,8 @@ export class DevicesListComponent {
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
       .subscribe(() => {
         this.page = 0;
+        // Only a filter change writes the URL — see syncFiltersToUrl's warning.
+        syncFiltersToUrl(this.router, this.route, this.filters.getRawValue());
         this.reload();
       });
   }
@@ -218,13 +220,6 @@ export class DevicesListComponent {
     this.appliedFilters.set(
       describeFilters(raw, FILTER_META, (key) => this.i18n.translate(key as MessageKey))
     );
-    // replaceUrl so typing in a filter does not stack one history entry per
-    // keystroke — the back button should leave the view, not undo a character.
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: paramsFromFilters(raw),
-      replaceUrl: true
-    });
     this.devicesService
       .list({
         category: raw.category || undefined,

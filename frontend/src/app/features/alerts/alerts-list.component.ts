@@ -24,7 +24,7 @@ import {
   anyFilterActive,
   describeFilters,
   filtersFromParams,
-  paramsFromFilters
+  syncFiltersToUrl
 } from '../../core/utils/filter-url.util';
 import { AlertsService } from './alerts.service';
 import { Alert, AlertStatus, AlertType } from './alert.model';
@@ -115,6 +115,8 @@ export class AlertsListComponent {
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed())
       .subscribe(() => {
         this.page = 0;
+        // Only a filter change writes the URL — see syncFiltersToUrl's warning.
+        syncFiltersToUrl(this.router, this.route, this.filters.getRawValue());
         this.reload();
       });
   }
@@ -176,11 +178,6 @@ export class AlertsListComponent {
     this.appliedFilters.set(
       describeFilters(raw, FILTER_META, (key) => this.i18n.translate(key as MessageKey))
     );
-    void this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: paramsFromFilters(raw),
-      replaceUrl: true
-    });
 
     this.alertsService
       .list({

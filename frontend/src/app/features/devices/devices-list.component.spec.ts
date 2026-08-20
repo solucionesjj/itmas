@@ -1,8 +1,8 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { DevicesService } from './devices.service';
@@ -49,6 +49,43 @@ describe('DevicesListComponent', () => {
       ]
     });
   }
+
+  // Regression: the view used to reflect its filters into the URL from `reload()`,
+  // and the first `reload()` runs in the constructor — i.e. during the very
+  // navigation that is activating this route. That `router.navigate()` superseded
+  // the in-flight navigation, so it ended as NavigationCancel and the router never
+  // emitted NavigationEnd; the sidebar (`routerLinkActive`) and the shell's toolbar
+  // title both listen for NavigationEnd only, so they kept showing the *previous*
+  // page while this one was on screen. See syncFiltersToUrl in filter-url.util.ts.
+  it('does not touch the URL while it is being routed to', () => {
+    configure('administrator');
+    const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+
+    TestBed.createComponent(DevicesListComponent);
+
+    expect(devicesServiceSpy.list).toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('writes the filters to the URL once a filter changes', fakeAsync(() => {
+    configure('administrator');
+    const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    const fixture = TestBed.createComponent(DevicesListComponent);
+
+    fixture.componentInstance['filters'].patchValue({ hostname: 'PC-001' });
+    tick(300);
+
+    expect(navigate).toHaveBeenCalledTimes(1);
+    const [commands, extras] = navigate.calls.mostRecent().args as [
+      unknown[],
+      { queryParams: Record<string, string | undefined>; replaceUrl: boolean }
+    ];
+    expect(commands).toEqual([]);
+    expect(extras.queryParams['hostname']).toBe('PC-001');
+    // A cleared filter leaves the URL rather than sitting in it as `?osName=`.
+    expect(extras.queryParams['osName']).toBeUndefined();
+    expect(extras.replaceUrl).toBe(true);
+  }));
 
   it('shows the actions column for an Administrador', () => {
     configure('administrator');

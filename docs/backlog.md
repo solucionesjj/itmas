@@ -656,6 +656,21 @@ Notas de ejecución:
 
   **Coste**: los dos catálogos y los datos de ambos locales suman ~33 kB crudos al bundle inicial,
   que es la consecuencia directa de elegir bilingüe en un solo bundle. Ver la nota de presupuesto.
+- **Corrección posterior a la etapa 4b (navegación del menú).** El reflejo de filtros en la URL se
+  escribía desde `reload()`, y el primer `reload()` corre en el **constructor** del componente, es
+  decir *dentro* de la navegación que está activando esa ruta. Ese `router.navigate()` sustituye a la
+  navegación en curso, que termina en `NavigationCancel`, y la que la sustituye resuelve a la misma
+  URL y termina en `NavigationSkipped` (`onSameUrlNavigation` es `ignore` por defecto). Ninguno de
+  los dos es `NavigationEnd`, que es el único evento que escuchan `routerLinkActive` y el título de
+  la barra superior: el contenido de la página cambiaba pero el menú seguía marcando la sección
+  anterior. Secuencia observada en Chrome real:
+  `… ResolveEnd → NavigationCancel → NavigationSkipped → ActivationEnd`. Afectaba a las tres vistas
+  con filtros en la URL (`devices`, `alerts`, `security-group-rules`); reportado sobre
+  «Reglas de Firewall AWS». La escritura de la URL se movió a `syncFiltersToUrl`
+  (`core/utils/filter-url.util.ts`), llamada **solo** desde el cambio de filtros, que es una acción
+  del usuario sobre una ruta ya activada. Seis pruebas nuevas lo fijan: por vista, que construirla no
+  toca la URL y que un cambio de filtro sí la escribe con `replaceUrl`, más una del shell que
+  comprueba que la sección resaltada y el título siguen a la navegación.
 - **Pendiente menor de §3.1**: el tracking de `headline-*` se emite en `0` donde la tabla pide
   −0.02em. El resto de la columna de tracking sí coincide. No corregido todavía: es el mismo
   mecanismo de override y conviene decidirlo junto con la etapa 3, que es la que restila

@@ -1,7 +1,7 @@
 import { BreakpointObserver, BreakpointState } from '@angular/cdk/layout';
-import { signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { BehaviorSubject, of } from 'rxjs';
 import { JwtPayload, UserRole } from '../models/auth.models';
 import { AuthService } from '../services/auth.service';
@@ -19,6 +19,10 @@ class FakeBreakpointObserver {
     this.state$.next({ matches: Object.values(breakpoints).some(Boolean), breakpoints });
   }
 }
+
+/** Stands in for a feature page; the shell only cares that a route resolved. */
+@Component({ selector: 'app-stub-page', standalone: true, template: '' })
+class StubPageComponent {}
 
 const COMPACT = '(max-width: 599.98px)';
 const MEDIUM = '(min-width: 600px) and (max-width: 904.98px)';
@@ -177,6 +181,52 @@ describe('ShellComponent', () => {
       fixture.detectChanges();
 
       expect(drawer().classList).toContain('mat-drawer-opened');
+    });
+  });
+  describe('active section', () => {
+    function setupWithRoutes() {
+      currentUser = signal<JwtPayload | null>(payload('administrator'));
+      breakpoints = new FakeBreakpointObserver();
+
+      TestBed.configureTestingModule({
+        imports: [ShellComponent],
+        providers: [
+          provideRouter([
+            { path: '', component: StubPageComponent, title: 'nav.dashboard' },
+            { path: 'devices', component: StubPageComponent, title: 'nav.devices' }
+          ]),
+          { provide: BreakpointObserver, useValue: breakpoints },
+          { provide: AuthService, useValue: { currentUser, logout: () => of(undefined) } }
+        ]
+      });
+
+      fixture = TestBed.createComponent(ShellComponent);
+      fixture.detectChanges();
+    }
+
+    function activeLabels(): string[] {
+      return Array.from(fixture.nativeElement.querySelectorAll('.nav-item--active .nav-item__label')).map((el) =>
+        (el as HTMLElement).textContent!.trim()
+      );
+    }
+
+    // Both halves of this — the highlight and the toolbar title — hang off the
+    // router's NavigationEnd. A page that navigates while it is being activated
+    // turns that event into NavigationCancel + NavigationSkipped, which is how the
+    // sidebar came to highlight the previous section while the next one was on
+    // screen. See syncFiltersToUrl in core/utils/filter-url.util.ts.
+    it('highlights the routed section and names it in the toolbar', async () => {
+      setupWithRoutes();
+      const router = TestBed.inject(Router);
+
+      await router.navigate(['/devices']);
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(activeLabels()).toEqual(['Equipos']);
+      expect(
+        (fixture.nativeElement.querySelector('.shell__title') as HTMLElement).textContent!.trim()
+      ).toBe('Equipos');
     });
   });
 });
