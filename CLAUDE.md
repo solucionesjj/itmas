@@ -45,7 +45,7 @@ npm run lint                  # ng lint
 npm test                      # ng test (Karma/Jasmine — needs a local Chrome/Chromium)
 ```
 
-`src/environments/environment.development.ts` points `apiBaseUrl` at `http://localhost:3000/api/v1` — keep the backend on port 3000 in normal dev, or override this file locally (don't commit a changed port).
+`src/environments/environment.development.ts` points `apiBaseUrl` at the **relative** `/api/v1`, exactly like the production `environment.ts`. `ng serve` proxies `/api` to `http://localhost:3000` via `frontend/proxy.conf.json` (wired in `angular.json`'s `serve.options.proxyConfig`), playing the role `frontend/nginx.conf`'s `location /api/` plays in production — so dev and prod are both same-origin and the app never needs an absolute API URL. **Don't change this back to `http://localhost:3000/api/v1`**: the backend enables no CORS (it never needs to, sitting behind the reverse proxy), so a cross-origin dev URL makes the preflight `OPTIONS` 404 and every request fails before it is sent — login included. To point dev at a backend on another port, change the `target` in `proxy.conf.json`, not the environment file.
 
 ## Project Summary
 
