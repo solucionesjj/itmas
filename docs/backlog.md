@@ -71,10 +71,13 @@ claro, sin bloqueo) · **Baja** (mejora a largo plazo, alto costo o poco valor i
 | [BL-028](#bl-028) | G | Corregir la testabilidad de `UsersListComponent` | Baja | Pendiente | — | — |
 | [BL-029](#bl-029) | H | Adopción del sistema de diseño Material 3 (`design.md`) | Alta | Hecho | — | ADR-0017, ADR-0009 |
 | [BL-030](#bl-030) | G | `ng serve` no alcanza la API local (sin CORS ni proxy de desarrollo) | Alta | Hecho | — | — |
+| [BL-031](#bl-031) | I | Modelo e ingesta de estadísticas diarias de SAC | Alta | Pendiente | — | ADR-0018 |
+| [BL-032](#bl-032) | I | Consulta y exportación de las estadísticas de SAC | Alta | Pendiente | BL-031 | ADR-0018 |
+| [BL-033](#bl-033) | I | Dashboard de ranking y crecimiento de las bases SAC | Media | Pendiente | BL-031 | ADR-0018, RF-07, UC-07 |
 
 **Temas:** A · Auditoría y trazabilidad — B · Notificaciones — C · Identidad y control de acceso —
 D · Monitoreo y detección — E · Integraciones externas — F · Gestión de activos — G · Calidad y deuda técnica —
-H · Sistema de diseño
+H · Sistema de diseño — I · Estadísticas del producto SAC
 
 ---
 
@@ -677,3 +680,201 @@ Notas de ejecución:
   encabezados.
 
 Dependencias: ninguna. Las etapas 2–7 dependen de la 1, ya entregada.
+
+---
+
+## I. Estadísticas del producto SAC
+
+> **SAC** es el sistema de administración de cobranzas que Effective Computer Solutions ofrece a
+> entidades financieras para la recuperación de cartera. Cada cliente tiene su propia nube instalada,
+> con uno o varios motores de base de datos. Esos motores generan **diariamente** un juego de
+> estadísticas por base de datos (tamaño, deudores, cuentas, sumatorias financieras, gestiones y
+> usuarios activos) que hoy vive solo en el motor de origen. El área de Infraestructura necesita
+> centralizarlas en IT-MAS para monitorear el parque completo de bases de datos y analizar su
+> crecimiento.
+>
+> Este tema es un **catálogo independiente**, igual que el de EXT-1: no se cruza con el modelo
+> `devices`/`inventories` de los agentes de recolección, aunque **reutiliza** el mecanismo de
+> autenticación por clave de API de nodo para la ingesta. Requiere un ADR nuevo (el siguiente
+> disponible es `ADR-0018`) por tratarse de un dominio y unos endpoints fuera del contrato original
+> de `spec.md` §12 — mismo tratamiento que ADR-0013 (EXT-1) y ADR-0016 (aprovisionamiento desde el
+> portal).
+
+### BL-031
+**Modelo e ingesta de estadísticas diarias de SAC** · Alta · Pendiente · Trazabilidad: ADR-0018 (a registrar)
+
+Los motores de base de datos de cada nube de cliente generan a diario un registro estadístico por
+base de datos. IT-MAS no tiene hoy dónde recibirlo: la ingesta existente (`POST /inventory`,
+`POST /access-events`) modela inventario de hardware/software y eventos de acceso, no métricas de
+producto. Este elemento crea la colección y el endpoint de ingesta; la consulta (BL-032) y el
+análisis (BL-033) se apoyan en él.
+
+**Modelo de datos — colección `sac_statistics`**
+
+El contrato de la API normaliza los nombres a inglés camelCase, como el resto de `/api/v1`. Mapeo
+autoritativo contra las columnas del origen (SQL Server):
+
+| Columna de origen | Campo del contrato | Tipo en Mongo | Significado |
+|---|---|---|---|
+| `[Base] nvarchar(128)` | `databaseName` | `String` (máx. 128) | Nombre de la base de datos |
+| `[tamanoTotalBaseDatos] int` | `totalSizeGb` | `Number` | Tamaño total de la base (GB) |
+| `[deudor] int` | `debtors` | `Number` | Cantidad de deudores |
+| `[deudorCuentasActivas] int` | `debtorActiveAccounts` | `Number` | Cuentas activas por deudor |
+| `[cuentasActivas] int` | `activeAccounts` | `Number` | Cantidad de cuentas activas |
+| `[SumatoriaSaldo] numeric(18,2)` | `balanceSum` | `Decimal128` | Sumatoria de saldo |
+| `[SumatoriaMora] numeric(18,2)` | `overdueSum` | `Decimal128` | Sumatoria de mora |
+| `[SumatoriaCapital] numeric(18,2)` | `principalSum` | `Decimal128` | Sumatoria de capital |
+| `[promedioUsuariosActivosTresUltimosMeses] int` | `avgActiveUsersLast3Months` | `Number` | Promedio de usuarios activos en los últimos 3 meses |
+| `[gestiones] int` | `activities` | `Number` | Gestiones históricas (contador acumulado) |
+| `[gestionesUltimos30Dias] int` | `activitiesLast30Days` | `Number` | Gestiones de los últimos 30 días (ventana móvil) |
+| `[usuariosActivos] int` | `activeUsers` | `Number` | Usuarios activos |
+| `[tamanoLog] int` | `logSizeGb` | `Number` | Tamaño del archivo de log (GB) |
+| `[tamanoData] int` | `dataSizeGb` | `Number` | Tamaño del archivo de datos (GB) |
+| `[fechaGeneracion] datetime` | `generatedAt` | `Date` (UTC) | Fecha de generación del registro |
+
+Añade dos campos que no vienen del origen: `deviceId`, resuelto desde la clave de API del nodo que
+reporta (trazabilidad de quién envió qué, sin una segunda consulta), y `_id`.
+
+Criterios de aceptación:
+1. `POST /api/v1/sac-statistics` autenticado **exclusivamente** con `NodeApiKeyGuard`
+   (`X-Node-Api-Key: <deviceId>.<secret>`), nunca con JWT de usuario — la regla de doble mecanismo de
+   `agent.md` §5.4 prohíbe mezclarlos en un mismo endpoint. Sin clave o con clave inválida: **401**.
+2. El cuerpo es un **arreglo** de registros: un motor reporta en una sola llamada todas las bases de
+   su corrida. Cada elemento se valida por separado; la respuesta es `201` con
+   `{received, inserted}`.
+3. Validación con `class-validator`: `databaseName` obligatorio (máx. 128 caracteres) y `generatedAt`
+   obligatorio (ISO 8601, la hora del **propio motor**, nunca sellada en servidor). El resto de campos
+   es opcional y admite nulo, igual que en el origen; los numéricos rechazan valores negativos. El
+   `ValidationPipe` global ya está en `whitelist + forbidNonWhitelisted`, así que un campo desconocido
+   devuelve **400** — los agentes deben usar exactamente los nombres del contrato.
+4. Las tres sumatorias financieras se persisten como `Decimal128` y se serializan como **string** en
+   JSON. Un `numeric(18,2)` excede la precisión exacta de un `double` de JavaScript (18 dígitos frente
+   a los ~15,9 de 2^53); guardarlas como número perdería centavos en los totales agregados.
+5. La colección es **append-only sin clave natural única**: un reenvío del mismo motor genera un
+   registro adicional. Es una decisión explícita, contraria al patrón de `inventories`
+   (índice único `(deviceId, timestamp)`) y a la tolerancia a reintentos de `agent.md` §4; queda
+   registrada como tal en el ADR, y las agregaciones de BL-033 la neutralizan tomando el último
+   snapshot de cada periodo por base. Añadir el índice único después es un cambio aditivo.
+6. Índices: `{ databaseName: 1, generatedAt: -1 }` (filtro y serie temporal por base) y
+   `{ generatedAt: -1 }` (rangos de fecha globales).
+7. **Sin TTL por defecto**: el análisis de crecimiento interanual necesita histórico largo, a
+   diferencia de `inventories`/`access_events`/`audit_log`. Si se define
+   `SAC_STATISTICS_RETENTION_DAYS`, se aplica con el `ensure-ttl-index.util.ts` existente y queda
+   documentado en `.env.example` y `DEPLOYMENT.md`.
+8. La ingesta **no** escribe en `audit_log`, igual que `POST /inventory` — el actor es un nodo, no un
+   usuario.
+9. Pruebas: unitarias del servicio y del repositorio; e2e contra `mongodb-memory-server` cubriendo
+   401 sin clave, 201 con clave válida, 400 por campo desconocido y 400 por `databaseName`/`generatedAt`
+   ausentes.
+10. `backend/openapi.json` regenerado y ADR-0018 registrado en `docs/adr/`.
+
+Notas: unidades confirmadas con el solicitante — los tres campos de tamaño (`totalSizeGb`,
+`logSizeGb`, `dataSizeGb`) están en **gigabytes** y son enteros, igual que en el DDL de origen.
+
+El motor de BD que reporta debe estar aprovisionado previamente como `devices` de categoría
+`infrastructure` (`npm run device:provision` o `POST /devices`), exactamente como cualquier otro nodo.
+No se añade una categoría `database`: cambiar la enum arrastraría al motor de alertas, que ya
+discrimina por categoría en `evaluateAccessEvent`.
+
+### BL-032
+**Consulta y exportación de las estadísticas de SAC** · Alta · Pendiente · Depende de BL-031 · Trazabilidad: ADR-0018
+
+Cualquier usuario autenticado del portal debe poder consultar lo que los motores enviaron, con dos
+filtros —nombre de base de datos y fecha de generación— y descargarlo.
+
+Criterios de aceptación:
+1. `GET /api/v1/sac-statistics` devuelve el envelope paginado `{items,total,page,limit}` ya usado por
+   `/devices` y `/alerts`.
+2. Filtros validados en servidor: `databaseName` (parcial, insensible a mayúsculas, escapado con
+   `common/util/escape-regex.util.ts` antes de llegar al `$regex`) y rango `from`/`to` sobre
+   `generatedAt`. Orden por `generatedAt` descendente por defecto, con `sort`/`order` sobre una lista
+   blanca de campos.
+3. Rol: Administrador, Usuario y Auditor, declarados explícitamente con `@Roles()` — son datos de
+   consulta general, pero el endpoint nunca queda sin requisito de rol declarado. Sin token: **401**.
+4. `GET /api/v1/reports/export` acepta `reportType=sac-statistics`, respetando los mismos filtros que
+   el endpoint de consulta:
+   - `format=csv` reutiliza `csv.util.ts`, sin una segunda ruta de código.
+   - `format=xlsx` es un valor **nuevo** de `ReportFormat`, implementado con `exceljs` (nueva
+     dependencia de producción) como serializador genérico junto a CSV y PDF — queda por tanto
+     disponible también para `reportType=devices|alerts` sin tocar sus rutas de datos.
+   - `format=pdf` se rechaza con **400** y un mensaje explícito para este `reportType`: quince
+     columnas no caben en el layout del generador PDF actual.
+5. El `.xlsx` lleva una fila de encabezado con los nombres de campo del contrato (misma convención que
+   los reportes existentes) y tipos de celda nativos: fecha para `generatedAt`, número para los
+   enteros y número con dos decimales para las tres sumatorias.
+6. La exportación no pagina ni se acota: entrega **todos** los registros disponibles del conjunto
+   filtrado, ordenados por `generatedAt` **descendente** —del dato más reciente al más antiguo—. Sin
+   filtros, eso es el histórico completo. Como la colección crece a diario y sin TTL, a diferencia de
+   `devices`/`alerts` no está acotada por naturaleza: la generación debe recorrer el cursor de Mongo
+   por lotes y escribir en streaming (`exceljs` expone un escritor de libro en streaming), sin
+   materializar el histórico entero en memoria.
+7. `exceljs` no introduce vulnerabilidades altas ni críticas en `npm audit --omit=dev`.
+8. Vista Angular con tabla, los dos filtros, paginación y botón de descarga, enlazada desde el menú
+   para los tres roles. Cumple `design.md`: tabla §9.2, los cuatro estados de §10.4 (vacío, carga,
+   error, con datos), identificadores y fechas en `Roboto Mono`, y verificada en tema claro y oscuro.
+9. Ninguna cadena visible está en el código: todas pasan por el pipe `| t` con las claves en
+   `messages.es-CO.ts` y `messages.en-US.ts`. Los pipes `date`/`number` reciben `i18n.locale()`
+   explícitamente.
+10. Los filtros se reflejan en la URL con `syncFiltersToUrl` (`core/utils/filter-url.util.ts`),
+    llamado **solo** desde el cambio de filtros — nunca desde el constructor del componente (ver la
+    nota de BL-029 sobre `NavigationSkipped` y el resaltado del menú).
+11. Pruebas e2e de los tres roles con acceso y del 401 sin token, más las de la exportación en ambos
+    formatos.
+
+### BL-033
+**Dashboard de ranking y crecimiento de las bases SAC** · Media · Pendiente · Depende de BL-031 · Trazabilidad: ADR-0018, RF-07, UC-07
+
+El valor del histórico está en el análisis, no en el listado. Siete indicadores, todos con la misma
+forma: un ranking por tamaño y seis series de crecimiento mes a mes.
+
+Cada serie se agrupa **por nombre de base de datos**. No se deriva ningún "cliente" del patrón
+`DBSAC_<NombreCliente>`: es una decisión explícita para no depender de una convención de nombrado en
+las agregaciones. Un cliente con varias bases aparece como varias filas.
+
+Indicadores requeridos y la métrica que los alimenta:
+
+| # | Indicador | Métrica |
+|---|---|---|
+| 1 | Bases ordenadas de mayor a menor | `totalSizeGb` (por defecto) |
+| 2 | Crecimiento mes a mes del tamaño de la base | `totalSizeGb` |
+| 3 | Crecimiento mes a mes de las obligaciones | `activeAccounts` |
+| 4 | Crecimiento mes a mes de los clientes/deudores | `debtors` |
+| 5 | Crecimiento mes a mes de las gestiones | `activities` |
+| 6 | Crecimiento mes a mes de los usuarios activos de los últimos tres meses | `avgActiveUsersLast3Months` |
+| 7 | Crecimiento mes a mes de los datos financieros | `balanceSum`, `overdueSum`, `principalSum` |
+
+Criterios de aceptación:
+1. `GET /api/v1/stats/sac/ranking?metric=<m>&at=<fecha opcional>` devuelve las bases ordenadas de
+   mayor a menor por la métrica, usando el **último snapshot de cada base** a la fecha indicada (o el
+   más reciente si se omite).
+2. `GET /api/v1/stats/sac/growth?metric=<m>&months=<n>&databaseName=<opcional>` devuelve, por base y
+   por mes, el valor, la variación absoluta y la variación porcentual frente al mes anterior.
+3. `metric` se valida contra una lista blanca: las ocho métricas de la tabla de indicadores más
+   `activitiesLast30Days` (nueve en total). Un valor fuera de ella devuelve **400**, y nunca se
+   interpola en la agregación.
+4. **El mes se representa con el último snapshot del mes** para cada base: `$sort` por `generatedAt`
+   descendente y `$first` por grupo. Esto define el grano mensual y, de paso, neutraliza los
+   duplicados que permite el modelo append-only de BL-031.
+5. Un mes sin ningún snapshot para una base se reporta como **sin dato**; no se interpola ni se
+   arrastra el valor del mes anterior.
+6. Semántica de los dos contadores de gestiones, confirmada con el solicitante: **ambos son
+   acumulados**, y por eso no se calculan igual. `activities` es un acumulado histórico que nunca se
+   reinicia, así que su crecimiento mensual es la **diferencia** entre el snapshot del mes y el del mes
+   anterior. `activitiesLast30Days` es el acumulado de una ventana fija de 30 días —un volumen ya
+   comparable entre meses—, así que su crecimiento mensual es la variación del **propio valor**. No se
+   grafican en el mismo eje.
+7. Las métricas financieras se agregan con `$toDecimal`, no en punto flotante, coherentes con el
+   `Decimal128` de BL-031.
+8. Todo el cálculo ocurre en agregaciones de MongoDB; nada de traer el histórico al cliente para
+   filtrarlo allí (mismo criterio que BL-018).
+9. Rol: Administrador, Usuario y Auditor, declarados explícitamente. Sin token: **401**.
+10. Los gráficos se construyen sin librería, con la misma técnica del gráfico de distribución de SO, y
+    llevan la alternativa accesible que exige WCAG AA (`aria-label` más los datos en texto oculto
+    visualmente). Paleta y marcas según `design.md`; verificado en tema claro y oscuro.
+11. Sin cadenas en el código: todo por `| t`, con las claves en ambos catálogos de mensajes.
+12. Pruebas unitarias de las agregaciones con datos que incluyan un mes sin snapshot, dos snapshots el
+    mismo día y una base con histórico más corto que la ventana solicitada.
+
+Fuera de alcance de este elemento: reglas de alerta por umbral de tamaño o de crecimiento sobre estas
+métricas. Si se quieren, se abre un elemento propio que reutilice el modelo dirigido por configuración
+de `alert_rules`.
