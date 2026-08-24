@@ -1,0 +1,41 @@
+@if (rows().length === 0) {
+  <p class="empty-state">{{ 'sacAnalytics.rankingEmpty' | t }}</p>
+} @else {
+  <!-- The bars are one summarised image for assistive tech; the real per-row
+       data is in the visually-hidden table below as ordinary navigable markup,
+       so a screen-reader user gets both the summary and the full detail. -->
+  <div class="chart-rows" role="img" [attr.aria-label]="ariaSummary()">
+    @for (row of rows(); track row.databaseName) {
+      <div class="chart-row" aria-hidden="true">
+        <span class="db-label mono">{{ row.databaseName }}</span>
+        <div class="bar-track">
+          <div
+            class="bar"
+            [style.width.%]="row.widthPercent"
+            [style.--bar-color]="'var(' + row.colorVar + ')'"
+            [attr.title]="row.databaseName + ': ' + row.label"
+          ></div>
+        </div>
+        <span class="value-label">{{ row.label }}</span>
+      </div>
+    }
+  </div>
+
+  <table class="sr-only">
+    <caption>{{ 'sacAnalytics.rankingCaption' | t }}</caption>
+    <thead>
+      <tr>
+        <th scope="col">{{ 'field.databaseName' | t }}</th>
+        <th scope="col">{{ 'sacAnalytics.value' | t }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.databaseName) {
+        <tr>
+          <td>{{ row.databaseName }}</td>
+          <td>{{ row.label }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

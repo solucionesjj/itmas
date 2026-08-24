@@ -73,7 +73,7 @@ claro, sin bloqueo) · **Baja** (mejora a largo plazo, alto costo o poco valor i
 | [BL-030](#bl-030) | G | `ng serve` no alcanza la API local (sin CORS ni proxy de desarrollo) | Alta | Hecho | — | — |
 | [BL-031](#bl-031) | I | Modelo e ingesta de estadísticas diarias de SAC | Alta | Hecho | — | ADR-0018 |
 | [BL-032](#bl-032) | I | Consulta y exportación de las estadísticas de SAC | Alta | Hecho | BL-031 | ADR-0018 |
-| [BL-033](#bl-033) | I | Dashboard de ranking y crecimiento de las bases SAC | Media | Pendiente | BL-031 | ADR-0018, RF-07, UC-07 |
+| [BL-033](#bl-033) | I | Dashboard de ranking y crecimiento de las bases SAC | Media | Hecho | BL-031 | ADR-0018, RF-07, UC-07 |
 
 **Temas:** A · Auditoría y trazabilidad — B · Notificaciones — C · Identidad y control de acceso —
 D · Monitoreo y detección — E · Integraciones externas — F · Gestión de activos — G · Calidad y deuda técnica —
@@ -823,7 +823,7 @@ Criterios de aceptación:
     formatos. ✔
 
 ### BL-033
-**Dashboard de ranking y crecimiento de las bases SAC** · Media · Pendiente · Depende de BL-031 · Trazabilidad: ADR-0018, RF-07, UC-07
+**Dashboard de ranking y crecimiento de las bases SAC** · Media · **Hecho** · Depende de BL-031 · Trazabilidad: ADR-0018, RF-07, UC-07
 
 El valor del histórico está en el análisis, no en el listado. Siete indicadores, todos con la misma
 forma: un ranking por tamaño y seis series de crecimiento mes a mes.
@@ -847,34 +847,39 @@ Indicadores requeridos y la métrica que los alimenta:
 Criterios de aceptación:
 1. `GET /api/v1/stats/sac/ranking?metric=<m>&at=<fecha opcional>` devuelve las bases ordenadas de
    mayor a menor por la métrica, usando el **último snapshot de cada base** a la fecha indicada (o el
-   más reciente si se omite).
+   más reciente si se omite). ✔
 2. `GET /api/v1/stats/sac/growth?metric=<m>&months=<n>&databaseName=<opcional>` devuelve, por base y
-   por mes, el valor, la variación absoluta y la variación porcentual frente al mes anterior.
+   por mes, el valor, la variación absoluta y la variación porcentual frente al mes anterior. ✔
 3. `metric` se valida contra una lista blanca: las ocho métricas de la tabla de indicadores más
    `activitiesLast30Days` (nueve en total). Un valor fuera de ella devuelve **400**, y nunca se
-   interpola en la agregación.
+   interpola en la agregación. ✔
 4. **El mes se representa con el último snapshot del mes** para cada base: `$sort` por `generatedAt`
    descendente y `$first` por grupo. Esto define el grano mensual y, de paso, neutraliza los
-   duplicados que permite el modelo append-only de BL-031.
+   duplicados que permite el modelo append-only de BL-031. ✔
 5. Un mes sin ningún snapshot para una base se reporta como **sin dato**; no se interpola ni se
-   arrastra el valor del mes anterior.
+   arrastra el valor del mes anterior. ✔ (y la variación tampoco cruza el hueco: la rejilla mensual
+   se densifica dentro del pipeline antes de calcular deltas)
 6. Semántica de los dos contadores de gestiones, confirmada con el solicitante: **ambos son
    acumulados**, y por eso no se calculan igual. `activities` es un acumulado histórico que nunca se
    reinicia, así que su crecimiento mensual es la **diferencia** entre el snapshot del mes y el del mes
    anterior. `activitiesLast30Days` es el acumulado de una ventana fija de 30 días —un volumen ya
    comparable entre meses—, así que su crecimiento mensual es la variación del **propio valor**. No se
-   grafican en el mismo eje.
+   grafican en el mismo eje. ✔
 7. Las métricas financieras se agregan con `$toDecimal`, no en punto flotante, coherentes con el
-   `Decimal128` de BL-031.
+   `Decimal128` de BL-031. ✔
 8. Todo el cálculo ocurre en agregaciones de MongoDB; nada de traer el histórico al cliente para
-   filtrarlo allí (mismo criterio que BL-018).
-9. Rol: Administrador, Usuario y Auditor, declarados explícitamente. Sin token: **401**.
+   filtrarlo allí (mismo criterio que BL-018). ✔ (lo único calculado fuera son las etiquetas de mes,
+   que son constantes de calendario, no datos)
+9. Rol: Administrador, Usuario y Auditor, declarados explícitamente. Sin token: **401**. ✔
 10. Los gráficos se construyen sin librería, con la misma técnica del gráfico de distribución de SO, y
     llevan la alternativa accesible que exige WCAG AA (`aria-label` más los datos en texto oculto
-    visualmente). Paleta y marcas según `design.md`; verificado en tema claro y oscuro.
-11. Sin cadenas en el código: todo por `| t`, con las claves en ambos catálogos de mensajes.
+    visualmente). Paleta y marcas según `design.md`; verificado en tema claro y oscuro. ✔
+11. Sin cadenas en el código: todo por `| t`, con las claves en ambos catálogos de mensajes. ✔
 12. Pruebas unitarias de las agregaciones con datos que incluyan un mes sin snapshot, dos snapshots el
-    mismo día y una base con histórico más corto que la ventana solicitada.
+    mismo día y una base con histórico más corto que la ventana solicitada. ✔ en
+    `sac-statistics.aggregation.spec.ts`, que ejecuta los pipelines reales contra una instancia
+    en memoria: el comportamiento de una agregación **es** lo que se prueba, y un mock solo
+    afirmaría la forma de las etapas escritas, no lo que Mongo hace con ellas.
 
 Fuera de alcance de este elemento: reglas de alerta por umbral de tamaño o de crecimiento sobre estas
 métricas. Si se quieren, se abre un elemento propio que reutilice el modelo dirigido por configuración

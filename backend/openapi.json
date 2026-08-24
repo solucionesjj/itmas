@@ -891,6 +891,155 @@
         ]
       }
     },
+    "/api/v1/stats/sac/ranking": {
+      "get": {
+        "operationId": "StatsController_getSacRanking",
+        "parameters": [
+          {
+            "name": "metric",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "totalSizeGb",
+                "activeAccounts",
+                "debtors",
+                "activities",
+                "activitiesLast30Days",
+                "avgActiveUsersLast3Months",
+                "balanceSum",
+                "overdueSum",
+                "principalSum"
+              ]
+            }
+          },
+          {
+            "name": "at",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "stats"
+        ]
+      }
+    },
+    "/api/v1/stats/sac/growth": {
+      "get": {
+        "operationId": "StatsController_getSacGrowth",
+        "parameters": [
+          {
+            "name": "metric",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "totalSizeGb",
+                "activeAccounts",
+                "debtors",
+                "activities",
+                "activitiesLast30Days",
+                "avgActiveUsersLast3Months",
+                "balanceSum",
+                "overdueSum",
+                "principalSum"
+              ]
+            }
+          },
+          {
+            "name": "months",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 60,
+              "default": 12,
+              "type": "number"
+            }
+          },
+          {
+            "name": "databaseName",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "stats"
+        ]
+      }
+    },
+    "/api/v1/stats/sac/databases": {
+      "get": {
+        "operationId": "StatsController_getSacDatabases",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "stats"
+        ]
+      }
+    },
     "/api/v1/reports/export": {
       "get": {
         "operationId": "ReportsController_export",

@@ -51,6 +51,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   },
   { route: '/reports', label: 'nav.reports', icon: 'assessment' },
   { route: '/sac-statistics', label: 'nav.sacStatistics', icon: 'database' },
+  { route: '/sac-analytics', label: 'nav.sacAnalytics', icon: 'insights' },
   { route: '/security-group-rules', label: 'nav.firewallRules', icon: 'shield' },
   { route: '/admin/users', label: 'nav.users', icon: 'manage_accounts', roles: ['administrator'] }
 ];

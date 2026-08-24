@@ -1,0 +1,115 @@
+// Chart chrome only. Bar colour comes from the `--chart-*` slot the parent
+// assigns, and the delta text from §10.2's `--delta-up`/`--delta-down` — both
+// carry their own light and dark values, so nothing here knows a hex.
+:host {
+  display: block;
+}
+
+.chart-title {
+  font: var(--mat-sys-title-small);
+  color: var(--mat-sys-on-surface);
+  margin: 0 0 var(--sp-1);
+}
+
+.chart-caption {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0 0 var(--sp-4);
+}
+
+.plot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  // A tighter gap than a categorical chart's: these are consecutive months of
+  // one series, not independent categories, and the 4px still clears §2.7's 2px
+  // minimum separation between adjacent marks. It is also what lets a full
+  // twelve-month window fit the card instead of clipping the newest month.
+  gap: var(--sp-1);
+  // A wide window scrolls inside the card rather than the page body.
+  overflow-x: auto;
+}
+
+.column {
+  display: grid;
+  // Track, then month, then delta — the track's fixed height is what makes the
+  // bars comparable across the row.
+  grid-template-rows: 140px max-content max-content;
+  gap: var(--sp-1);
+  flex: 1 1 0;
+  // Wide enough for an `08/26` month label and a `+12,3%` delta without either
+  // colliding with its neighbour; the plot scrolls inside the card when a long
+  // window does not fit, rather than letting the labels overlap.
+  min-width: 38px;
+  justify-items: center;
+}
+
+.column__track {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.column__bar {
+  position: absolute;
+  left: 15%;
+  right: 15%;
+  min-height: 2px;
+  background: var(--bar-color);
+  // Rounded at the data end only, square at the baseline.
+  border-radius: 4px 4px 0 0;
+}
+
+// A bar below zero is rounded at its own data end — the bottom.
+.column__bar--negative {
+  border-radius: 0 0 4px 4px;
+}
+
+.column__gap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-outline);
+}
+
+.zero-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  // The axis line the negative bars hang from — an orange 1px detail, never a fill.
+  border-top: 1px solid var(--itmas-accent-detail);
+  pointer-events: none;
+}
+
+.column__month {
+  font: var(--mat-sys-label-small);
+  color: var(--mat-sys-on-surface-variant);
+  white-space: nowrap;
+}
+
+.column__delta {
+  font: var(--mat-sys-label-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface-variant);
+  white-space: nowrap;
+}
+
+// §10.2's delta tokens, finally in use: they are AA at this size, unlike the
+// chart slot colours, which are for marks rather than text.
+.column__delta--up {
+  color: var(--delta-up);
+}
+
+.column__delta--down {
+  color: var(--delta-down);
+}
+
+.empty-state {
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+}

@@ -85,6 +85,14 @@ export const routes: Routes = [
           ).then((m) => m.SacStatisticsListComponent)
       },
       {
+        path: 'sac-analytics',
+        title: 'nav.sacAnalytics',
+        loadComponent: () =>
+          import('./features/sac-analytics/sac-analytics.component').then(
+            (m) => m.SacAnalyticsComponent
+          )
+      },
+      {
         path: 'security-group-rules',
         title: 'nav.firewallRules',
         loadComponent: () =>

@@ -154,6 +154,67 @@ or recreates, so removing retention after enabling it is a documented DBA action
   (`lib/xlsx/xform/sheet/cf-ext/cf-rule-ext-xform.js`), so the affected code path is not
   reachable through it.
 
+### Ranking and growth analysis (BL-033)
+
+- **`GET /api/v1/stats/sac/ranking`** and **`GET /api/v1/stats/sac/growth`**, plus
+  `GET /api/v1/stats/sac/databases` to feed the view's selector. Under `/stats`
+  rather than on the `sac-statistics` resource because these are aggregates, not
+  records — the same distinction `/stats/os` already draws against `/devices`. All
+  three roles, declared explicitly.
+- **`metric` is an enum of nine values that selects a pre-built expression.** The
+  field path is built from the enum member, never from the query string, so no
+  caller-supplied text reaches an aggregation stage. The three financial metrics
+  are cast with `$toDecimal` so a monthly total or delta never drifts by cents.
+- **The month is the LAST snapshot of that month, in UTC.** `$sort` by `generatedAt`
+  descending then `$first` per `(database, month)` group. That defines the monthly
+  grain and simultaneously collapses the duplicates the append-only model allows —
+  two snapshots on the same day resolve to the later one, and a re-run's corrected
+  figures win over the original.
+
+  UTC is a decision with a known cost, not an oversight: a snapshot generated at
+  02:00 UTC by an engine in Bogotá (UTC-5) belongs to the previous day locally, and
+  near a month boundary lands in the following month's bucket. It is accepted
+  because the alternative — a configurable zone — makes the same data produce
+  different months depending on a server setting, which is worse for a figure people
+  compare across installs and quote at each other. Daily snapshots are generally
+  taken well inside a day, so the boundary case is rare; if it ever bites, a
+  configurable zone is an additive change (a `timezone` argument on the
+  `$dateToString` already there).
+- **A month with no snapshot is a hole, and the delta refuses to bridge it** (CA-5).
+  This is the subtle part. The sparse per-month results are projected onto a **dense
+  grid** of the requested months *inside the pipeline* before any delta is computed,
+  so "previous month" means the previous *calendar* month. Computing deltas over the
+  compacted array instead — the obvious implementation — silently compares across a
+  gap and reports two months of growth as one month's. The month labels are the only
+  thing computed outside Mongo, and they are calendar constants, so CA-8's
+  "everything in the aggregation" holds.
+- **The two activity counters share one response shape and must not share an axis**
+  (CA-6). Both are cumulative, so `{value, delta, deltaPercent}` serves both; they
+  differ in which field is meaningful. `activities` never resets, so its raw value is
+  an ever-growing number and the month's real figure is the **delta** — the
+  activities performed that month. `activitiesLast30Days` is a fixed 30-day window
+  and therefore already comparable month to month, so its figure is the **value**.
+  The UI encodes this as a `plot: 'value' | 'delta'` per chart and gives them
+  separate charts.
+- **A percentage against a zero base is reported as no data, not as infinity**, and
+  the absolute delta is still reported in that case — it is the meaningful half.
+- **The charts are hand-built, with no charting library** (CA-10), the same technique
+  as the OS distribution chart (ADR-0009) rotated to columns: a fixed-height track
+  per month, bars sized by percentage, `--chart-*` slot tokens that each carry their
+  own light and dark value. The axis is anchored at zero so a 590-to-660 series is
+  not drawn as nothing-to-everything, and a series that crosses zero gets a baseline
+  its negative bars hang from. Each chart is a `role="img"` with a summary plus a
+  visually-hidden table carrying every figure as navigable markup.
+- **Slot 7 (red) is unused across all ten charts.** §2.7 notes slots 5/6/7 double as
+  the compliance triad; a red column labelled "Saldo" reads as an alert about the
+  balance rather than as an arbitrary series colour. Each chart is a single series in
+  its own card, so the colours are variety rather than a legend and nothing is lost.
+- **Presentation is one database at a time**, chosen from a selector, rather than N
+  databases overlaid per metric. The growth endpoint's `databaseName` is optional and
+  returns every series, so this is a UI choice, not an API limit: overlaying a dozen
+  hand-drawn series would be unreadable, and the ranking chart above already answers
+  the cross-database question.
+
 ## Consequences
 
 - **A database engine must be provisioned first**, exactly like any other node

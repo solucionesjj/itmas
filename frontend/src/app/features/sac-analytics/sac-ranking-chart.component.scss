@@ -1,0 +1,58 @@
+// Chart chrome only — the categorical slot colours come from §2.7's
+// `--chart-1…8` tokens, which each carry their own light and dark value, so
+// nothing here knows a hex and the bars follow the theme.
+:host {
+  display: block;
+}
+
+.chart-rows {
+  display: flex;
+  flex-direction: column;
+  // Comfortably above the 2px minimum separating adjacent marks (§2.7).
+  gap: var(--sp-2);
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: minmax(0, max-content) 1fr max-content;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+// The mono identifier treatment (family, 13px, tabular figures) comes from the
+// global `.mono` in styles.scss, which the template applies — redeclaring it
+// here would be a second copy of a shared decision, and the design.md gate
+// forbids an ad-hoc font-size in a component for exactly that reason.
+.db-label {
+  color: var(--mat-sys-on-surface);
+  white-space: nowrap;
+}
+
+.bar-track {
+  height: 16px;
+  border-left: 1px solid var(--mat-sys-outline-variant);
+  position: relative;
+}
+
+.bar {
+  height: 16px;
+  min-width: 2px;
+  background: var(--bar-color);
+  // Square at the baseline, 4px rounded cap at the data end.
+  border-radius: 0 4px 4px 0;
+}
+
+.value-label {
+  font: var(--mat-sys-body-medium);
+  // After `font:`, which resets the font-variant longhands.
+  font-variant-numeric: tabular-nums;
+  color: var(--mat-sys-on-surface-variant);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.empty-state {
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+  margin: 0;
+}

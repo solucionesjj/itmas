@@ -1,8 +1,9 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
-import { Model } from 'mongoose';
+import { Model, PipelineStage, Types } from 'mongoose';
 import { SacStatistic, SacStatisticDocument } from './sac-statistic.schema';
+import { SacMetric, metricExpression } from './sac-metric.enum';
 import {
   SacStatisticSortField,
   SacStatisticSortOrder,
@@ -37,6 +38,28 @@ export interface PagedResult<T> {
   total: number;
   page: number;
   limit: number;
+}
+
+/** One row of `GET /stats/sac/ranking`. */
+export interface SacRankingRow {
+  databaseName: string;
+  /** Decimal128 for the three financial metrics, number otherwise, null if the snapshot lacks it. */
+  value: Types.Decimal128 | number | null;
+  /** The `generatedAt` of the snapshot this row was taken from. */
+  generatedAt: Date;
+}
+
+export interface SacGrowthPoint {
+  /** `YYYY-MM`, UTC. */
+  month: string;
+  value: Types.Decimal128 | number | null;
+  delta: Types.Decimal128 | number | null;
+  deltaPercent: number | null;
+}
+
+export interface SacGrowthSeries {
+  databaseName: string;
+  series: SacGrowthPoint[];
 }
 
 @Injectable()
@@ -158,5 +181,225 @@ export class SacStatisticsRepository implements OnModuleInit {
       .lean()
       .batchSize(batchSize)
       .cursor();
+  }
+
+  /**
+   * BL-033 indicator 1: every database ranked by `metric`, using the LAST
+   * snapshot of each database at (or before) `at` — the most recent one overall
+   * when `at` is omitted. Nulls land at the end: Mongo sorts null/missing below
+   * every number, so a descending sort puts a database without the metric last
+   * rather than first.
+   */
+  async rankByMetric(metric: SacMetric, at?: Date): Promise<SacRankingRow[]> {
+    const pipeline: PipelineStage[] = [];
+    if (at) {
+      pipeline.push({ $match: { generatedAt: { $lte: at } } });
+    }
+    pipeline.push(
+      { $sort: { generatedAt: -1 } },
+      {
+        $group: {
+          _id: '$databaseName',
+          value: { $first: metricExpression(metric) },
+          generatedAt: { $first: '$generatedAt' },
+        },
+      },
+      // `_id` as the tie-break so equal values order predictably by name.
+      { $sort: { value: -1, _id: 1 } },
+      { $project: { _id: 0, databaseName: '$_id', value: 1, generatedAt: 1 } },
+    );
+
+    return this.model.aggregate<SacRankingRow>(pipeline).exec();
+  }
+
+  /**
+   * BL-033 indicators 2–7: per database and per month, the value, the absolute
+   * variation and the percentage variation against the previous month.
+   *
+   * Every step happens inside the aggregation (CA-8) — the service supplies only
+   * the month *labels*, which are calendar constants, not data. Two things this
+   * pipeline gets right that a naive version does not:
+   *
+   *  - **The month is the LAST snapshot of that month** (CA-4): `$sort` by
+   *    `generatedAt` descending then `$first` per group. That defines the monthly
+   *    grain and simultaneously collapses the duplicates BL-031's append-only
+   *    model allows — two snapshots on the same day resolve to the later one.
+   *  - **A month with no snapshot is a hole, not a bridge** (CA-5). The sparse
+   *    per-month results are projected onto a DENSE grid of the requested months
+   *    first, so "previous month" means the previous *calendar* month. Computing
+   *    deltas over the compacted array instead would silently compare across a
+   *    gap and report a two-month jump as one month's growth.
+   */
+  async growthByMetric(
+    metric: SacMetric,
+    monthKeys: string[],
+    windowStart: Date,
+    databaseName?: string,
+  ): Promise<SacGrowthSeries[]> {
+    const match: Record<string, unknown> = {
+      generatedAt: { $gte: windowStart },
+    };
+    if (databaseName) {
+      match.databaseName = {
+        $regex: escapeRegex(databaseName),
+        $options: 'i',
+      };
+    }
+
+    const pipeline: PipelineStage[] = [
+      { $match: match },
+      { $sort: { generatedAt: -1 } },
+      {
+        $group: {
+          _id: {
+            databaseName: '$databaseName',
+            // UTC by decision, not by omission: the month boundary is fixed to
+            // UTC so the same snapshot always lands in the same bucket
+            // regardless of where the API runs (ADR-0018).
+            month: {
+              $dateToString: {
+                format: '%Y-%m',
+                date: '$generatedAt',
+                timezone: 'UTC',
+              },
+            },
+          },
+          value: { $first: metricExpression(metric) },
+        },
+      },
+      {
+        $group: {
+          _id: '$_id.databaseName',
+          points: { $push: { month: '$_id.month', value: '$value' } },
+        },
+      },
+      {
+        // Sparse months → dense grid, holes as explicit nulls.
+        $addFields: {
+          series: {
+            $map: {
+              input: monthKeys,
+              as: 'm',
+              in: {
+                $let: {
+                  vars: {
+                    hit: {
+                      $first: {
+                        $filter: {
+                          input: '$points',
+                          as: 'p',
+                          cond: { $eq: ['$$p.month', '$$m'] },
+                        },
+                      },
+                    },
+                  },
+                  in: {
+                    month: '$$m',
+                    value: { $ifNull: ['$$hit.value', null] },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        // Pair each month with the one immediately before it in the grid.
+        $addFields: {
+          series: {
+            $map: {
+              input: { $range: [0, { $size: '$series' }] },
+              as: 'i',
+              in: {
+                $let: {
+                  vars: {
+                    cur: { $arrayElemAt: ['$series', '$$i'] },
+                    prev: {
+                      $cond: [
+                        { $gt: ['$$i', 0] },
+                        {
+                          $arrayElemAt: ['$series', { $subtract: ['$$i', 1] }],
+                        },
+                        null,
+                      ],
+                    },
+                  },
+                  in: {
+                    month: '$$cur.month',
+                    value: '$$cur.value',
+                    // Either side missing ⇒ no variation to report, rather than
+                    // treating an absent month as a zero.
+                    delta: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $ne: ['$$cur.value', null] },
+                            { $ne: ['$$prev.value', null] },
+                          ],
+                        },
+                        { $subtract: ['$$cur.value', '$$prev.value'] },
+                        null,
+                      ],
+                    },
+                    // A percentage against a zero base is undefined, not
+                    // infinite — reported as no data.
+                    deltaPercent: {
+                      $cond: [
+                        {
+                          $and: [
+                            { $ne: ['$$cur.value', null] },
+                            { $ne: ['$$prev.value', null] },
+                            { $ne: ['$$prev.value', 0] },
+                          ],
+                        },
+                        {
+                          $round: [
+                            {
+                              $multiply: [
+                                {
+                                  $divide: [
+                                    {
+                                      $toDouble: {
+                                        $subtract: [
+                                          '$$cur.value',
+                                          '$$prev.value',
+                                        ],
+                                      },
+                                    },
+                                    { $toDouble: '$$prev.value' },
+                                  ],
+                                },
+                                100,
+                              ],
+                            },
+                            2,
+                          ],
+                        },
+                        null,
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      { $project: { _id: 0, databaseName: '$_id', series: 1 } },
+      { $sort: { databaseName: 1 } },
+    ];
+
+    return this.model.aggregate<SacGrowthSeries>(pipeline).exec();
+  }
+
+  /** Distinct database names for the analytics view's selector, alphabetical. */
+  async listDatabaseNames(): Promise<string[]> {
+    const rows = await this.model
+      .aggregate<{ _id: string }>([
+        { $group: { _id: '$databaseName' } },
+        { $sort: { _id: 1 } },
+      ])
+      .exec();
+    return rows.map((row) => row._id);
   }
 }
