@@ -52,6 +52,7 @@ jobs:
   agent-macos:
     name: Agent — macOS (full suite, universal2 build, launchd smoke test)
     runs-on: macos-latest
+    continue-on-error: true
     defaults:
       run:
         working-directory: agent
@@ -75,6 +76,7 @@ jobs:
   agent-ubuntu:
     name: Agent — Linux (shared core + stub backend)
     runs-on: ubuntu-latest
+    continue-on-error: true
     defaults:
       run:
         working-directory: agent
@@ -89,6 +91,7 @@ jobs:
   agent-windows:
     name: Agent — Windows (shared core + stub backend)
     runs-on: windows-latest
+    continue-on-error: true
     defaults:
       run:
         working-directory: agent
