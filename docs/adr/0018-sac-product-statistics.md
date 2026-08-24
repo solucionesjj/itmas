@@ -110,6 +110,50 @@ or recreates, so removing retention after enabling it is a documented DBA action
   which discriminates on category in `evaluateAccessEvent` — a change with blast radius
   well outside this feature for no gain here.
 
+### Query endpoint and export (BL-032)
+
+- **`GET /api/v1/sac-statistics`**, JWT, all three roles declared explicitly. The
+  standard `{items,total,page,limit}` envelope, two filters (`databaseName` partial
+  and case-insensitive, regex-escaped before it reaches `$regex`; a `from`/`to` range
+  on `generatedAt`), and `sort`/`order` against an **enum** whitelist. The whitelist is
+  not defensive boilerplate: an arbitrary field name would let a caller sort on an
+  unindexed field and turn the listing into a collection scan.
+- **`format=xlsx` is a new `ReportFormat`, implemented as a generic serialiser** beside
+  CSV and PDF (`exceljs`, new production dependency). It is therefore available to
+  `reportType=devices|alerts` too, without either of them changing how it fetches data —
+  the point of putting it in the serialiser layer rather than in the SAC report.
+- **`format=pdf` is refused with a `400` for this report type.** Fifteen columns do not
+  fit the PDF generator's fixed layout, and silently substituting another format or
+  emitting an unreadable page would both be worse than saying so.
+- **The SAC export streams; the other two stay buffered.** `ReportFile` became a
+  discriminated union (`buffer` | `stream`) rather than everything moving to streaming.
+  `devices`/`alerts` are bounded by the size of the estate, so buffering keeps them
+  simple and lets `AllExceptionsFilter` still turn a late failure into a proper JSON
+  error. `sac_statistics` grows daily with no default TTL, so its unfiltered history has
+  no ceiling and a `.find().exec()` would eventually be an out-of-memory export. Its
+  rows come off a Mongo cursor in batches and are written as they arrive, with
+  backpressure respected explicitly — ignoring `write()`'s return value is how a fast
+  cursor turns into the very unbounded memory growth the streaming exists to avoid.
+  The accepted cost: once the first byte is out the status line is already sent, so a
+  mid-stream failure truncates the download instead of becoming a 500.
+- **The report carries the fifteen source-derived fields only.** `deviceId` and `_id` are
+  IT-MAS's own provenance bookkeeping, not something the source produced.
+- **Cell types are native in the .xlsx** (a real `Date` for `generatedAt`, numbers with
+  `0` / `#,##0.00` formats) so Excel sorts and charts them rather than treating them as
+  text. **The financial sums round there, and only there**: a numeric spreadsheet cell
+  *is* an IEEE double — Excel has no wider type — so beyond ~15 significant digits the
+  .xlsx loses digits that the CSV export keeps exactly. Use CSV when exact cents matter
+  at that magnitude.
+- **The client never parses the sums either.** `decimal-format.util.ts` groups the digit
+  string itself and asks `Intl` only which two separators the locale uses; routing them
+  through `Number()` or Angular's `DecimalPipe` in the browser would undo the whole
+  Decimal128 chain at the last step.
+- **`exceljs` introduces one moderate advisory**, not a high or critical one: a
+  transitive `uuid` < 11.1.1 with a missing buffer bounds check in `v3`/`v5`/`v6` when a
+  `buf` argument is supplied. `exceljs` calls only `uuid.v4()`, with no `buf`
+  (`lib/xlsx/xform/sheet/cf-ext/cf-rule-ext-xform.js`), so the affected code path is not
+  reachable through it.
+
 ## Consequences
 
 - **A database engine must be provisioned first**, exactly like any other node

@@ -1,10 +1,21 @@
 import { Injectable } from '@nestjs/common';
 import { JsonLoggerService } from '../../common/logger/json-logger.service';
 import {
+  PagedResult,
   SacStatisticInput,
+  SacStatisticsFilter,
   SacStatisticsRepository,
 } from './sac-statistics.repository';
 import { SacStatisticIngestDto } from './dto/sac-statistic-ingest.dto';
+import { QuerySacStatisticsDto } from './dto/query-sac-statistics.dto';
+import {
+  SacStatisticResponse,
+  toSacStatisticResponse,
+} from './sac-statistic-response.mapper';
+import {
+  SacStatisticSortField,
+  SacStatisticSortOrder,
+} from './sac-statistic-sort-field.enum';
 
 export interface SacStatisticsIngestAck {
   /** How many records the request carried. */
@@ -62,5 +73,28 @@ export class SacStatisticsService {
     });
 
     return { received: records.length, inserted };
+  }
+
+  /** BL-032 CA-1: the standard paginated envelope, mapped through the response mapper. */
+  async findAll(
+    query: QuerySacStatisticsDto,
+  ): Promise<PagedResult<SacStatisticResponse>> {
+    const result = await this.repository.findPaged(
+      this.toFilter(query),
+      query.sort ?? SacStatisticSortField.GENERATED_AT,
+      query.order ?? SacStatisticSortOrder.DESC,
+      query.page ?? 1,
+      query.limit ?? 20,
+    );
+
+    return { ...result, items: result.items.map(toSacStatisticResponse) };
+  }
+
+  private toFilter(query: QuerySacStatisticsDto): SacStatisticsFilter {
+    return {
+      databaseName: query.databaseName,
+      from: query.from,
+      to: query.to,
+    };
   }
 }

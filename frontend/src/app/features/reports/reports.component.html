@@ -12,6 +12,7 @@
 
       <mat-radio-group formControlName="format" class="radio-row" [attr.aria-label]="'reports.formatLabel' | t">
         <mat-radio-button value="csv">CSV</mat-radio-button>
+        <mat-radio-button value="xlsx">{{ 'reports.formatXlsx' | t }}</mat-radio-button>
         <mat-radio-button value="pdf">PDF</mat-radio-button>
       </mat-radio-group>
 

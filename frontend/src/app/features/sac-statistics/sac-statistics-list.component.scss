@@ -1,0 +1,14 @@
+// Layout only — table, states and chips come from frontend/src/styles/.
+.filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-2);
+}
+
+.actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}

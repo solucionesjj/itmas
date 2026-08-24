@@ -3,6 +3,11 @@ import { InjectModel } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
 import { Model } from 'mongoose';
 import { SacStatistic, SacStatisticDocument } from './sac-statistic.schema';
+import {
+  SacStatisticSortField,
+  SacStatisticSortOrder,
+} from './sac-statistic-sort-field.enum';
+import { escapeRegex } from '../../common/util/escape-regex.util';
 import { ensureTtlIndex } from '../../common/mongo/ensure-ttl-index.util';
 
 /**
@@ -20,6 +25,19 @@ export type SacStatisticInput = Omit<
   overdueSum: string | null;
   principalSum: string | null;
 };
+
+export interface SacStatisticsFilter {
+  databaseName?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 @Injectable()
 export class SacStatisticsRepository implements OnModuleInit {
@@ -67,5 +85,78 @@ export class SacStatisticsRepository implements OnModuleInit {
     }
     const inserted = await this.model.insertMany(records, { ordered: false });
     return inserted.length;
+  }
+
+  /**
+   * Only ever populated from validated, whitelisted DTO fields — never raw
+   * client keys — to keep NoSQL operator injection out (agent.md §6.7). The
+   * free-text database name is regex-escaped before it reaches `$regex`, so a
+   * value like `.*(a+)+` is matched literally instead of becoming a ReDoS.
+   */
+  private buildQuery(filter: SacStatisticsFilter): Record<string, unknown> {
+    const query: Record<string, unknown> = {};
+
+    if (filter.databaseName) {
+      query.databaseName = {
+        $regex: escapeRegex(filter.databaseName),
+        $options: 'i',
+      };
+    }
+
+    if (filter.from || filter.to) {
+      const generatedAt: Record<string, Date> = {};
+      if (filter.from) generatedAt.$gte = new Date(filter.from);
+      if (filter.to) generatedAt.$lte = new Date(filter.to);
+      query.generatedAt = generatedAt;
+    }
+
+    return query;
+  }
+
+  async findPaged(
+    filter: SacStatisticsFilter,
+    sort: SacStatisticSortField,
+    order: SacStatisticSortOrder,
+    page: number,
+    limit: number,
+  ): Promise<PagedResult<SacStatisticDocument>> {
+    const query = this.buildQuery(filter);
+    const direction = order === SacStatisticSortOrder.ASC ? 1 : -1;
+    // `generatedAt` as the tie-break keeps paging stable when the primary sort
+    // key repeats — without it, two pages can show the same document.
+    const sortSpec: Record<string, 1 | -1> =
+      sort === SacStatisticSortField.GENERATED_AT
+        ? { generatedAt: direction, _id: 1 }
+        : { [sort]: direction, generatedAt: -1, _id: 1 };
+
+    const [items, total] = await Promise.all([
+      this.model
+        .find(query)
+        .sort(sortSpec)
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .exec(),
+      this.model.countDocuments(query).exec(),
+    ]);
+
+    return { items, total, page, limit };
+  }
+
+  /**
+   * Export cursor (BL-032 CA-6): the FULL filtered set, newest first, read in
+   * batches instead of materialised as an array. This collection grows daily and
+   * has no default TTL, so — unlike `devices`/`alerts`, which are bounded by the
+   * size of the estate — the unfiltered history has no natural ceiling and a
+   * `.find().exec()` here would eventually be an out-of-memory export.
+   * `.lean()` skips hydrating a Mongoose document per row, which matters at
+   * this size; the caller must therefore expect plain objects.
+   */
+  streamFiltered(filter: SacStatisticsFilter, batchSize = 500) {
+    return this.model
+      .find(this.buildQuery(filter))
+      .sort({ generatedAt: -1, _id: 1 })
+      .lean()
+      .batchSize(batchSize)
+      .cursor();
   }
 }

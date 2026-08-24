@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { DevicesModule } from '../devices/devices.module';
 import { AlertsModule } from '../alerts/alerts.module';
+import { SacStatisticsModule } from '../sac-statistics/sac-statistics.module';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
 
 @Module({
-  imports: [DevicesModule, AlertsModule],
+  imports: [DevicesModule, AlertsModule, SacStatisticsModule],
   controllers: [ReportsController],
   providers: [ReportsService],
 })

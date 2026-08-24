@@ -72,7 +72,7 @@ claro, sin bloqueo) · **Baja** (mejora a largo plazo, alto costo o poco valor i
 | [BL-029](#bl-029) | H | Adopción del sistema de diseño Material 3 (`design.md`) | Alta | Hecho | — | ADR-0017, ADR-0009 |
 | [BL-030](#bl-030) | G | `ng serve` no alcanza la API local (sin CORS ni proxy de desarrollo) | Alta | Hecho | — | — |
 | [BL-031](#bl-031) | I | Modelo e ingesta de estadísticas diarias de SAC | Alta | Hecho | — | ADR-0018 |
-| [BL-032](#bl-032) | I | Consulta y exportación de las estadísticas de SAC | Alta | Pendiente | BL-031 | ADR-0018 |
+| [BL-032](#bl-032) | I | Consulta y exportación de las estadísticas de SAC | Alta | Hecho | BL-031 | ADR-0018 |
 | [BL-033](#bl-033) | I | Dashboard de ranking y crecimiento de las bases SAC | Media | Pendiente | BL-031 | ADR-0018, RF-07, UC-07 |
 
 **Temas:** A · Auditoría y trazabilidad — B · Notificaciones — C · Identidad y control de acceso —
@@ -777,49 +777,50 @@ No se añade una categoría `database`: cambiar la enum arrastraría al motor de
 discrimina por categoría en `evaluateAccessEvent`.
 
 ### BL-032
-**Consulta y exportación de las estadísticas de SAC** · Alta · Pendiente · Depende de BL-031 · Trazabilidad: ADR-0018
+**Consulta y exportación de las estadísticas de SAC** · Alta · **Hecho** · Depende de BL-031 · Trazabilidad: ADR-0018
 
 Cualquier usuario autenticado del portal debe poder consultar lo que los motores enviaron, con dos
 filtros —nombre de base de datos y fecha de generación— y descargarlo.
 
 Criterios de aceptación:
 1. `GET /api/v1/sac-statistics` devuelve el envelope paginado `{items,total,page,limit}` ya usado por
-   `/devices` y `/alerts`.
+   `/devices` y `/alerts`. ✔
 2. Filtros validados en servidor: `databaseName` (parcial, insensible a mayúsculas, escapado con
    `common/util/escape-regex.util.ts` antes de llegar al `$regex`) y rango `from`/`to` sobre
    `generatedAt`. Orden por `generatedAt` descendente por defecto, con `sort`/`order` sobre una lista
-   blanca de campos.
+   blanca de campos. ✔
 3. Rol: Administrador, Usuario y Auditor, declarados explícitamente con `@Roles()` — son datos de
-   consulta general, pero el endpoint nunca queda sin requisito de rol declarado. Sin token: **401**.
+   consulta general, pero el endpoint nunca queda sin requisito de rol declarado. Sin token: **401**. ✔
 4. `GET /api/v1/reports/export` acepta `reportType=sac-statistics`, respetando los mismos filtros que
    el endpoint de consulta:
    - `format=csv` reutiliza `csv.util.ts`, sin una segunda ruta de código.
    - `format=xlsx` es un valor **nuevo** de `ReportFormat`, implementado con `exceljs` (nueva
      dependencia de producción) como serializador genérico junto a CSV y PDF — queda por tanto
-     disponible también para `reportType=devices|alerts` sin tocar sus rutas de datos.
+     disponible también para `reportType=devices|alerts` sin tocar sus rutas de datos. ✔
    - `format=pdf` se rechaza con **400** y un mensaje explícito para este `reportType`: quince
-     columnas no caben en el layout del generador PDF actual.
+     columnas no caben en el layout del generador PDF actual. ✔
 5. El `.xlsx` lleva una fila de encabezado con los nombres de campo del contrato (misma convención que
    los reportes existentes) y tipos de celda nativos: fecha para `generatedAt`, número para los
-   enteros y número con dos decimales para las tres sumatorias.
+   enteros y número con dos decimales para las tres sumatorias. ✔
 6. La exportación no pagina ni se acota: entrega **todos** los registros disponibles del conjunto
    filtrado, ordenados por `generatedAt` **descendente** —del dato más reciente al más antiguo—. Sin
    filtros, eso es el histórico completo. Como la colección crece a diario y sin TTL, a diferencia de
    `devices`/`alerts` no está acotada por naturaleza: la generación debe recorrer el cursor de Mongo
    por lotes y escribir en streaming (`exceljs` expone un escritor de libro en streaming), sin
-   materializar el histórico entero en memoria.
-7. `exceljs` no introduce vulnerabilidades altas ni críticas en `npm audit --omit=dev`.
+   materializar el histórico entero en memoria. ✔
+7. `exceljs` no introduce vulnerabilidades altas ni críticas en `npm audit --omit=dev`. ✔ (una moderada:
+   `uuid` transitivo; el aviso cubre `v3/v5/v6` con `buf`, y `exceljs` solo llama a `v4()` sin `buf`)
 8. Vista Angular con tabla, los dos filtros, paginación y botón de descarga, enlazada desde el menú
    para los tres roles. Cumple `design.md`: tabla §9.2, los cuatro estados de §10.4 (vacío, carga,
-   error, con datos), identificadores y fechas en `Roboto Mono`, y verificada en tema claro y oscuro.
+   error, con datos), identificadores y fechas en `Roboto Mono`, y verificada en tema claro y oscuro. ✔
 9. Ninguna cadena visible está en el código: todas pasan por el pipe `| t` con las claves en
    `messages.es-CO.ts` y `messages.en-US.ts`. Los pipes `date`/`number` reciben `i18n.locale()`
-   explícitamente.
+   explícitamente. ✔
 10. Los filtros se reflejan en la URL con `syncFiltersToUrl` (`core/utils/filter-url.util.ts`),
     llamado **solo** desde el cambio de filtros — nunca desde el constructor del componente (ver la
-    nota de BL-029 sobre `NavigationSkipped` y el resaltado del menú).
+    nota de BL-029 sobre `NavigationSkipped` y el resaltado del menú). ✔
 11. Pruebas e2e de los tres roles con acceso y del 401 sin token, más las de la exportación en ambos
-    formatos.
+    formatos. ✔
 
 ### BL-033
 **Dashboard de ranking y crecimiento de las bases SAC** · Media · Pendiente · Depende de BL-031 · Trazabilidad: ADR-0018, RF-07, UC-07

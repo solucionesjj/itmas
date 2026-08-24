@@ -502,6 +502,104 @@
         "tags": [
           "ingestion"
         ]
+      },
+      "get": {
+        "operationId": "SacStatisticsController_findAll",
+        "parameters": [
+          {
+            "name": "databaseName",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "generatedAt",
+              "type": "string",
+              "enum": [
+                "generatedAt",
+                "databaseName",
+                "totalSizeGb",
+                "activeAccounts",
+                "debtors",
+                "activities",
+                "activeUsers",
+                "balanceSum",
+                "overdueSum",
+                "principalSum"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "sac-statistics"
+        ]
       }
     },
     "/api/v1/alert-rules": {
@@ -805,7 +903,8 @@
               "type": "string",
               "enum": [
                 "devices",
-                "alerts"
+                "alerts",
+                "sac-statistics"
               ]
             }
           },
@@ -817,7 +916,8 @@
               "type": "string",
               "enum": [
                 "csv",
-                "pdf"
+                "pdf",
+                "xlsx"
               ]
             }
           },
@@ -846,6 +946,15 @@
             "required": false,
             "in": "query",
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "databaseName",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 128,
               "type": "string"
             }
           },
@@ -1101,7 +1210,8 @@
               "type": "string",
               "enum": [
                 "csv",
-                "pdf"
+                "pdf",
+                "xlsx"
               ]
             }
           },

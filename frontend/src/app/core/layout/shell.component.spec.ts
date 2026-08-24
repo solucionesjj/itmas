@@ -82,6 +82,7 @@ describe('ShellComponent', () => {
         'Equipos',
         'Alertas',
         'Reportes',
+        'Estadísticas SAC',
         'Reglas de Firewall AWS',
         'Usuarios'
       ]);
@@ -93,6 +94,8 @@ describe('ShellComponent', () => {
       expect(labels).not.toContain('Alertas');
       expect(labels).not.toContain('Usuarios');
       expect(labels).toContain('Equipos');
+      // General consultation data — open to all three roles (BL-032 CA-3/CA-8).
+      expect(labels).toContain('Estadísticas SAC');
     });
 
     it('shows Alertas but not Usuarios to an Auditor', () => {
