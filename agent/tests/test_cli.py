@@ -100,9 +100,16 @@ def test_service_install_passes_this_binarys_own_path_to_the_installer(mocker, t
 
     assert exit_code == 0
     fake_installer.install.assert_called_once()
+    # `.resolve()` on the expectation too, mirroring what _cmd_service does to
+    # sys.argv[0] — without it this compares a resolved path against an
+    # unresolved one, which happens to match on POSIX and cannot on Windows,
+    # where a leading "/" is drive-relative and resolves to "D:/usr/local/...".
+    # Resolving both sides keeps the assertion's meaning (the installer receives
+    # THIS binary's own path, not a hard-coded install location) while making it
+    # say the same thing on every platform.
     assert fake_installer.install.call_args.kwargs["executable_path"] == Path(
         "/usr/local/itmas-agent/bin/itmas-agent"
-    )
+    ).resolve()
 
 
 def test_service_uninstall_calls_the_installer_and_clears_the_credential(mocker, tmp_path):
