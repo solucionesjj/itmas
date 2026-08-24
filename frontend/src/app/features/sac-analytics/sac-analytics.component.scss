@@ -1,0 +1,51 @@
+// Layout only — states and skeletons come from frontend/src/styles/.
+.filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.refresh-bar {
+  margin-bottom: var(--sp-3);
+}
+
+.section-title {
+  font: var(--mat-sys-title-medium);
+  color: var(--mat-sys-on-surface);
+  margin: var(--sp-6) 0 var(--sp-3);
+}
+
+.chart-grid {
+  display: grid;
+  // Auto-fit rather than a fixed column count: the charts reflow from several
+  // across on a wide desktop down to one on a phone, with no breakpoint logic
+  // here.
+  //
+  // The 420px floor is sized to the data, not picked for looks: a twelve-month
+  // window is twelve ~42px columns, so a narrower card clips the plot and — since
+  // it scrolls from the left — hides the MOST RECENT months, which are the ones
+  // being looked for. At 420px a year fits without scrolling on any normal
+  // desktop width.
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: var(--sp-4);
+}
+
+.chart-card {
+  // The card's own tokens, not a literal — Material's .mat-mdc-card outranks a
+  // page-level class, so going through them is the only reliable route.
+  --mat-card-outlined-container-color: var(--mat-sys-surface-container-low);
+  --mat-card-outlined-outline-color: var(--mat-sys-outline-variant);
+}
+
+.chart-card--wide {
+  margin-bottom: var(--sp-4);
+}
+
+.skeleton-grid {
+  display: grid;
+  // Same track sizing as .chart-grid, so the skeleton lands where the real
+  // charts will (§9.11) instead of reflowing on load.
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: var(--sp-4);
+}

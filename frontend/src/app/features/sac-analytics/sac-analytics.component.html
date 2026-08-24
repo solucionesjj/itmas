@@ -1,0 +1,97 @@
+<h1>{{ 'nav.sacAnalytics' | t }}</h1>
+
+<form [formGroup]="filters" class="filters-row">
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'sacAnalytics.rankingMetric' | t }}</mat-label>
+    <mat-select formControlName="metric">
+      @for (option of rankingMetrics; track option.metric) {
+        <mat-option [value]="option.metric">{{ option.labelKey | t }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'field.databaseName' | t }}</mat-label>
+    <mat-select formControlName="databaseName">
+      @for (name of databases(); track name) {
+        <mat-option [value]="name">{{ name }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'sacAnalytics.window' | t }}</mat-label>
+    <mat-select formControlName="months">
+      @for (months of monthWindows; track months) {
+        <mat-option [value]="months">{{ 'sacAnalytics.months' | t: { count: months } }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</form>
+
+<!-- The four states of design.md §10.4. -->
+@if (error(); as err) {
+  <div class="state state--error" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ err.message }}</p>
+    @if (err.correlationId) {
+      <p class="mono state__id">{{ 'state.errorReference' | t: { id: err.correlationId } }}</p>
+    }
+    <button matButton="outlined" (click)="reload()">{{ 'action.retry' | t }}</button>
+  </div>
+} @else if (showSkeletons()) {
+  <div class="skeleton-grid">
+    @for (block of [1, 2, 3, 4]; track block) {
+      <div class="skeleton skeleton--chart" aria-hidden="true"></div>
+    }
+  </div>
+  <p class="sr-only" role="status">{{ 'sacAnalytics.loading' | t }}</p>
+} @else if (!hasAnyData()) {
+  <div class="state state--empty">
+    <mat-icon aria-hidden="true">insights</mat-icon>
+    <h2>{{ 'sacAnalytics.emptyTitle' | t }}</h2>
+    <p>{{ 'sacAnalytics.emptyBody' | t }}</p>
+  </div>
+} @else {
+  @if (refreshing()) {
+    <mat-progress-bar
+      mode="indeterminate"
+      class="refresh-bar"
+      [attr.aria-label]="'sacAnalytics.refreshing' | t"
+    />
+  }
+
+  <!-- Indicator 1: the ranking, across every database. -->
+  <mat-card appearance="outlined" class="chart-card chart-card--wide">
+    <mat-card-header>
+      <mat-card-title>{{ 'sacAnalytics.rankingTitle' | t }}</mat-card-title>
+      <mat-card-subtitle>{{ 'sacAnalytics.rankingCaption' | t }}</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <app-sac-ranking-chart [entries]="ranking()" [metric]="rankingMetric()" />
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Indicators 2–7, all for the database named here so the reader is never in
+       doubt about whose series they are looking at. -->
+  <h2 class="section-title">
+    {{ 'sacAnalytics.growthFor' | t: { database: shownDatabase() } }}
+  </h2>
+
+  <div class="chart-grid">
+    @for (chart of growthCharts; track chart.metric) {
+      <mat-card appearance="outlined" class="chart-card">
+        <mat-card-content>
+          <app-sac-growth-chart
+            [points]="pointsFor(chart.metric)"
+            [metric]="chart.metric"
+            [plot]="chart.plot"
+            [titleKey]="chart.titleKey"
+            [captionKey]="chart.captionKey"
+            [colorVar]="chart.colorVar"
+          />
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+}

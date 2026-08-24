@@ -1,0 +1,63 @@
+<h3 class="chart-title">{{ titleKey() | t }}</h3>
+<p class="chart-caption">{{ captionKey() | t }}</p>
+
+@if (!hasData()) {
+  <p class="empty-state">{{ 'sacAnalytics.growthEmpty' | t }}</p>
+} @else {
+  <!-- The columns are one summarised image for assistive tech; the real figures
+       live in the visually-hidden table below as navigable markup. -->
+  <div class="plot" role="img" [attr.aria-label]="ariaSummary()">
+    @if (hasNegative()) {
+      <!-- Only drawn when the series actually crosses zero; a baseline pinned to
+           the floor of an all-positive chart is decoration, not information. -->
+      <div class="zero-line" [style.bottom.%]="zeroLinePercent()" aria-hidden="true"></div>
+    }
+    @for (column of columns(); track column.month) {
+      <div class="column" aria-hidden="true">
+        <div class="column__track">
+          @if (column.value === null) {
+            <!-- A month with no snapshot is an explicit gap, never a zero-height
+                 bar that would read as "reported zero" (CA-5). -->
+            <span class="column__gap" [attr.title]="column.monthLabel + ': ' + column.valueLabel">·</span>
+          } @else {
+            <div
+              class="column__bar"
+              [class.column__bar--negative]="column.negative"
+              [style.height.%]="column.heightPercent"
+              [style.bottom.%]="column.bottomPercent"
+              [style.--bar-color]="'var(' + colorVar() + ')'"
+              [attr.title]="column.monthLabel + ': ' + column.valueLabel + ' (' + column.deltaLabel + ')'"
+            ></div>
+          }
+        </div>
+        <span class="column__month">{{ column.monthLabel }}</span>
+        <span
+          class="column__delta"
+          [class.column__delta--up]="column.trend === 'up'"
+          [class.column__delta--down]="column.trend === 'down'"
+          >{{ column.deltaLabel }}</span
+        >
+      </div>
+    }
+  </div>
+
+  <table class="sr-only">
+    <caption>{{ captionKey() | t }}</caption>
+    <thead>
+      <tr>
+        <th scope="col">{{ 'sacAnalytics.month' | t }}</th>
+        <th scope="col">{{ 'sacAnalytics.value' | t }}</th>
+        <th scope="col">{{ 'sacAnalytics.changePercent' | t }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (column of columns(); track column.month) {
+        <tr>
+          <td>{{ column.month }}</td>
+          <td>{{ column.valueLabel }}</td>
+          <td>{{ column.deltaLabel }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+}

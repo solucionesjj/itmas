@@ -34,13 +34,23 @@ export class ReportsController {
     @Query() query: QueryReportsDto,
     @Res() res: Response,
   ): Promise<void> {
-    const { buffer, contentType, filename } =
-      await this.reportsService.generate(user, query);
+    const file = await this.reportsService.generate(user, query);
 
     res.set({
-      'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Type': file.contentType,
+      'Content-Disposition': `attachment; filename="${file.filename}"`,
     });
-    res.send(buffer);
+
+    if (file.kind === 'buffer') {
+      res.send(file.buffer);
+      return;
+    }
+    // The streaming reports own the response body and end it themselves
+    // (BL-032 CA-6) — no res.send()/res.end() here, which would either
+    // truncate the stream or double-end it. Note the headers above are already
+    // flushed by the time the first row is written, so a failure mid-stream
+    // truncates the file rather than becoming a JSON error; that is inherent to
+    // streaming an unbounded result set.
+    await file.write(res);
   }
 }

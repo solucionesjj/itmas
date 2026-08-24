@@ -1,20 +1,28 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { DevicesRepository } from '../devices/devices.repository';
 import { AlertsRepository } from '../alerts/alerts.repository';
+import { SacStatisticsRepository } from '../sac-statistics/sac-statistics.repository';
 import { UserRole } from '../users/user-role.enum';
 import type { AuthenticatedUser } from '../auth/authenticated-user.interface';
 import { JsonLoggerService } from '../../common/logger/json-logger.service';
 import { QueryReportsDto } from './dto/query-reports.dto';
 import { ReportType } from './report-type.enum';
-import { ReportFormat } from './report-format.enum';
-import { toCsv } from './csv.util';
+import { ReportFormat, REPORT_CONTENT_TYPES } from './report-format.enum';
+import { ReportFile } from './report-file.interface';
+import { CsvCell, toCsv } from './csv.util';
+import { writeCsvStream } from './csv-stream.util';
 import { buildPdfReport } from './pdf.util';
-
-export interface ReportFile {
-  buffer: Buffer;
-  contentType: string;
-  filename: string;
-}
+import { XlsxCell, XlsxColumn, buildXlsxBuffer, writeXlsx } from './xlsx.util';
+import {
+  SAC_STATISTICS_COLUMNS,
+  SAC_STATISTICS_HEADERS,
+  toSacCsvRow,
+  toSacXlsxRow,
+} from './sac-statistics-report.columns';
 
 const DEVICES_HEADERS = [
   'hostname',
@@ -25,11 +33,16 @@ const DEVICES_HEADERS = [
 ];
 const ALERTS_HEADERS = ['type', 'deviceId', 'detail', 'createdAt', 'status'];
 
+/** Bounded reports are plain text columns; only the SAC report needs cell typing. */
+const textColumns = (headers: string[]): XlsxColumn[] =>
+  headers.map((header) => ({ header, type: 'text' }));
+
 @Injectable()
 export class ReportsService {
   constructor(
     private readonly devicesRepository: DevicesRepository,
     private readonly alertsRepository: AlertsRepository,
+    private readonly sacStatisticsRepository: SacStatisticsRepository,
     private readonly logger: JsonLoggerService,
   ) {
     this.logger.setContext(ReportsService.name);
@@ -48,29 +61,94 @@ export class ReportsService {
       );
     }
 
-    const { title, headers, rows } =
-      query.reportType === ReportType.DEVICES
-        ? await this.buildDevicesReport(query)
-        : await this.buildAlertsReport(query);
-
-    const buffer =
-      query.format === ReportFormat.CSV
-        ? Buffer.from(toCsv(headers, rows), 'utf-8')
-        : await buildPdfReport(title, headers, rows);
-
     this.logger.log('Report exported', {
       actorId: user.sub,
       reportType: query.reportType,
       format: query.format,
     });
 
+    if (query.reportType === ReportType.SAC_STATISTICS) {
+      return this.streamSacStatisticsReport(query);
+    }
+
+    const { title, headers, rows } =
+      query.reportType === ReportType.DEVICES
+        ? await this.buildDevicesReport(query)
+        : await this.buildAlertsReport(query);
+
     return {
-      buffer,
-      contentType:
-        query.format === ReportFormat.CSV
-          ? 'text/csv; charset=utf-8'
-          : 'application/pdf',
+      kind: 'buffer',
+      buffer: await this.serialize(query.format, title, headers, rows),
+      contentType: REPORT_CONTENT_TYPES[query.format],
       filename: `${query.reportType}-report.${query.format}`,
+    };
+  }
+
+  private async serialize(
+    format: ReportFormat,
+    title: string,
+    headers: string[],
+    rows: CsvCell[][],
+  ): Promise<Buffer> {
+    switch (format) {
+      case ReportFormat.CSV:
+        return Buffer.from(toCsv(headers, rows), 'utf-8');
+      case ReportFormat.XLSX:
+        return buildXlsxBuffer(
+          title,
+          textColumns(headers),
+          rows as XlsxCell[][],
+        );
+      case ReportFormat.PDF:
+      default:
+        return buildPdfReport(title, headers, rows);
+    }
+  }
+
+  /**
+   * BL-032 CA-4/CA-6. Unlike the other two reports this one is streamed: the
+   * collection grows daily and keeps its full history by default, so the
+   * unfiltered set has no natural ceiling and buffering it would eventually be
+   * an out-of-memory export. Rows come off a Mongo cursor in batches, newest
+   * first, and are written as they arrive.
+   */
+  private streamSacStatisticsReport(query: QueryReportsDto): ReportFile {
+    if (query.format === ReportFormat.PDF) {
+      // Not a silent fallback to another format: the caller asked for something
+      // this report cannot produce, and 15 columns genuinely do not fit the PDF
+      // generator's fixed layout.
+      throw new BadRequestException(
+        'The sac-statistics report has 15 columns and does not fit the PDF layout — use format=csv or format=xlsx',
+      );
+    }
+
+    const filter = {
+      databaseName: query.databaseName,
+      from: query.from,
+      to: query.to,
+    };
+    const format = query.format;
+
+    return {
+      kind: 'stream',
+      contentType: REPORT_CONTENT_TYPES[format],
+      filename: `sac-statistics-report.${format}`,
+      write: async (out) => {
+        // A fresh cursor per call — a cursor is single-use, so it cannot be
+        // opened before `write` and reused across a retry.
+        const cursor = this.sacStatisticsRepository.streamFiltered(filter);
+        if (format === ReportFormat.XLSX) {
+          await writeXlsx(
+            out,
+            'SAC',
+            SAC_STATISTICS_COLUMNS,
+            cursor,
+            toSacXlsxRow,
+          );
+          return;
+        }
+        await writeCsvStream(out, SAC_STATISTICS_HEADERS, cursor, toSacCsvRow);
+      },
     };
   }
 

@@ -1,0 +1,237 @@
+<h1>{{ 'nav.sacStatistics' | t }}</h1>
+
+<form [formGroup]="filters" class="filters-row">
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'field.databaseName' | t }}</mat-label>
+    <input matInput formControlName="databaseName" [placeholder]="'sac.searchPlaceholder' | t" />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'sac.generatedFrom' | t }}</mat-label>
+    <input matInput type="date" formControlName="from" />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>{{ 'sac.generatedTo' | t }}</mat-label>
+    <input matInput type="date" formControlName="to" />
+  </mat-form-field>
+</form>
+
+<!-- The active query as removable chips, plus "limpiar todo" (§10.1). -->
+@if (appliedFilters().length) {
+  <div class="applied-filters">
+    <span class="applied-filters__label">{{ 'state.appliedFilters' | t }}</span>
+    <mat-chip-set>
+      @for (filter of appliedFilters(); track filter.key) {
+        <mat-chip-row (removed)="removeFilter(filter.key)">
+          {{ filter.label }}: {{ filter.value }}
+          <button matChipRemove [attr.aria-label]="'action.removeFilter' | t: { name: filter.label }">
+            <mat-icon>cancel</mat-icon>
+          </button>
+        </mat-chip-row>
+      }
+    </mat-chip-set>
+    <button matButton (click)="clearFilters()">{{ 'action.clearAll' | t }}</button>
+  </div>
+}
+
+<div class="actions-row">
+  <button matButton="outlined" (click)="export('xlsx')" [disabled]="exporting()">
+    <mat-icon>download</mat-icon>
+    {{ 'action.exportXlsx' | t }}
+  </button>
+  <button matButton="outlined" (click)="export('csv')" [disabled]="exporting()">
+    <mat-icon>download</mat-icon>
+    {{ 'action.exportCsv' | t }}
+  </button>
+</div>
+
+<!-- The four states of design.md §10.4. -->
+@if (error(); as err) {
+  <div class="state state--error" role="alert">
+    <mat-icon aria-hidden="true">error</mat-icon>
+    <p>{{ err.message }}</p>
+    @if (err.correlationId) {
+      <p class="mono state__id">{{ 'state.errorReference' | t: { id: err.correlationId } }}</p>
+    }
+    <button matButton="outlined" (click)="reload()">{{ 'action.retry' | t }}</button>
+  </div>
+} @else if (showSkeletons()) {
+  <div class="skeleton-table">
+    @for (row of [1, 2, 3, 4, 5, 6]; track row) {
+      <div class="skeleton skeleton--row" aria-hidden="true"></div>
+    }
+  </div>
+  <p class="sr-only" role="status">{{ 'sac.loading' | t }}</p>
+} @else if (!items().length) {
+  @if (filtersActive()) {
+    <div class="state state--empty">
+      <mat-icon aria-hidden="true">filter_list</mat-icon>
+      <h2>{{ 'sac.filteredEmptyTitle' | t }}</h2>
+      <p>{{ 'sac.filteredEmptyBody' | t }}</p>
+      <button matButton="filled" (click)="clearFilters()">{{ 'action.clearFilters' | t }}</button>
+    </div>
+  } @else {
+    <div class="state state--empty">
+      <mat-icon aria-hidden="true">database</mat-icon>
+      <h2>{{ 'sac.emptyTitle' | t }}</h2>
+      <p>{{ 'sac.emptyBody' | t }}</p>
+    </div>
+  }
+} @else {
+  <div class="table-shell" [class.table-shell--refreshing]="refreshing()">
+    @if (refreshing()) {
+      <mat-progress-bar mode="indeterminate" [attr.aria-label]="'sac.refreshing' | t" />
+    }
+
+    <table
+      mat-table
+      [dataSource]="items()"
+      matSort
+      [matSortActive]="sortBy()"
+      [matSortDirection]="sortDir()"
+      (matSortChange)="onSortChange($event)"
+    >
+      <ng-container matColumnDef="databaseName">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.databaseName' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono">{{ row.databaseName }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="generatedAt">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ 'field.generatedAt' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="cell-time">
+          {{ row.generatedAt | date: i18n.dateTimeFormat() : i18n.timeZone() : i18n.locale() }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="totalSizeGb">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="cell-num">{{ 'field.totalSizeGb' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">
+          {{ row.totalSizeGb === null ? '—' : (row.totalSizeGb | number: '1.0-0' : i18n.locale()) }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="dataSizeGb">
+        <th mat-header-cell *matHeaderCellDef class="cell-num">{{ 'field.dataSizeGb' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">
+          {{ row.dataSizeGb === null ? '—' : (row.dataSizeGb | number: '1.0-0' : i18n.locale()) }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="logSizeGb">
+        <th mat-header-cell *matHeaderCellDef class="cell-num">{{ 'field.logSizeGb' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">
+          {{ row.logSizeGb === null ? '—' : (row.logSizeGb | number: '1.0-0' : i18n.locale()) }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="debtors">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="cell-num">{{ 'field.debtors' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">
+          {{ row.debtors === null ? '—' : (row.debtors | number: '1.0-0' : i18n.locale()) }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="debtorActiveAccounts">
+        <th mat-header-cell *matHeaderCellDef class="cell-num">{{ 'field.debtorActiveAccounts' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">
+          {{ row.debtorActiveAccounts === null ? '—' : (row.debtorActiveAccounts | number: '1.0-0' : i18n.locale()) }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="activeAccounts">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="cell-num">{{ 'field.activeAccounts' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">
+          {{ row.activeAccounts === null ? '—' : (row.activeAccounts | number: '1.0-0' : i18n.locale()) }}
+        </td>
+      </ng-container>
+
+      <!-- The three sums keep their exact decimal strings — never parsed to a
+           number, which would round a numeric(18,2). See decimal-format.util.ts. -->
+      <ng-container matColumnDef="balanceSum">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="cell-num">{{ 'field.balanceSum' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">{{ money(row.balanceSum) }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="overdueSum">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="cell-num">{{ 'field.overdueSum' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">{{ money(row.overdueSum) }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="principalSum">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="cell-num">{{ 'field.principalSum' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">{{ money(row.principalSum) }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="activities">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="cell-num">{{ 'field.activities' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">
+          {{ row.activities === null ? '—' : (row.activities | number: '1.0-0' : i18n.locale()) }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="activitiesLast30Days">
+        <th mat-header-cell *matHeaderCellDef class="cell-num">{{ 'field.activitiesLast30Days' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">
+          {{ row.activitiesLast30Days === null ? '—' : (row.activitiesLast30Days | number: '1.0-0' : i18n.locale()) }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="activeUsers">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="cell-num">{{ 'field.activeUsers' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">
+          {{ row.activeUsers === null ? '—' : (row.activeUsers | number: '1.0-0' : i18n.locale()) }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="avgActiveUsersLast3Months">
+        <th mat-header-cell *matHeaderCellDef class="cell-num">{{ 'field.avgActiveUsersLast3Months' | t }}</th>
+        <td mat-cell *matCellDef="let row" class="mono cell-num">
+          {{ row.avgActiveUsersLast3Months === null ? '—' : (row.avgActiveUsersLast3Months | number: '1.0-0' : i18n.locale()) }}
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+    </table>
+
+    <mat-paginator
+      [length]="total()"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="[20, 50, 100]"
+      (page)="onPage($event)"
+    />
+  </div>
+
+  <!-- Below 600px (§10.3). Fifteen columns cannot go on a phone, so the card
+       carries identity plus the three figures a reader actually scans for on a
+       small screen: how big the base is, how many active accounts it holds, and
+       what it owes. The rest stays on the desktop table. -->
+  <div class="card-list">
+    @for (row of items(); track row._id) {
+      <article class="row-card">
+        <h2 class="row-card__title mono">{{ row.databaseName }}</h2>
+        <dl class="row-card__attrs">
+          <dt>{{ 'field.generatedAt' | t }}</dt>
+          <dd>{{ row.generatedAt | date: i18n.dateTimeFormat() : i18n.timeZone() : i18n.locale() }}</dd>
+          <dt>{{ 'field.totalSizeGb' | t }}</dt>
+          <dd class="mono">
+            {{ row.totalSizeGb === null ? '—' : (row.totalSizeGb | number: '1.0-0' : i18n.locale()) }}
+          </dd>
+          <dt>{{ 'field.activeAccounts' | t }}</dt>
+          <dd class="mono">
+            {{ row.activeAccounts === null ? '—' : (row.activeAccounts | number: '1.0-0' : i18n.locale()) }}
+          </dd>
+          <dt>{{ 'field.balanceSum' | t }}</dt>
+          <dd class="mono">{{ money(row.balanceSum) }}</dd>
+        </dl>
+      </article>
+    }
+    <mat-paginator
+      [length]="total()"
+      [pageSize]="pageSize"
+      [pageSizeOptions]="[20, 50, 100]"
+      (page)="onPage($event)"
+    />
+  </div>
+}

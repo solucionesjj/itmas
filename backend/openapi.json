@@ -465,6 +465,143 @@
         ]
       }
     },
+    "/api/v1/sac-statistics": {
+      "post": {
+        "operationId": "IngestionController_ingestSacStatistics",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SacStatisticIngestDto"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "node-api-key": []
+          }
+        ],
+        "tags": [
+          "ingestion"
+        ]
+      },
+      "get": {
+        "operationId": "SacStatisticsController_findAll",
+        "parameters": [
+          {
+            "name": "databaseName",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "generatedAt",
+              "type": "string",
+              "enum": [
+                "generatedAt",
+                "databaseName",
+                "totalSizeGb",
+                "activeAccounts",
+                "debtors",
+                "activities",
+                "activeUsers",
+                "balanceSum",
+                "overdueSum",
+                "principalSum"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "sac-statistics"
+        ]
+      }
+    },
     "/api/v1/alert-rules": {
       "get": {
         "operationId": "AlertRulesController_findAll",
@@ -754,6 +891,155 @@
         ]
       }
     },
+    "/api/v1/stats/sac/ranking": {
+      "get": {
+        "operationId": "StatsController_getSacRanking",
+        "parameters": [
+          {
+            "name": "metric",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "totalSizeGb",
+                "activeAccounts",
+                "debtors",
+                "activities",
+                "activitiesLast30Days",
+                "avgActiveUsersLast3Months",
+                "balanceSum",
+                "overdueSum",
+                "principalSum"
+              ]
+            }
+          },
+          {
+            "name": "at",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "stats"
+        ]
+      }
+    },
+    "/api/v1/stats/sac/growth": {
+      "get": {
+        "operationId": "StatsController_getSacGrowth",
+        "parameters": [
+          {
+            "name": "metric",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "totalSizeGb",
+                "activeAccounts",
+                "debtors",
+                "activities",
+                "activitiesLast30Days",
+                "avgActiveUsersLast3Months",
+                "balanceSum",
+                "overdueSum",
+                "principalSum"
+              ]
+            }
+          },
+          {
+            "name": "months",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 60,
+              "default": 12,
+              "type": "number"
+            }
+          },
+          {
+            "name": "databaseName",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "stats"
+        ]
+      }
+    },
+    "/api/v1/stats/sac/databases": {
+      "get": {
+        "operationId": "StatsController_getSacDatabases",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "tags": [
+          "stats"
+        ]
+      }
+    },
     "/api/v1/reports/export": {
       "get": {
         "operationId": "ReportsController_export",
@@ -766,7 +1052,8 @@
               "type": "string",
               "enum": [
                 "devices",
-                "alerts"
+                "alerts",
+                "sac-statistics"
               ]
             }
           },
@@ -778,7 +1065,8 @@
               "type": "string",
               "enum": [
                 "csv",
-                "pdf"
+                "pdf",
+                "xlsx"
               ]
             }
           },
@@ -807,6 +1095,15 @@
             "required": false,
             "in": "query",
             "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "databaseName",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 128,
               "type": "string"
             }
           },
@@ -1062,7 +1359,8 @@
               "type": "string",
               "enum": [
                 "csv",
-                "pdf"
+                "pdf",
+                "xlsx"
               ]
             }
           },
@@ -1616,6 +1914,85 @@
           "user",
           "timestamp",
           "action"
+        ]
+      },
+      "SacStatisticIngestDto": {
+        "type": "object",
+        "properties": {
+          "databaseName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "generatedAt": {
+            "type": "string"
+          },
+          "totalSizeGb": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "debtors": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "debtorActiveAccounts": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "activeAccounts": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "avgActiveUsersLast3Months": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "activities": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "activitiesLast30Days": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "activeUsers": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "logSizeGb": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "dataSizeGb": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "balanceSum": {
+            "type": "string",
+            "nullable": true
+          },
+          "overdueSum": {
+            "type": "string",
+            "nullable": true
+          },
+          "principalSum": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "databaseName",
+          "generatedAt"
         ]
       },
       "HabitualHoursDto": {

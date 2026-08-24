@@ -136,9 +136,11 @@ compile error. Enum values stay English in code; only labels are translated. `da
 pipes must receive `i18n.locale()` explicitly: `LOCALE_ID` is resolved once at bootstrap and
 cannot follow a runtime switch.
 
-Two things deliberately defined but unused, both awaiting data the API does not carry: §2.6's
+One thing remains deliberately defined but unused, awaiting data the API does not carry: §2.6's
 five-level **severity** scale (no model has a verdict field — workflow states use §9.7 badges
-instead) and §10.2's KPI **delta** tokens (`/stats/devices` has no history).
+instead). §10.2's **delta** tokens were in the same position until BL-033, whose growth charts
+label each month's percentage change with them; the dashboard's KPI tiles still have no delta,
+since `/stats/devices` carries no history.
 
 ## Architecture
 
@@ -165,7 +167,7 @@ Key architectural principles (agent.md §4):
 
 ### Data model (MongoDB collections — exact names, do not rename without an ADR)
 
-`devices`, `inventories` (append-only, never overwritten), `access_events`, `alerts`, `users`, `alert_rules`, `audit_log`. Field shapes and required indexes are defined in `spec.md` §11 and `agent.md` §5.3 — follow them exactly (e.g. `inventories: { deviceId: 1, timestamp: -1 }`, `users.username`/`users.email` unique, etc.).
+`devices`, `inventories` (append-only, never overwritten), `access_events`, `alerts`, `users`, `alert_rules`, `audit_log`, `sac_statistics` (append-only, **no** unique natural key and **no** default TTL — see the BL-031..033 notes below). Field shapes and required indexes are defined in `spec.md` §11 and `agent.md` §5.3 — follow them exactly (e.g. `inventories: { deviceId: 1, timestamp: -1 }`, `users.username`/`users.email` unique, etc.).
 
 - `deviceId` is assumed to equal the device's `_id` (host-uuid); inventories compare against the most recent prior inventory for that device.
 - Timestamps are always UTC `ISODate`. "Habitual hours" logic must handle timezone explicitly and is configurable per install (default UTC until configured).
@@ -180,6 +182,7 @@ Prefix `/api/v1`. Do not invent endpoints, fields, or roles beyond this contract
 - Alert rules (Administrador only): `GET /alert-rules`, `POST /alert-rules`, `PATCH /alert-rules/:id`
 - Devices — mutation, Administrador only (ADR-0016, post-Fase-1 addition — not in spec.md's original literal contract): `POST /devices`, `POST /devices/:id/rotate-key`
 - Query: `GET /devices`, `GET /stats/os`, `GET /stats/devices`, `GET /reports/export`, `GET /alerts`, `PATCH /alerts/:id` (Administrador/Auditor)
+- SAC product statistics (ADR-0018, post-Fase-1 addition — not in spec.md's original literal contract): `POST /sac-statistics` (node API key only), `GET /sac-statistics`, `GET /stats/sac/ranking`, `GET /stats/sac/growth`, `GET /stats/sac/databases`
 - Health: `GET /health`
 
 Every endpoint must declare and enforce its required role — an endpoint with no declared role requirement is treated as an implementation bug. `GET /devices` and `GET /alerts` must support pagination and server-validated filters.
@@ -250,7 +253,7 @@ Closes out the portal/query feature set of Fase 1 — only 1.7 (hardening/qualit
 - **Rate limiting**: `ThrottlerModule` from `@nestjs/throttler` is internally `@Global()` — only **one** `forRootAsync()` registration exists in the whole app (`app.module.ts`), with two named profiles: `default` (generous API-wide, `API_RATE_LIMIT_MAX`/`WINDOW_SEC`, default 100/60s) applied to every route via `APP_GUARD`, and `login` (the strict brute-force limit, `LOGIN_RATE_LIMIT_MAX`/`WINDOW_SEC`) which the global guard *also* applies to every route by default — so every controller except `POST /auth/login` carries `@SkipThrottle({ login: true })` to opt back out of it. A second, module-local `ThrottlerModule.forRootAsync()` (as this used to be, split into `AuthModule`) silently collides with the global one on the same DI tokens — don't reintroduce that.
 - **Retention**: TTL indexes on `inventories`/`access_events`/`audit_log` timestamps, created programmatically in each repository's `onModuleInit()` (env-configurable via `*_RETENTION_DAYS`, since a static schema-level TTL can't read `ConfigService`). `src/common/mongo/ensure-ttl-index.util.ts` recreates the index if the configured value changed (Mongo disallows an in-place TTL change) and tolerates a brand-new collection ("ns does not exist").
 - **Body size**: explicit 1MB cap in `main.ts` (`bodyParser: false` + manual `json({limit})`) — replaces Nest's implicit, undocumented 100kb default. `AllExceptionsFilter` now also maps raw (non-`HttpException`) errors carrying their own `.status`/`.statusCode` — e.g. body-parser's `PayloadTooLargeError` — to the real HTTP status instead of a generic 500.
-- **OpenAPI/Swagger**: uses the `@nestjs/swagger` **CLI plugin** (`nest-cli.json` → `compilerOptions.plugins`), not manual `@ApiProperty()` on every DTO — it infers types/enums/required/nested schemas straight from existing `class-validator` decorators. `GET /api/docs` (Swagger UI) and `GET /api/docs-json`; `backend/openapi.json` regenerates on every boot (best-effort — won't crash boot on a read-only filesystem). `@nestjs/swagger` is pinned to `11.4.5`, not the latest `11.4.6`, because `11.4.6` pulls a vulnerable `js-yaml`.
+- **OpenAPI/Swagger**: uses the `@nestjs/swagger` **CLI plugin** (`nest-cli.json` → `compilerOptions.plugins`), not manual `@ApiProperty()` on every DTO — it infers types/enums/required/nested schemas straight from existing `class-validator` decorators. `GET /api/docs` (Swagger UI) and `GET /api/docs-json`; `backend/openapi.json` regenerates on every boot (best-effort — won't crash boot on a read-only filesystem). `@nestjs/swagger` tracks `^11.4.7`. It was previously held at `11.4.5` to avoid a vulnerable `js-yaml` that `11.4.6` pulled in; that reasoning went stale when GHSA-5p4m-2wfm-xmqj was published against the whole `js-yaml` 4.x line, which made `11.4.5` the vulnerable one. `11.4.7` depends on `js-yaml` 5.3.0, outside the affected range. **Check the actual `js-yaml` a candidate version resolves before pinning this away from latest again** — the pin is worth keeping only as long as its reason still holds.
 - **Load benchmark** (soft, not a CI gate): `backend/scripts/load-smoke.ts` (`npm run load:smoke`) fired 50 concurrent `POST /inventory` at a real running instance — measured p95 ≈ 1096ms against the NFR target of <500ms, in this single-instance sandboxed dev environment with no connection-pool tuning. Documented honestly rather than hidden; not indicative of a properly scaled/tuned production deployment.
 - **Docker/CI** (built this sub-phase): `backend/Dockerfile` + `frontend/Dockerfile` (multi-stage), root `docker-compose.yml`, `.github/workflows/ci.yml` (lint→build→test→audit), root `DEPLOYMENT.md`.
 - **Accessibility (WCAG AA)**: closed the sub-phase-1.5 debt — the hand-built OS-distribution chart now has an accessible fallback (`aria-label`/visually-hidden data), icon-only actions across the users/alerts/reports UIs got `aria-label`s, and `angular-eslint` template a11y rules are on as a regression gate.
@@ -265,6 +268,60 @@ Not one of the numbered 1.0–1.7 sub-phases (those are fixed by agent.md §17 a
 - **The one-time-reveal security property holds through the full HTTP path, not just the service layer**: `POST /devices`'s response is the only place in the entire API where `apiKey` plaintext appears, and it never appears again afterward (confirmed by hand against a real running instance — a subsequent `GET /devices` for the same device returns no `apiKey`/`apiKeyHash` field). There is no generic response-body-logging middleware in this app that could leak it into a log line either — `AllExceptionsFilter` only logs `message`/`path`/`method`/`status`, and `JsonLoggerService` is only ever called explicitly with hand-picked, non-secret fields.
 - **Frontend**: `features/devices/` gains a "Crear dispositivo" button and a per-row "Rotar clave" icon button on the existing devices list, gated by the same inline `authService.currentUser()?.role === 'administrator'` check `shell.component` already uses for "Usuarios" — UX only, the backend's own `@Roles()` is the real enforcement (verified directly against the API with a Usuario token during manual testing: `403`). Three new dialog components: `device-form-dialog` (create), `rotate-key-confirm-dialog` (the "la clave anterior dejará de funcionar inmediatamente" confirmation), and `api-key-reveal-dialog` (shared by both the create and rotate flows — full key, `cdkCopyToClipboard`, "Guarda esta clave ahora — no se mostrará de nuevo" warning, `disableClose: true` so it can't be dismissed by an accidental backdrop click/Escape).
 - **Testing gotcha worth knowing before touching `devices-list.component.ts` again**: `MatDialogModule`'s own `@NgModule` declares `providers: [MatDialog]` (redundant with `MatDialog`'s `providedIn: 'root'`, but real) — importing `MatDialogModule` into a standalone component's `imports` array to get the `MatDialog` *service* therefore creates a component-scoped instance that silently shadows any `TestBed`-level provider override, making the component untestable via a mocked `MatDialog`. Fix was to drop `MatDialogModule` from `DevicesListComponent`'s `imports` (its template doesn't use any `mat-dialog-*` directives — it only injects the service to call `.open()`), not to reach for `TestBed.overrideProvider()` gymnastics. `UsersListComponent` has this same latent, never-unit-tested issue; leave it alone unless a future change actually needs to unit-test it.
+
+### SAC product statistics implementation notes (BL-031/032/033 — done, see ADR-0018)
+
+`backend/src/modules/sac-statistics/`, additions to `reports`/`stats`, and
+`frontend/src/app/features/{sac-statistics,sac-analytics}/`. Daily per-database product
+metrics from each client cloud's SQL Server engine — a third ingestion shape alongside
+hardware inventory and access events. Read ADR-0018 before changing any of it; the
+short version of what will bite you:
+
+- **`sac_statistics` breaks three conventions the other collections follow, deliberately.**
+  It is append-only with **no unique natural key** (a re-run of the generating job
+  legitimately corrects a day's figures, and a unique index would keep the first, wrong
+  value); it has **no default TTL** (`SAC_STATISTICS_RETENTION_DAYS` opts in — a default
+  would silently make the year-over-year analysis return nothing months after deploy);
+  and its three financial sums are **`Decimal128`, serialised as JSON strings**, because
+  `numeric(18,2)` exceeds a double's exact range. Duplicates are neutralised at read
+  time: every aggregation takes the **last** snapshot per (database, period).
+- **The exactness of those sums is a chain, and every link is load-bearing**: string on
+  the wire in → `Decimal128` in Mongo → `$toDecimal` in aggregations → string on the wire
+  out → `decimal-format.util.ts` groups the *digit string* in the browser. A
+  `DecimalPipe`, a `Number()`, or a `number` DTO field anywhere in that chain silently
+  undoes the whole thing. The one place it does round is the `.xlsx` export, because a
+  numeric spreadsheet cell *is* an IEEE double — the CSV keeps it exact.
+- **`POST /sac-statistics` lives in `IngestionController`**, not `SacStatisticsController`.
+  Same path, different method, different auth mechanism: node API key for the write, JWT
+  for the read. Splitting the controllers is what keeps agent.md §5.4's dual-auth boundary
+  visible. A top-level array body needs `ParseArrayPipe`, and **its validation options do
+  not inherit from the global pipe** — `whitelist`/`forbidNonWhitelisted` are restated on
+  it, which is the only reason an unknown field is a 400.
+- **`ReportFile` is now a union (`buffer` | `stream`).** Only `sac-statistics` streams,
+  because only it is unbounded; `devices`/`alerts` stay buffered so `AllExceptionsFilter`
+  can still turn a late failure into a JSON error. A `stream` report owns the response and
+  ends it itself — don't add a `res.end()` in the controller. `format=xlsx` is a generic
+  serialiser, so it works for every report type; `format=pdf` is a **400** for
+  sac-statistics (15 columns don't fit the layout).
+- **The growth pipeline densifies the month grid *before* computing deltas.** This is the
+  one thing in BL-033 that looks fine and is wrong if you change it: deltas taken over the
+  compacted per-month results compare across a missing month and report two months of
+  growth as one. `sac-statistics.aggregation.spec.ts` pins this, along with same-day
+  duplicates and a database whose history is shorter than the window; it runs the real
+  pipelines against `mongodb-memory-server` because a mocked model would only assert the
+  shape of the stages, not what Mongo does with them.
+- **Month buckets are UTC, by decision** (ADR-0018 records the boundary-case cost). Making
+  it configurable would let the same data report different months per install.
+- **`activities` and `activitiesLast30Days` are both cumulative but are read differently**:
+  `activities` never resets, so the month's figure is its **delta**;
+  `activitiesLast30Days` is a fixed window, so the figure is its **value**. The UI carries
+  this as `plot: 'value' | 'delta'` per chart, and they get separate charts on purpose.
+- **Slot 7 (`--chart-7`, red) is unused in the SAC charts.** design.md §2.7 notes slots
+  5/6/7 double as the compliance triad, and a red column labelled "Saldo" reads as an
+  alert about the balance. If you add a chart there, skip slot 7 too.
+- Two of design.md's "defined but unused" items are now in use: §10.2's `--delta-up`/
+  `--delta-down` (the growth charts' percentage labels). §2.6's severity scale is still
+  unused.
 
 ## Technical Standards (from agent.md §5, apply once code exists)
 

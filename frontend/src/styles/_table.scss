@@ -53,6 +53,21 @@
     white-space: nowrap;
   }
 
+  // Numeric columns align right so digits line up in a column and magnitudes are
+  // comparable by eye — the reason `.mono` already sets `tabular-nums`. The
+  // header aligns with them, or the label floats over the wrong edge.
+  td.mat-mdc-cell.cell-num,
+  th.mat-mdc-header-cell.cell-num {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  // Material puts the sort arrow in a flex container that defaults to the start,
+  // so a right-aligned sortable header needs its content pushed over too.
+  th.mat-mdc-header-cell.cell-num .mat-sort-header-container {
+    justify-content: flex-end;
+  }
+
   // A timestamp is one logical value; wrapping it mid-date is the same problem.
   // `.cell-nowrap` is the same treatment for any short, bounded attribute
   // ("Ubuntu Server 22.04") that reads worse broken across lines. Long free text
