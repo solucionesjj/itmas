@@ -80,6 +80,14 @@ class EnvironmentVariables {
   @Min(1)
   AUDIT_LOG_RETENTION_DAYS?: number;
 
+  // Optional and WITHOUT a default (BL-031 CA-7): unset means keep the full
+  // SAC statistics history, which the growth analysis depends on. Setting it
+  // creates a TTL index on `sac_statistics.generatedAt`.
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  SAC_STATISTICS_RETENTION_DAYS?: number;
+
   // Optional: defaults to 'UTC' in configuration.ts if unset.
   @IsOptional()
   @IsString()

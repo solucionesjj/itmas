@@ -89,6 +89,39 @@ New optional env vars (all documented in `backend/.env.example`, all with safe d
 
 **Operational security note, found during manual verification of this extension**: whatever host/container runs the IT-MAS backend must carry *only* the IAM policy above — scoped to a dedicated role or credential, never a developer's own broad ambient AWS credentials (e.g. inherited from a shell profile, SSO session, or instance profile meant for other work). During this feature's manual browser testing, the "Sincronizar ahora" button was triggered once in a local dev sandbox that turned out to have live AWS credentials on its PATH with far broader account access than intended for this test — it successfully synced ~1,100 real production security group rules across a real account before being caught and the local test database was destroyed immediately. No IT-MAS code caused this (the sync worked exactly as designed against whatever credentials it found); the risk is entirely in **which credentials are reachable from wherever this runs**. Treat `AWS_SYNC_*` credential exposure with the same care as any other production secret — a read-only policy still means "this process can enumerate every security group and firewall rule you have."
 
+## Data retention
+
+Each of the growing collections purges itself with a TTL index, created
+programmatically at boot from an env var (a static schema-level TTL cannot read
+`ConfigService`). Changing a value across deploys is safe — the index is dropped and
+recreated when the configured window differs from the one in place.
+
+| Collection | Variable | Default |
+|---|---|---|
+| `inventories` | `INVENTORY_RETENTION_DAYS` | 180 |
+| `access_events` | `ACCESS_EVENTS_RETENTION_DAYS` | 180 |
+| `audit_log` | `AUDIT_LOG_RETENTION_DAYS` | 365 |
+| `aws_sync_runs` | `AWS_SYNC_RUN_RETENTION_DAYS` | 90 |
+| `sac_statistics` | `SAC_STATISTICS_RETENTION_DAYS` | **none — full history kept** |
+
+**`sac_statistics` is the deliberate exception** (BL-031 / ADR-0018). Leaving the
+variable unset keeps every snapshot, because the year-over-year growth analysis that
+justifies collecting the data needs the long history; a default window would make that
+analysis silently return nothing, months after deployment. Plan for unbounded growth
+instead: roughly one row per SAC database per day, so a 100-database install
+accumulates about 36,500 rows a year. Monitor the collection's size rather than
+relying on the application to bound it.
+
+Two operational caveats if you do set it:
+
+- The TTL applies to `generatedAt` (the engine's own generation time), not to when the
+  record arrived.
+- **Removing retention afterwards is a manual DBA action.** Unsetting the variable does
+  *not* drop the index — `ensure-ttl-index.util.ts` only ever creates or recreates one,
+  so an unset variable is treated as "leave what is there alone" rather than as an
+  instruction to stop purging. Drop the index by hand
+  (`db.sac_statistics.dropIndex("generatedAt_1")`) if that is what you want.
+
 ## What this does NOT solve (still manual/ops decisions — agent.md §6, §9)
 
 - **TLS termination**: the API is meant to sit behind a reverse proxy / API

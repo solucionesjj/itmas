@@ -31,6 +31,13 @@ export default () => ({
       10,
     ),
     auditLogDays: parseInt(process.env.AUDIT_LOG_RETENTION_DAYS ?? '365', 10),
+    // Null, not a default number: `sac_statistics` keeps its full history
+    // unless an operator explicitly asks for a purge (BL-031 CA-7). A default
+    // here would silently truncate the year-over-year growth analysis that is
+    // the whole point of collecting it.
+    sacStatisticsDays: process.env.SAC_STATISTICS_RETENTION_DAYS
+      ? parseInt(process.env.SAC_STATISTICS_RETENTION_DAYS, 10)
+      : null,
   },
   // Timezone the off_hours_access rule evaluates habitualHours in (agent.md
   // Assumption #6: configurable per installation, UTC until configured).

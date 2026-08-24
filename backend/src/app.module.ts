@@ -21,6 +21,7 @@ import { AlertsModule } from './modules/alerts/alerts.module';
 import { AlertEngineModule } from './modules/alert-engine/alert-engine.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { SacStatisticsModule } from './modules/sac-statistics/sac-statistics.module';
 import { SecurityGroupRulesModule } from './modules/security-group-rules/security-group-rules.module';
 import { SecurityGroupSyncModule } from './modules/security-group-sync/security-group-sync.module';
 
@@ -82,6 +83,7 @@ import { SecurityGroupSyncModule } from './modules/security-group-sync/security-
     AlertEngineModule,
     StatsModule,
     ReportsModule,
+    SacStatisticsModule,
     SecurityGroupRulesModule,
     SecurityGroupSyncModule,
   ],

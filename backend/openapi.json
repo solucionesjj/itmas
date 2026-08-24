@@ -465,6 +465,45 @@
         ]
       }
     },
+    "/api/v1/sac-statistics": {
+      "post": {
+        "operationId": "IngestionController_ingestSacStatistics",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/SacStatisticIngestDto"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "node-api-key": []
+          }
+        ],
+        "tags": [
+          "ingestion"
+        ]
+      }
+    },
     "/api/v1/alert-rules": {
       "get": {
         "operationId": "AlertRulesController_findAll",
@@ -1616,6 +1655,85 @@
           "user",
           "timestamp",
           "action"
+        ]
+      },
+      "SacStatisticIngestDto": {
+        "type": "object",
+        "properties": {
+          "databaseName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "generatedAt": {
+            "type": "string"
+          },
+          "totalSizeGb": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "debtors": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "debtorActiveAccounts": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "activeAccounts": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "avgActiveUsersLast3Months": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "activities": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "activitiesLast30Days": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "activeUsers": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "logSizeGb": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "dataSizeGb": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0
+          },
+          "balanceSum": {
+            "type": "string",
+            "nullable": true
+          },
+          "overdueSum": {
+            "type": "string",
+            "nullable": true
+          },
+          "principalSum": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "databaseName",
+          "generatedAt"
         ]
       },
       "HabitualHoursDto": {

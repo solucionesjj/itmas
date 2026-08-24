@@ -71,7 +71,7 @@ claro, sin bloqueo) · **Baja** (mejora a largo plazo, alto costo o poco valor i
 | [BL-028](#bl-028) | G | Corregir la testabilidad de `UsersListComponent` | Baja | Pendiente | — | — |
 | [BL-029](#bl-029) | H | Adopción del sistema de diseño Material 3 (`design.md`) | Alta | Hecho | — | ADR-0017, ADR-0009 |
 | [BL-030](#bl-030) | G | `ng serve` no alcanza la API local (sin CORS ni proxy de desarrollo) | Alta | Hecho | — | — |
-| [BL-031](#bl-031) | I | Modelo e ingesta de estadísticas diarias de SAC | Alta | Pendiente | — | ADR-0018 |
+| [BL-031](#bl-031) | I | Modelo e ingesta de estadísticas diarias de SAC | Alta | Hecho | — | ADR-0018 |
 | [BL-032](#bl-032) | I | Consulta y exportación de las estadísticas de SAC | Alta | Pendiente | BL-031 | ADR-0018 |
 | [BL-033](#bl-033) | I | Dashboard de ranking y crecimiento de las bases SAC | Media | Pendiente | BL-031 | ADR-0018, RF-07, UC-07 |
 
@@ -701,7 +701,7 @@ Dependencias: ninguna. Las etapas 2–7 dependen de la 1, ya entregada.
 > portal).
 
 ### BL-031
-**Modelo e ingesta de estadísticas diarias de SAC** · Alta · Pendiente · Trazabilidad: ADR-0018 (a registrar)
+**Modelo e ingesta de estadísticas diarias de SAC** · Alta · **Hecho** · Trazabilidad: ADR-0018
 
 Los motores de base de datos de cada nube de cliente generan a diario un registro estadístico por
 base de datos. IT-MAS no tiene hoy dónde recibirlo: la ingesta existente (`POST /inventory`,
@@ -738,35 +738,35 @@ reporta (trazabilidad de quién envió qué, sin una segunda consulta), y `_id`.
 Criterios de aceptación:
 1. `POST /api/v1/sac-statistics` autenticado **exclusivamente** con `NodeApiKeyGuard`
    (`X-Node-Api-Key: <deviceId>.<secret>`), nunca con JWT de usuario — la regla de doble mecanismo de
-   `agent.md` §5.4 prohíbe mezclarlos en un mismo endpoint. Sin clave o con clave inválida: **401**.
+   `agent.md` §5.4 prohíbe mezclarlos en un mismo endpoint. Sin clave o con clave inválida: **401**. ✔
 2. El cuerpo es un **arreglo** de registros: un motor reporta en una sola llamada todas las bases de
    su corrida. Cada elemento se valida por separado; la respuesta es `201` con
-   `{received, inserted}`.
+   `{received, inserted}`. ✔
 3. Validación con `class-validator`: `databaseName` obligatorio (máx. 128 caracteres) y `generatedAt`
    obligatorio (ISO 8601, la hora del **propio motor**, nunca sellada en servidor). El resto de campos
    es opcional y admite nulo, igual que en el origen; los numéricos rechazan valores negativos. El
    `ValidationPipe` global ya está en `whitelist + forbidNonWhitelisted`, así que un campo desconocido
-   devuelve **400** — los agentes deben usar exactamente los nombres del contrato.
+   devuelve **400** — los agentes deben usar exactamente los nombres del contrato. ✔
 4. Las tres sumatorias financieras se persisten como `Decimal128` y se serializan como **string** en
    JSON. Un `numeric(18,2)` excede la precisión exacta de un `double` de JavaScript (18 dígitos frente
-   a los ~15,9 de 2^53); guardarlas como número perdería centavos en los totales agregados.
+   a los ~15,9 de 2^53); guardarlas como número perdería centavos en los totales agregados. ✔
 5. La colección es **append-only sin clave natural única**: un reenvío del mismo motor genera un
    registro adicional. Es una decisión explícita, contraria al patrón de `inventories`
    (índice único `(deviceId, timestamp)`) y a la tolerancia a reintentos de `agent.md` §4; queda
    registrada como tal en el ADR, y las agregaciones de BL-033 la neutralizan tomando el último
-   snapshot de cada periodo por base. Añadir el índice único después es un cambio aditivo.
+   snapshot de cada periodo por base. Añadir el índice único después es un cambio aditivo. ✔
 6. Índices: `{ databaseName: 1, generatedAt: -1 }` (filtro y serie temporal por base) y
-   `{ generatedAt: -1 }` (rangos de fecha globales).
+   `{ generatedAt: -1 }` (rangos de fecha globales). ✔
 7. **Sin TTL por defecto**: el análisis de crecimiento interanual necesita histórico largo, a
    diferencia de `inventories`/`access_events`/`audit_log`. Si se define
    `SAC_STATISTICS_RETENTION_DAYS`, se aplica con el `ensure-ttl-index.util.ts` existente y queda
-   documentado en `.env.example` y `DEPLOYMENT.md`.
+   documentado en `.env.example` y `DEPLOYMENT.md`. ✔
 8. La ingesta **no** escribe en `audit_log`, igual que `POST /inventory` — el actor es un nodo, no un
-   usuario.
+   usuario. ✔
 9. Pruebas: unitarias del servicio y del repositorio; e2e contra `mongodb-memory-server` cubriendo
    401 sin clave, 201 con clave válida, 400 por campo desconocido y 400 por `databaseName`/`generatedAt`
-   ausentes.
-10. `backend/openapi.json` regenerado y ADR-0018 registrado en `docs/adr/`.
+   ausentes. ✔
+10. `backend/openapi.json` regenerado y ADR-0018 registrado en `docs/adr/`. ✔
 
 Notas: unidades confirmadas con el solicitante — los tres campos de tamaño (`totalSizeGb`,
 `logSizeGb`, `dataSizeGb`) están en **gigabytes** y son enteros, igual que en el DDL de origen.
