@@ -1,0 +1,6 @@
+{
+  "/api": { "target": "http://localhost:5080", "secure": false, "changeOrigin": false },
+  "/auth": { "target": "http://localhost:5080", "secure": false, "changeOrigin": false },
+  "/signin-oidc": { "target": "http://localhost:5080", "secure": false, "changeOrigin": false },
+  "/signout-callback-oidc": { "target": "http://localhost:5080", "secure": false, "changeOrigin": false }
+}

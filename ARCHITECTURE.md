@@ -1,0 +1,221 @@
+# Arquitectura
+
+Este documento describe la arquitectura de la fundación. Las decisiones de mayor impacto tienen su ADR
+en [`specs/architecture/`](specs/architecture/); las reglas que no pueden romperse están en
+[`constitution.md`](constitution.md).
+
+## 1. Vista general
+
+```text
+                                   ┌──────────────────────────── red "edge" (bridge) ─────────────────────────────┐
+ Navegador ── 127.0.0.1:8080 ──▶   │  frontend (nginx unprivileged)                 api (ASP.NET Core 10)         │ ──▶ Microsoft Entra ID
+                                   │   /                → SPA estática               /auth/*   BFF (sesión)        │     (OIDC, salida HTTPS)
+                                   │   /api, /auth,                                  /api/*    API REST            │
+                                   │   /signin-oidc, ... → proxy ─────────────────▶  /health*  (solo red interna)  │
+                                   └───────────────────────────────────────────────────────┬──────────────────────┘
+                                                                                           │
+                                   ┌──────────────────── red "data" (internal: sin salida a Internet) ───────────┐
+                                   │  migrator (one-shot, EF bundle) ──▶ postgres (PostgreSQL 18) ◀── api        │
+                                   └─────────────────────────────────────────────────────────────────────────────┘
+```
+
+| Componente | Responsabilidad | Publicado |
+|---|---|---|
+| `frontend` | Sirve la SPA y actúa como **reverse proxy** (único origen público). Aplica CSP y cabeceras de seguridad de los documentos. | Sí, solo en `127.0.0.1` |
+| `api` | API REST, Backend-for-Frontend de autenticación, autorización, health checks. | No |
+| `migrator` | Aplica migraciones EF Core y termina. Único proceso con privilegios DDL. | No |
+| `postgres` | Persistencia. Red interna sin salida. | No |
+
+## 2. Frontend (Angular 22 + Angular Material / Material Design 3)
+
+Aplicación *standalone*, *zoneless*, con signals y carga diferida de rutas.
+
+```text
+frontend/src/app/
+├── core/                    Servicios singleton y transversales (sin UI de features)
+│   ├── config/              APP_CONFIG (valores públicos), TitleStrategy
+│   ├── services/            ThemeService, NotificationService, BrowserNavigation
+│   ├── interceptors/        csrfInterceptor, httpErrorInterceptor
+│   ├── error-handling/      GlobalErrorHandler
+│   └── models/              ProblemDetails, ApiError
+├── auth/                    Sesión BFF (sin tokens en el navegador) y permisos para UX
+│   ├── services/            AuthService (sesión, isRoot, hasPermission en signals)
+│   ├── guards/              authGuard, guestGuard, permissionGuard
+│   ├── directives/          *appIfPermission
+│   ├── interceptors/        sessionExpiryInterceptor (401 → re-login)
+│   └── models/              SessionState, UserProfile
+├── layout/                  Marco de la aplicación autenticada
+│   ├── shell/               Top app bar + navigation drawer + <router-outlet>
+│   ├── navigation/          NAVIGATION_ITEMS (punto de extensión)
+│   ├── theme-toggle/        Selector Claro / Oscuro / Sistema
+│   └── user-menu/           Cuenta y cierre de sesión
+├── shared/                  Componentes de presentación reutilizables (sin estado global)
+│   └── components/          status-message, confirm-dialog
+├── features/                Una carpeta por área funcional, cargada de forma diferida
+│   ├── home/  login/  errors/
+│   └── authorization/       Administración (SPEC-0001): users/, policies/, permissions/, audit/, data/ (API y modelos)
+├── app.routes.ts            Rutas (lazy), guards
+└── app.config.ts            Providers: router, HttpClient + interceptores, inicializadores
+```
+
+**Reglas de dependencia del frontend:** `features` → `shared`, `core`, `auth`; `layout` → `core`, `auth`;
+`shared` no depende de `features` ni de `layout`; `core` no depende de nada de lo anterior.
+
+**Flujo HTTP** (orden de interceptores): `csrfInterceptor` añade `X-CSRF: 1` a las peticiones del mismo origen →
+`httpErrorInterceptor` normaliza errores a `ApiError` (Problem Details) y notifica los errores no recuperables →
+`sessionExpiryInterceptor` convierte un `401` de `/api` en "sesión expirada" y redirige a `/login`.
+
+**Temas.** `styles.scss` define un único tema M3 (`mat.theme` con paletas por defecto `azure`/`blue`, Roboto,
+densidad 0). `mat.theme` emite valores `light-dark()`; `html { color-scheme: light dark }` sigue al sistema y
+`ThemeService` fija `light` o `dark` con `<html data-theme>`. No hay tokens ni componentes personalizados.
+
+**Configuración.** `src/environments/*.ts` solo contiene valores públicos. Como la API está en el mismo origen,
+el frontend **no necesita ninguna configuración de Entra ID**.
+
+## 3. Backend (ASP.NET Core 10, Clean Architecture)
+
+```text
+backend/
+├── src/
+│   ├── Itmas3.Domain/          Modelo de negocio puro. Sin dependencias. (Entity<TId>, DomainException)
+│   │   └── Authorization/      User, Policy, PolicyStatement, PermissionDefinition (SPEC-0001)
+│   ├── Itmas3.Application/     Casos de uso y puertos. Depende solo de Domain.
+│   │   ├── Abstractions/       ICurrentUser, IPermissionEvaluator (puertos)
+│   │   ├── Authorization/      Convención de nombres de permisos
+│   │   ├── Common/Exceptions/  NotFoundException
+│   │   ├── Identity/GetCurrentUserProfile/   Caso de uso (handler + DTO)
+│   │   └── Authorization/      Catálogo de permisos, evaluador, salvaguardas, casos de uso
+│   │                           (Users/, Policies/, Permissions/) y puerto de consultas (Queries/)
+│   ├── Itmas3.Infrastructure/  Adaptadores: EF Core/PostgreSQL, Data Protection, evaluador de permisos
+│   │   ├── Persistence/        AppDbContext, DatabaseOptions, Configurations/, Migrations/
+│   │   └── Authorization/      Repositorios, unidad de trabajo auditada, instantáneas en caché, consultas
+│   └── Itmas3.Api/             Presentación y composition root
+│       ├── Controllers/        Controllers delgados (Authorization/: users, policies, permissions, audit-events)
+│       ├── Contracts/          DTOs HTTP (request/response)
+│       ├── Authentication/     BFF OIDC + cookie de sesión
+│       ├── Authorization/      Políticas, [RequirePermission], handler
+│       ├── ErrorHandling/      GlobalExceptionHandler (Problem Details)
+│       ├── Security/           Cabeceras, CSRF, CORS, rate limiting, forwarded headers
+│       ├── HealthChecks/       /health, /health/live, /health/ready
+│       ├── Observability/      Logging HTTP, OpenTelemetry opcional
+│       └── Composition/        Registro de servicios y pipeline
+└── tests/
+    ├── Itmas3.UnitTests/         Dominio, aplicación, reglas de arquitectura y convenciones
+    └── Itmas3.IntegrationTests/  Pipeline HTTP real + PostgreSQL desechable (Testcontainers)
+```
+
+**Regla de dependencias** (verificada por `LayerDependencyTests`): `Api → Infrastructure → Application → Domain`.
+`Application` define puertos (interfaces) que `Infrastructure` implementa; `Api` solo los compone.
+
+**Controllers delgados.** Un controller valida el contrato HTTP, invoca un caso de uso de `Application` y
+traduce el resultado. No contiene lógica de negocio ni acceso a datos. Los casos de uso son clases *handler*
+registradas en `Application/DependencyInjection.cs` (sin mediator: no aporta valor a este tamaño).
+
+### Pipeline HTTP del backend
+
+El orden importa y está en `Composition/RequestPipeline.cs`:
+
+1. `UseForwardedHeaders`: confía en `X-Forwarded-*` solo desde la red del proxy (`ReverseProxy:KnownNetworks`).
+2. `UseExceptionHandler` + `UseStatusCodePages`: todo error termina en Problem Details.
+3. `UseHsts` (fuera de Development) y `UseHttpsRedirection` (opcional).
+4. `SecurityHeadersMiddleware`: cabeceras defensivas, `Cache-Control: no-store`.
+5. `UseHttpLogging`: método, ruta, estado y duración. Nada más.
+6. `UseRouting` → `UseCors` → `UseAuthentication` → `SessionValidationMiddleware` (anula sesiones de usuarios
+   inactivos o con marca de seguridad rotada) → `UseRateLimiter` → `UseAuthorization`.
+7. `CsrfProtectionMiddleware`: exige `X-CSRF` en peticiones mutantes a `/api` y valida `Origin`.
+8. Endpoints: controllers, health checks y OpenAPI (solo Development).
+
+## 4. Base de datos (PostgreSQL 18 + EF Core 10)
+
+- Un `AppDbContext` con esquema por defecto `app` y convención de nombres `snake_case`.
+- Cada tipo persistido tiene su `IEntityTypeConfiguration<T>` en `Persistence/Configurations/`.
+- **Roles** (creados por [`database/init/01-create-roles.sh`](database/init/01-create-roles.sh)):
+  - `itmas3_migrator`: dueño de los esquemas `app` y `app_migrations`; solo lo usa el contenedor `migrator`.
+  - `itmas3_app`: rol de la API; solo `SELECT/INSERT/UPDATE/DELETE` en `app` (por *default privileges*).
+    No puede ejecutar DDL ni leer o alterar el historial de migraciones.
+- **Migraciones**: EF Core *migration bundle* ejecutado por el servicio `migrator` antes de que arranque la API
+  (`depends_on: service_completed_successfully`). Nunca se migra desde la API.
+- **Entidad técnica**: `app.data_protection_keys` (key ring de ASP.NET Core Data Protection) para que la
+  cookie de sesión sobreviva reinicios y réplicas.
+- **Autorización (SPEC-0001)**: `users`, `user_external_identities`, `policies`, `policy_statements`,
+  `policy_assignments`, `permissions`, `authorization_state` (versión para invalidar cachés) y `audit_events`
+  (*append-only*). Detalle en [specs/database/README.md](specs/database/README.md).
+
+### Modelo de autorización
+
+```text
+Usuario ──(asignaciones)──▶ Políticas (activas) ──(statements Allow)──▶ Permisos (<recurso>.<acción>)
+   │                                                                           ▲
+   └── IsRoot ─────────────────────── acceso irrestricto ─────────────────────┘
+```
+
+`[RequirePermission]` → `PermissionAuthorizationHandler` → `IPermissionEvaluator` (`PolicyPermissionEvaluator`) →
+`IAuthorizationSnapshotProvider`. La instantánea se guarda en caché con clave `(versión, usuario)`. Las mutaciones pasan por
+`IAuthorizationUnitOfWork`, que en una sola transacción bloquea la versión, aplica el caso de uso, escribe la auditoría
+e incrementa la versión ([ADR-0008](specs/architecture/adr-0008-policy-based-authorization.md)).
+
+## 5. Autenticación y comunicación entre componentes
+
+Patrón **Backend-for-Frontend** ([ADR-0002](specs/architecture/adr-0002-authentication-bff.md)):
+
+```text
+Navegador                 nginx                 API (BFF)                        Entra ID
+   │  GET /home             │                      │                                  │
+   │──────────────────────▶ │  index.html (SPA)    │                                  │
+   │  GET /auth/session ──▶ │ ───────────────────▶ │ {isAuthenticated:false}          │
+   │  (navegación) GET /auth/login?returnUrl=/home │                                  │
+   │──────────────────────▶ │ ───────────────────▶ │ 302 authorize?code+PKCE ───────▶ │
+   │◀──────────────────────────────────────────────────────────────────── login UI ───│
+   │  POST /signin-oidc (form_post: code) ───────▶ │ canjea code + client secret ───▶ │
+   │                        │                      │◀──────────── id_token (validado) │
+   │◀── 302 /home + Set-Cookie __Host-itmas3-session (HttpOnly; Secure; SameSite=Strict)
+   │  GET /api/... (cookie + X-CSRF) ────────────▶ │ autentica cookie → autoriza → responde
+```
+
+- El navegador nunca recibe *access*, *refresh* ni *id tokens*; la cookie está cifrada con Data Protection.
+- Sesión: expiración por inactividad (60 min, deslizante) y absoluta (8 h). Configurables.
+- Todas las respuestas no autenticadas son `401` (nunca redirecciones); solo `/auth/login` inicia OIDC.
+- Comunicación interna: HTTP plano dentro de redes privadas de Docker; TLS en el borde (ver SECURITY.md).
+
+## 6. Docker
+
+- Imágenes multi-stage: `backend/Dockerfile` (targets `api` y `migrator`), `frontend/Dockerfile` (targets
+  `runtime` y `test`). Imágenes Alpine, usuarios no root, `read_only` + `tmpfs` para `api`/`migrator`,
+  `cap_drop: ALL` y `no-new-privileges`.
+- Health checks: `pg_isready` por TCP (no se da por lista a PostgreSQL mientras ejecuta la inicialización),
+  `/health` de la API (incluye conectividad con PostgreSQL), `/healthz` de nginx.
+- Redes: `edge` (proxy ↔ API, con salida para Entra ID) y `data` (`internal: true`).
+
+## 7. Principios arquitectónicos
+
+| Principio | Cómo se materializa |
+|---|---|
+| Clean Architecture / SoC | Cuatro proyectos con regla de dependencias verificada por pruebas. |
+| SOLID | Puertos en `Application`, adaptadores en `Infrastructure`, DI en `Api`. |
+| Secure by Design / Default Deny | BFF, *fallback policy* que deniega, permisos explícitos, mínimo privilegio en BD. |
+| Configuration by Environment | `appsettings` sin secretos + variables de entorno con prioridad. |
+| API-first | Contratos en `Contracts/`, Problem Details, documento OpenAPI (`/openapi/v1.json` en Development). |
+| Container-first | Todo el sistema se levanta con `docker compose up --build`. |
+| SDD | Ningún cambio relevante sin especificación (`specs/`); agentes con límites (`agents/`). |
+
+## 8. Desviaciones respecto a la estructura de referencia
+
+| Referencia | Implementado | Justificación |
+|---|---|---|
+| `backend/src/API`, `Application`, ... | `backend/src/Itmas3.Api`, `Itmas3.Application`, ... | Convención .NET: carpeta = proyecto = espacio de nombres raíz. |
+| `backend/tests/UnitTests` | `backend/tests/Itmas3.UnitTests` | Ídem. |
+| Carpetas `services/guards/interceptors/models` sueltas | Agrupadas por responsabilidad dentro de `core/` y `auth/` | Evita carpetas globales que crecen sin cohesión; cada concepto vive junto a su dominio técnico. |
+| — | Servicio `migrator` adicional | Separa privilegios DDL de la API y evita migraciones concurrentes entre réplicas. |
+| — | `specs/_templates/`, `AGENTS.md` | Plantillas para SDD y punto de entrada estándar para herramientas de IA. |
+
+## 9. Cómo crece el sistema
+
+Una especificación aprobada (p. ej. `specs/features/SPEC-0001-user-management.md`) se implementa así:
+
+1. **Domain**: entidades y reglas (`Itmas3.Domain/<Módulo>/`).
+2. **Application**: casos de uso y puertos (`Itmas3.Application/<Módulo>/<CasoDeUso>/`).
+3. **Infrastructure**: configuración EF (`Persistence/Configurations/`), migración, adaptadores.
+4. **Api**: contratos y controller delgado con `[RequirePermission("<recurso>.<acción>")]`; los permisos se declaran
+   en un `IPermissionDefinitionProvider` del módulo (DEVELOPMENT.md §8).
+5. **Frontend**: `features/<módulo>/` con su `*.routes.ts` lazy (`permissionGuard`), entrada en `NAVIGATION` con `permission`.
+6. **Tests** en cada nivel y **documentación** actualizada.

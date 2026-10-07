@@ -1,0 +1,130 @@
+# Full local environment:  docker compose up --build
+# Configuration comes exclusively from environment variables (.env, never committed). See README.md.
+name: itmas3
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:?POSTGRES_SUPERUSER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?POSTGRES_SUPERUSER_PASSWORD is required}
+      # Consumed only by database/init/01-create-roles.sh on first start.
+      APP_DB_MIGRATOR_USER: ${APP_DB_MIGRATOR_USER:?APP_DB_MIGRATOR_USER is required}
+      APP_DB_MIGRATOR_PASSWORD: ${APP_DB_MIGRATOR_PASSWORD:?APP_DB_MIGRATOR_PASSWORD is required}
+      APP_DB_USER: ${APP_DB_USER:?APP_DB_USER is required}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?APP_DB_PASSWORD is required}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    networks: [data]
+    # No published ports: only reachable from the internal "data" network.
+    healthcheck:
+      # TCP (-h 127.0.0.1): the temporary server used during initialisation listens only on the
+      # Unix socket, so the service is reported healthy only once the real server accepts connections.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    security_opt: ["no-new-privileges:true"]
+
+  migrator:
+    build:
+      context: ./backend
+      target: migrator
+    image: itmas3/migrator:local
+    restart: "no"
+    environment:
+      Database__Host: postgres
+      Database__Port: "5432"
+      Database__Name: ${POSTGRES_DB}
+      Database__Username: ${APP_DB_MIGRATOR_USER}
+      Database__Password: ${APP_DB_MIGRATOR_PASSWORD}
+      Database__SslMode: Disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [data]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  api:
+    build:
+      context: ./backend
+      target: api
+    image: itmas3/api:local
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      Logging__Console__FormatterName: json
+      AllowedHosts: ${APP_ALLOWED_HOSTS:-localhost}
+      ReverseProxy__KnownNetworks__0: ${EDGE_NETWORK_SUBNET:-172.28.10.0/24}
+      Database__Host: postgres
+      Database__Port: "5432"
+      Database__Name: ${POSTGRES_DB}
+      Database__Username: ${APP_DB_USER}
+      Database__Password: ${APP_DB_PASSWORD}
+      Database__SslMode: Disable
+      EntraId__Instance: ${ENTRA_INSTANCE:-https://login.microsoftonline.com/}
+      EntraId__TenantId: ${ENTRA_TENANT_ID:-}
+      EntraId__ClientId: ${ENTRA_CLIENT_ID:-}
+      EntraId__ClientSecret: ${ENTRA_CLIENT_SECRET:-}
+      Authorization__BootstrapRootObjectIds: ${AUTHZ_BOOTSTRAP_ROOT_OIDS:-}
+      Authorization__AllowGuestUsers: ${AUTHZ_ALLOW_GUEST_USERS:-false}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: itmas3-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    networks: [edge, data]
+    healthcheck:
+      # Overall health: API + PostgreSQL connectivity (HTTP 503 when unhealthy).
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  frontend:
+    build:
+      context: ./frontend
+      target: runtime
+    image: itmas3/frontend:local
+    restart: unless-stopped
+    environment:
+      API_UPSTREAM: http://api:8080
+      ENTRA_AUTHORITY_ORIGIN: ${ENTRA_AUTHORITY_ORIGIN:-https://login.microsoftonline.com}
+    ports:
+      # Bound to loopback: the only published port of the whole stack.
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [edge]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  # Reverse proxy <-> API. Has egress (the API must reach Microsoft Entra ID).
+  edge:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${EDGE_NETWORK_SUBNET:-172.28.10.0/24}
+  # API/migrator <-> PostgreSQL. Internal: no external connectivity at all.
+  data:
+    driver: bridge
+    internal: true
+
+volumes:
+  postgres-data:

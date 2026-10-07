@@ -1,0 +1,27 @@
+form {
+  max-width: 900px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.permission-group {
+  margin-top: 16px;
+}
+
+.permission-group h3 {
+  font: var(--mat-sys-title-small);
+  margin: 8px 0;
+}
+
+.permission {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+}

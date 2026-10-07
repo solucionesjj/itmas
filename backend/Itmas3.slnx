@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Itmas3.Api/Itmas3.Api.csproj" />
+    <Project Path="src/Itmas3.Application/Itmas3.Application.csproj" />
+    <Project Path="src/Itmas3.Domain/Itmas3.Domain.csproj" />
+    <Project Path="src/Itmas3.Infrastructure/Itmas3.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Itmas3.IntegrationTests/Itmas3.IntegrationTests.csproj" />
+    <Project Path="tests/Itmas3.UnitTests/Itmas3.UnitTests.csproj" />
+  </Folder>
+</Solution>

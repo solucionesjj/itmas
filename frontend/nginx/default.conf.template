@@ -1,0 +1,63 @@
+# Rendered at container start by the nginx image (envsubst over /etc/nginx/templates).
+# Variables: API_UPSTREAM, ENTRA_AUTHORITY_ORIGIN (see security-headers.inc.template).
+#
+# Single public origin: static SPA + reverse proxy to the API for /api, /auth and the OIDC callbacks.
+# The API and the database are never published directly.
+
+server_tokens off;
+
+gzip on;
+gzip_types text/plain text/css application/javascript application/json image/svg+xml;
+gzip_min_length 1024;
+
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+    client_max_body_size 1m;
+
+    # Container health check (does not depend on the API).
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # API health endpoints are internal (container network only); do not fall back to the SPA.
+    location ^~ /health {
+        return 404;
+    }
+
+    # Backend-for-Frontend and API. The API sets its own security headers.
+    location ~ ^/(api|auth|signin-oidc|signout-callback-oidc)(/|$) {
+        proxy_pass ${API_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $http_host;
+        # nginx is the edge: overwrite (never append) client-supplied forwarding headers.
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $http_host;
+        # OIDC responses carry large (chunked) cookies.
+        proxy_buffer_size 32k;
+        proxy_buffers 8 32k;
+        proxy_busy_buffers_size 64k;
+        proxy_read_timeout 60s;
+    }
+
+    # Content-hashed bundles produced by the Angular build: cache forever.
+    location ~* "-[A-Za-z0-9]{8}\.(?:js|css)$" {
+        include /etc/nginx/conf.d/security-headers.inc;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    # SPA routes: always revalidate index.html so new releases are picked up.
+    location / {
+        include /etc/nginx/conf.d/security-headers.inc;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri $uri/ /index.html;
+    }
+}

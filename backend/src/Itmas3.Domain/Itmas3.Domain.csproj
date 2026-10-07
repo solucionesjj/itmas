@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Domain: pure business model. MUST NOT reference any other project or framework package. -->
+  <PropertyGroup>
+    <RootNamespace>Itmas3.Domain</RootNamespace>
+  </PropertyGroup>
+</Project>

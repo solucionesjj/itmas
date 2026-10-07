@@ -1,0 +1,27 @@
+// Layout only: colours, typography and elevation come from the Material 3 theme.
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-name {
+  margin-inline-start: 8px;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.container {
+  flex: 1 1 auto;
+}
+
+mat-sidenav {
+  width: 280px;
+}
+
+.content {
+  padding: 24px;
+  max-width: 1200px;
+}

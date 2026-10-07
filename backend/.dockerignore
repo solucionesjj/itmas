@@ -1,0 +1,13 @@
+**/bin
+**/obj
+**/TestResults
+tests
+.vs
+.vscode
+.idea
+**/*.user
+**/appsettings.*.local.json
+.env
+.env.*
+Dockerfile
+.dockerignore

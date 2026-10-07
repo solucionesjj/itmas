@@ -1,0 +1,44 @@
+# ---- Secrets and local configuration (constitution §4) ----
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+*.crt
+*.cer
+secrets/
+**/appsettings.*.local.json
+docker-compose.override.yml
+
+# ---- .NET ----
+**/bin/
+**/obj/
+**/TestResults/
+*.user
+*.suo
+.vs/
+
+# ---- Node / Angular ----
+node_modules/
+**/dist/
+**/.angular/
+**/coverage/
+npm-debug.log*
+
+# ---- Logs and temporary files ----
+*.log
+logs/
+tmp/
+*.tmp
+*.swp
+
+# ---- Docker artefacts ----
+*.tar
+.docker/
+
+# ---- IDE / OS ----
+.idea/
+.DS_Store
+Thumbs.db

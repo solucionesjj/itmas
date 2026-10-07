@@ -1,0 +1,46 @@
+<mat-toolbar class="top-app-bar">
+  <button mat-icon-button (click)="drawer.toggle()" aria-label="Mostrar u ocultar la navegación">
+    <mat-icon>menu</mat-icon>
+  </button>
+  <span class="app-name">{{ appName }}</span>
+  <span class="spacer"></span>
+  <app-theme-toggle />
+  <app-user-menu />
+</mat-toolbar>
+
+<mat-sidenav-container class="container">
+  <mat-sidenav
+    #drawer
+    [mode]="isHandset() ? 'over' : 'side'"
+    [opened]="!isHandset()"
+    [attr.role]="'navigation'"
+    aria-label="Navegación principal"
+  >
+    <mat-nav-list>
+      @for (group of navigation(); track group.title) {
+        @if (group.title) {
+          <h3 matSubheader>{{ group.title }}</h3>
+        }
+        @for (item of group.items; track item.route) {
+          <a
+            mat-list-item
+            [routerLink]="item.route"
+            routerLinkActive
+            #link="routerLinkActive"
+            [activated]="link.isActive"
+            (click)="isHandset() && drawer.close()"
+          >
+            <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+            <span matListItemTitle>{{ item.label }}</span>
+          </a>
+        }
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content>
+    <main class="content">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

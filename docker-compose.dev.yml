@@ -1,0 +1,9 @@
+# Optional overlay for local debugging (never for shared environments):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# Publishes PostgreSQL on loopback so that `dotnet run` / `dotnet ef` can be used from the host.
+# The "data" network is internal and cannot publish ports, so PostgreSQL also joins "edge" here.
+services:
+  postgres:
+    networks: [data, edge]
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"

@@ -1,0 +1,80 @@
+<div class="page-header">
+  <a
+    mat-icon-button
+    [routerLink]="isEditing() ? ['/admin/policies', id()] : ['/admin/policies']"
+    aria-label="Volver"
+  >
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <h1 class="page-title">{{ isEditing() ? 'Editar política' : 'Nueva política' }}</h1>
+</div>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Cargando" />
+}
+
+<form [formGroup]="form" (ngSubmit)="save()">
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Nombre</mat-label>
+    <input matInput formControlName="name" maxlength="100" required />
+    @if (form.controls.name.hasError('required')) {
+      <mat-error>El nombre es obligatorio.</mat-error>
+    }
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="full-width">
+    <mat-label>Descripción</mat-label>
+    <textarea matInput formControlName="description" maxlength="500" rows="2"></textarea>
+    <mat-hint align="end">{{ form.controls.description.value.length }} / 500</mat-hint>
+  </mat-form-field>
+
+  @if (isEditing()) {
+    <mat-slide-toggle formControlName="isActive">
+      Activa (una política inactiva no concede permisos)
+    </mat-slide-toggle>
+  }
+
+  <h2 class="supporting-text section">Permisos ({{ selected().size }} seleccionados)</h2>
+
+  @if (!canReadCatalog) {
+    <p class="supporting-text">
+      Necesitas el permiso <span class="code">permissions.read</span> para ver el catálogo.
+    </p>
+  }
+  @if (removedObsolete().length > 0) {
+    <p class="supporting-text">
+      Se quitarán permisos obsoletos o no otorgables:
+      <span class="code">{{ removedObsolete().join(', ') }}</span>
+    </p>
+  }
+
+  @for (group of groups(); track group.category) {
+    <div class="permission-group" role="group" [attr.aria-label]="group.category">
+      <h3>{{ group.category }}</h3>
+      @for (permission of group.permissions; track permission.name) {
+        <mat-checkbox
+          class="permission"
+          [checked]="selected().has(permission.name)"
+          [disabled]="!canGrant(permission.name)"
+          [matTooltip]="
+            canGrant(permission.name)
+              ? permission.description
+              : 'No puedes otorgar un permiso que no tienes.'
+          "
+          (change)="toggle(permission.name, $event.checked)"
+        >
+          {{ permission.displayName }} · <span class="code">{{ permission.name }}</span>
+        </mat-checkbox>
+      }
+    </div>
+  }
+
+  <div class="actions">
+    <button mat-flat-button type="submit" [disabled]="saving() || loading()">
+      {{ isEditing() ? 'Guardar cambios' : 'Crear política' }}
+    </button>
+    <a mat-button [routerLink]="isEditing() ? ['/admin/policies', id()] : ['/admin/policies']"
+      >Cancelar</a
+    >
+  </div>
+</form>

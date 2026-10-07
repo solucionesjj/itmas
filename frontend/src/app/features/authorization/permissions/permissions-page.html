@@ -1,0 +1,87 @@
+<div class="page-header">
+  <h1 class="page-title">Permisos</h1>
+</div>
+<p class="supporting-text">
+  Catálogo de permisos que la aplicación verifica. Se definen junto con cada funcionalidad; aquí
+  solo se edita cómo se presentan.
+</p>
+
+<div class="filters">
+  <mat-form-field appearance="outline">
+    <mat-label>Buscar</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput maxlength="100" (input)="text.set($any($event.target).value.trim())" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Categoría</mat-label>
+    <mat-select [value]="category()" (valueChange)="category.set($event)">
+      <mat-option value="">Todas</mat-option>
+      @for (item of categories(); track item) {
+        <mat-option [value]="item">{{ item }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</div>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Cargando permisos" />
+}
+
+<div class="table-container">
+  <table mat-table [dataSource]="filtered()" aria-label="Permisos">
+    <ng-container matColumnDef="name">
+      <th mat-header-cell *matHeaderCellDef>Permiso</th>
+      <td mat-cell *matCellDef="let permission">
+        {{ permission.displayName }}
+        <span class="secondary code">{{ permission.name }}</span>
+        <span class="secondary">{{ permission.description }}</span>
+      </td>
+    </ng-container>
+    <ng-container matColumnDef="category">
+      <th mat-header-cell *matHeaderCellDef>Categoría</th>
+      <td mat-cell *matCellDef="let permission">{{ permission.category }}</td>
+    </ng-container>
+    <ng-container matColumnDef="status">
+      <th mat-header-cell *matHeaderCellDef>Estado</th>
+      <td mat-cell *matCellDef="let permission">
+        <mat-chip-set>
+          @if (permission.isDeprecated) {
+            <mat-chip [disableRipple]="true">Obsoleto</mat-chip>
+          } @else if (!permission.isGrantable) {
+            <mat-chip [disableRipple]="true" matTooltip="Solo los usuarios Root lo ejercen"
+              >Solo Root</mat-chip
+            >
+          } @else {
+            <mat-chip [disableRipple]="true">Otorgable</mat-chip>
+          }
+        </mat-chip-set>
+      </td>
+    </ng-container>
+    <ng-container matColumnDef="policyCount">
+      <th mat-header-cell *matHeaderCellDef>Políticas</th>
+      <td mat-cell *matCellDef="let permission">{{ permission.policyCount }}</td>
+    </ng-container>
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef><span class="cdk-visually-hidden">Acciones</span></th>
+      <td mat-cell *matCellDef="let permission">
+        <button
+          *appIfPermission="'permissions.update'"
+          mat-icon-button
+          matTooltip="Editar"
+          [attr.aria-label]="'Editar ' + permission.name"
+          (click)="edit(permission)"
+        >
+          <mat-icon>edit</mat-icon>
+        </button>
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="columns"></tr>
+    <tr mat-row *matRowDef="let row; columns: columns"></tr>
+    <tr class="mat-mdc-no-data-row" *matNoDataRow>
+      <td class="empty" [attr.colspan]="columns.length">
+        {{ loading() ? 'Cargando…' : 'No hay permisos que coincidan con los filtros.' }}
+      </td>
+    </tr>
+  </table>
+</div>

@@ -1,0 +1,11 @@
+# Security headers for the SPA documents and assets.
+# CSP notes:
+#  - script-src 'self': no inline scripts (inline critical CSS is disabled in angular.json for this reason).
+#  - style-src 'unsafe-inline': required by Angular/Material runtime component styles.
+#  - form-action includes the Entra ID authority: sign-out is a form post that redirects there.
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self' ${ENTRA_AUTHORITY_ORIGIN}" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+add_header Cross-Origin-Opener-Policy "same-origin" always;

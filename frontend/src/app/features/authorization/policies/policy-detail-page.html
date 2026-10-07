@@ -1,0 +1,86 @@
+<div class="page-header">
+  <a mat-icon-button routerLink="/admin/policies" aria-label="Volver a políticas">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <h1 class="page-title">{{ policy()?.name ?? 'Política' }}</h1>
+  @if (policy(); as policy) {
+    <mat-chip-set>
+      <mat-chip [disableRipple]="true">{{ policy.isActive ? 'Activa' : 'Inactiva' }}</mat-chip>
+    </mat-chip-set>
+    <a
+      *appIfPermission="'policies.update'"
+      mat-stroked-button
+      [routerLink]="['/admin/policies', policy.id, 'edit']"
+    >
+      <mat-icon>edit</mat-icon>
+      Editar
+    </a>
+    <button *appIfPermission="'policies.delete'" mat-stroked-button (click)="delete(policy)">
+      <mat-icon>delete</mat-icon>
+      Eliminar
+    </button>
+  }
+</div>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Cargando política" />
+}
+
+@if (policy(); as policy) {
+  <p class="supporting-text">
+    {{ policy.description || 'Sin descripción.' }}
+    <span class="secondary">Actualizada {{ policy.updatedAt | date: 'medium' }}</span>
+  </p>
+  @if (!policy.isActive) {
+    <p class="supporting-text"><strong>Inactiva:</strong> no concede permisos a sus usuarios.</p>
+  }
+
+  <section class="section" aria-labelledby="permissions-title">
+    <h2 id="permissions-title" class="supporting-text">
+      Permisos ({{ policy.permissions.length }})
+    </h2>
+    <mat-list>
+      @for (group of groups(); track group.category) {
+        <h3 matSubheader>{{ group.category }}</h3>
+        @for (permission of group.permissions; track permission.name) {
+          <mat-list-item>
+            <mat-icon matListItemIcon>key</mat-icon>
+            <span matListItemTitle class="code">{{ permission.name }}</span>
+            <span matListItemLine>
+              {{ permission.displayName }}
+              @if (permission.isDeprecated) {
+                · <em>obsoleto (no concede acceso)</em>
+              }
+            </span>
+          </mat-list-item>
+        }
+      } @empty {
+        <p class="empty">Esta política no contiene permisos.</p>
+      }
+    </mat-list>
+  </section>
+
+  <section class="section" aria-labelledby="users-title">
+    <h2 id="users-title" class="supporting-text">Usuarios asignados ({{ users().length }})</h2>
+    <mat-list>
+      @for (user of users(); track user.id) {
+        <mat-list-item>
+          <mat-icon matListItemIcon>person</mat-icon>
+          <span matListItemTitle>
+            @if (auth.hasPermission('users.read')) {
+              <a [routerLink]="['/admin/users', user.id]">{{ user.displayName }}</a>
+            } @else {
+              {{ user.displayName }}
+            }
+            @if (!user.isActive) {
+              · <em>inactivo</em>
+            }
+          </span>
+          <span matListItemLine>{{ user.email }}</span>
+        </mat-list-item>
+      } @empty {
+        <p class="empty">Ningún usuario tiene asignada esta política.</p>
+      }
+    </mat-list>
+  </section>
+}
