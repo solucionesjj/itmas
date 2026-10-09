@@ -457,8 +457,9 @@ Implementada el 2026-10-07.
 
 Totales al cerrar: backend 126 pruebas (77 unitarias + 49 de integración), frontend 35.
 
-**Validación manual pendiente del solicitante:** primer Root mediante `AUTHZ_BOOTSTRAP_ROOT_OIDS` con una cuenta real
-del tenant (README → "Primer administrador").
+**Validación manual (2026-10-07):** el solicitante inició sesión con una cuenta real del tenant usando
+`AUTHZ_BOOTSTRAP_ROOT_OIDS`. Resultado: alta automática (`user.provisioned`), Root asignado (`root.bootstrapped`, ambos
+auditados) y acceso a la sección de Administración.
 
 ## 18. Decisiones sobre las preguntas abiertas (resueltas el 2026-10-07)
 
