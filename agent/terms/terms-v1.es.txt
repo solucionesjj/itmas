@@ -1,0 +1,19 @@
+TÉRMINOS Y CONDICIONES DE USO DEL AGENTE DE INVENTARIO ITMas (versión 1)
+
+Al instalar este agente, usted declara estar autorizado para instalar software en este equipo y acepta que:
+
+1. El agente recopilará una vez al día información técnica del equipo: nombre del equipo, sistema operativo y
+   versión, aplicaciones instaladas, cuentas de usuario locales y los grupos a los que pertenecen, direcciones IP
+   locales, características de memoria, procesador y discos, estado de cifrado de los discos y estado del firewall.
+2. Para conocer la dirección IP pública del equipo y su ubicación aproximada (país, región y ciudad), el agente
+   consultará una vez al día un proveedor externo (ipinfo.io), sin enviarle ningún otro dato del equipo.
+   La información se enviará de forma cifrada a la plataforma ITMas, que registrará además la dirección IP desde la
+   que recibe la conexión.
+3. La finalidad es exclusivamente la gestión del inventario tecnológico y de la seguridad de la información de la
+   organización. La información no se utilizará para otros fines.
+4. El agente no accede al contenido de sus archivos, correos, navegación ni actividad personal, y no permite controlar
+   el equipo de forma remota.
+5. La información se conservará durante el tiempo necesario para la finalidad indicada y será accesible solo por el
+   personal autorizado.
+6. Puede desinstalar el agente en cualquier momento con el comando "itmas-agent uninstall". Para consultar, actualizar
+   o solicitar la supresión de sus datos, contacte con el área de TI de su organización.

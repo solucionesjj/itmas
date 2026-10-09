@@ -27,10 +27,15 @@ Genera `.env` con contraseñas aleatorias. Completa los valores de Entra ID si v
 │   ├── tests/Itmas3.{UnitTests,IntegrationTests}
 │   ├── Directory.Build.props / Directory.Packages.props   Reglas de build y versiones centralizadas
 │   └── Dockerfile         Targets: api (por defecto), migrator
+├── agent/                 Agente de inventario (SPEC-0002, ADR-0010): solución .NET independiente
+│   ├── src/Itmas3.Agent{,.Collectors}   Ejecutable (install/uninstall/status/collect/run) y colectores por SO
+│   ├── tests/Itmas3.Agent.Tests         Parsers con salidas reales (fixtures/), contrato v1, planificador, instalación
+│   ├── packaging/, terms/               Plantillas systemd/launchd/newsyslog y términos versionados
+│   └── Dockerfile                       Targets: test, artifacts (paquetes + SHA256SUMS), e2e
 ├── database/init/         Bootstrap de PostgreSQL (roles de mínimo privilegio)
 ├── specs/                 Especificaciones SDD, ADRs y plantillas
 ├── agents/                Definición de agentes especializados
-├── scripts/               Utilidades (init-env.sh)
+├── scripts/               Utilidades (init-env.sh, build-agent.sh)
 ├── docker-compose.yml     Entorno completo
 └── docker-compose.dev.yml Overlay opcional: publica PostgreSQL en 127.0.0.1 para depurar
 ```
@@ -119,6 +124,9 @@ cuando sea posible y nunca se edita una migración ya aplicada en un entorno com
 | Backend: todo | `cd backend && dotnet test` | .NET SDK + Docker |
 | Frontend | `cd frontend && npm test -- --watch=false` | Node 24 |
 | Frontend en Docker | `docker build --target test ./frontend` | Docker |
+| Agente | `cd agent && dotnet test` | .NET SDK |
+| Agente en Docker + paquetes | `./scripts/build-agent.sh` | Docker |
+| Agente Linux en contenedor (inventario sin envío) | `docker compose --profile agent run --rm agent-e2e` | Docker |
 
 Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json`).
 
@@ -130,6 +138,14 @@ Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json
   transversal sin añadir funcionalidades falsas al producto. La autenticación se sustituye por un esquema de
   prueba (`X-Test-User`); Entra ID nunca se contacta.
 - **Frontend (Vitest):** servicios, guards e interceptores.
+- **Agente:** los *parsers* de cada SO se prueban con salidas reales en `agent/tests/Itmas3.Agent.Tests/fixtures/`
+  (Ubuntu 22.04/24.04 y Debian 12 capturadas en contenedores, macOS saneadas a partir de un equipo real, Windows con
+  valores documentados de WMI). Ninguna prueba contacta ipinfo.io ni la API. El contrato `v1` está en
+  `agent/tests/fixtures/contract/inventory-report.v1.json`: el agente debe emitir exactamente esas propiedades y la
+  API debe aceptarlas (`ContractTests` y `InventoryTests.Contract_fixture_shared_with_the_agent_is_accepted`). Si
+  cambias el contrato, cambia ese archivo y ambos lados en el mismo cambio, y despliega primero la API.
+- **Verificación manual del agente:** `itmas-agent collect` en cada plataforma. La instalación como servicio se
+  probó con systemd en arm64 nativo; en Windows y macOS es una verificación documentada (SPEC-0002 §17).
 
 ## 7. Convenciones
 

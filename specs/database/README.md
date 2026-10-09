@@ -8,7 +8,8 @@ merecen una spec propia). Plantilla: [`_templates/database-change.md`](../_templ
 | Esquema | Dueño | Acceso de la API | Contenido |
 |---|---|---|---|
 | `app` | `itmas3_migrator` | DML (default privileges) | `data_protection_keys` (técnica); autorización: `users`, `user_external_identities`, `policies`, `policy_statements`, `policy_assignments`, `permissions`, `authorization_state` |
-| `app` → `audit_events` | `itmas3_migrator` | **Solo INSERT/SELECT** | Auditoría de autorización (*append-only*, SPEC-0001) |
+| `app` → `audit_events` | `itmas3_migrator` | **Solo INSERT/SELECT** | Auditoría de autorización y de enrolamiento de dispositivos (*append-only*, SPEC-0001/0002) |
+| `app` (inventario) | `itmas3_migrator` | DML (default privileges) | `devices` (identidad, hash de la API key, resumen del último inventario), `inventory_reports` (inventario `jsonb`, IP declarada e IP de conexión; histórico de 90 días) — SPEC-0002 |
 | `app_migrations` | `itmas3_migrator` | Ninguno | `__ef_migrations_history` |
 | `public` | — | Ninguno (`REVOKE ALL FROM PUBLIC`) | — |
 

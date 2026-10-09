@@ -53,6 +53,7 @@ specs/
 |---|---|---|
 | [SPEC-0000](architecture/SPEC-0000-application-foundation.md) | Application Foundation | Implemented |
 | [SPEC-0001](features/SPEC-0001-policy-based-authorization.md) | Sistema de autorización basado en políticas | Implemented |
+| [SPEC-0002](features/SPEC-0002-os-inventory-agent.md) | Agente de inventario de sistema operativo | Implemented |
 | [ADR-0001](architecture/adr-0001-clean-architecture.md) | Clean Architecture en 4 proyectos | Accepted |
 | [ADR-0002](architecture/adr-0002-authentication-bff.md) | Autenticación BFF con Microsoft Entra ID | Accepted |
 | [ADR-0003](architecture/adr-0003-authorization-default-deny.md) | Autorización *default deny* basada en permisos | Accepted |
@@ -61,3 +62,6 @@ specs/
 | [ADR-0006](architecture/adr-0006-observability-and-errors.md) | Logging estructurado, OpenTelemetry opcional y Problem Details | Accepted |
 | [ADR-0007](architecture/adr-0007-container-topology.md) | Topología de contenedores con proxy de mismo origen | Accepted |
 | [ADR-0008](architecture/adr-0008-policy-based-authorization.md) | Modelo de autorización basado en políticas | Accepted |
+| [ADR-0009](architecture/adr-0009-device-authentication.md) | Autenticación de dispositivos | Accepted |
+| [ADR-0010](architecture/adr-0010-inventory-agent.md) | Agente de inventario multiplataforma en .NET | Accepted |
+| [ADR-0011](architecture/adr-0011-public-ip-ipinfo.md) | IP pública con ipinfo.io desde el agente; IP de conexión en el servidor | Accepted |

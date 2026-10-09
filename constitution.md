@@ -1,6 +1,6 @@
 # Constitución del proyecto
 
-**Versión:** 1.0.1 · **Vigente desde:** 2026-10-07 · **Origen:** [SPEC-0000](specs/architecture/SPEC-0000-application-foundation.md)
+**Versión:** 1.1.0 · **Vigente desde:** 2026-10-08 · **Origen:** [SPEC-0000](specs/architecture/SPEC-0000-application-foundation.md)
 
 Esta constitución es la política técnica permanente del proyecto. Toda especificación, plan, cambio de código,
 configuración o documentación (hecho por personas o por agentes de IA) debe cumplirla.
@@ -36,9 +36,12 @@ Los términos **DEBE**, **NO DEBE**, **DEBERÍA** y **PUEDE** tienen el sentido 
 1. **Secure by design.** Ante un conflicto entre seguridad y conveniencia, prevalece la seguridad.
 2. **Autenticación:** Microsoft Entra ID mediante el patrón BFF. El navegador NO DEBE recibir ni almacenar tokens
    de acceso, refresco o identidad. La sesión vive en una cookie `HttpOnly; Secure; SameSite=Strict`.
+   Los **dispositivos** (agentes, §13) se autentican con una credencial propia de cada dispositivo, emitida en un
+   enrolamiento (ADR-0009). Esa credencial nunca autentica a una persona ni concede permisos de usuario.
 3. **Default deny:** todo endpoint DEBE declarar explícitamente su autorización:
    `[AllowAnonymous]`, `[RequirePermission("<recurso>.<acción>")]` (o `<recurso>.<subrecurso>.<acción>`; minúsculas,
-   mínimo dos segmentos) o, solo para operaciones sobre la propia identidad, la política `AuthenticatedUser`.
+   mínimo dos segmentos), solo para operaciones sobre la propia identidad la política `AuthenticatedUser`, o, solo
+   para endpoints de dispositivos, una política de dispositivo (`DeviceEnrollment`, `EnrolledDevice`; ADR-0009).
    Un `[Authorize]` sin política está prohibido. Todo permiso usado DEBE estar declarado en el catálogo de permisos.
 4. Estar autenticado NO DEBE conceder privilegios sobre recursos de la aplicación. Los permisos se conceden
    explícitamente mediante políticas (ADR-0008) y se evalúan en el backend mediante `IPermissionEvaluator`.
@@ -48,7 +51,8 @@ Los términos **DEBE**, **NO DEBE**, **DEBERÍA** y **PUEDE** tienen el sentido 
 7. Los errores DEBEN devolverse como Problem Details (RFC 9457) y NO DEBEN exponer stack traces, mensajes internos,
    datos de infraestructura ni secretos.
 8. Mínimo privilegio en todo: roles de base de datos, contenedores no root, capacidades eliminadas, redes internas,
-   puertos no publicados salvo el del frontend.
+   puertos no publicados salvo el del frontend. Única excepción: el agente de dispositivo (§13) se ejecuta con
+   privilegios elevados, porque los necesita para leer el estado del sistema, y con los controles compensatorios de §13.4.
 9. Las protecciones existentes (CSRF, cabeceras, CSP, rate limiting, CORS cerrado, validación de `returnUrl`,
    filtrado de hosts) NO DEBEN relajarse sin enmienda.
 10. Toda spec DEBE incluir una sección de consideraciones de seguridad (amenazas, datos sensibles, permisos).
@@ -101,7 +105,9 @@ Los términos **DEBE**, **NO DEBE**, **DEBERÍA** y **PUEDE** tienen el sentido 
 
 ## §8. Docker e infraestructura
 
-1. Todo el sistema DEBE poder levantarse con `docker compose up --build`.
+Esta sección aplica a los componentes de servidor. El agente de dispositivo se rige por §13.
+
+1. Todo el sistema de servidor DEBE poder levantarse con `docker compose up --build`.
 2. Imágenes multi-stage, base mínima (Alpine/chiseled), usuario no root, sin herramientas de build en runtime.
 3. Cada servicio DEBE tener health check significativo; las dependencias se expresan con `condition: service_healthy`
    o `service_completed_successfully`.
@@ -146,6 +152,22 @@ Los términos **DEBE**, **NO DEBE**, **DEBERÍA** y **PUEDE** tienen el sentido 
 4. Código y comentarios en inglés; documentación y UI en español.
 5. Las dependencias nuevas DEBEN estar mantenidas activamente, tener licencia compatible y justificarse en la spec.
 
+## §13. Agente de dispositivo
+
+1. Un agente es un componente que se instala en los equipos inventariados y se ejecuta como servicio del sistema
+   operativo, fuera de Docker. Vive en `agent/`, como solución independiente, y NO DEBE referenciar proyectos de
+   `backend/` ni `frontend/`. Su contrato con la API se verifica con *fixtures* y pruebas de contrato en ambos lados.
+2. Se le aplican los estándares de §12 (backend), §9 (pruebas: los *parsers* de salidas del SO se prueban con *fixtures*,
+   sin necesitar el SO real ni Internet) y §4 (secretos: ningún secreto compartido se distribuye a los equipos; la
+   credencial del dispositivo se guarda protegida por el SO).
+3. Se comunica con la API solo por HTTPS, con validación del certificado que NO DEBE poder desactivarse. No abre
+   puertos de escucha y NO DEBE aceptar órdenes del servidor ni descargar código.
+4. Si se ejecuta con privilegios elevados (§3.8), DEBE limitarse a leer el sistema y ejecutar los comandos del SO con
+   ruta absoluta, sin *shell*, con argumentos fijos y con un tiempo máximo. Su directorio de instalación solo es
+   escribible por administradores.
+5. Se compila dentro de un contenedor y se distribuye con sumas SHA-256 publicadas. Cada dependencia externa en tiempo
+   de ejecución se justifica en un ADR.
+
 ---
 
 ## Historial
@@ -154,3 +176,4 @@ Los términos **DEBE**, **NO DEBE**, **DEBERÍA** y **PUEDE** tienen el sentido 
 |---|---|---|
 | 1.0.0 | 2026-10-07 | Versión inicial (fundación). |
 | 1.0.1 | 2026-10-07 | §3.3: convención de nombres `<recurso>.<acción>` y catálogo obligatorio; §3.4: políticas, sin roles (SPEC-0001, ADR-0008). |
+| 1.1.0 | 2026-10-08 | MINOR: §3.2 y §3.3, autenticación y políticas de dispositivo (ADR-0009). §3.8, excepción acotada para el agente. Nueva §13, agente de dispositivo (ADR-0010). PATCH: §8 aplica a los componentes de servidor (SPEC-0002). |

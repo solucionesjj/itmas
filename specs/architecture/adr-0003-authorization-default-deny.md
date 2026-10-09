@@ -18,7 +18,8 @@ cloud, sin implementarlo ahora.
 - **Fallback policy** = autenticado **y** `RequireAssertion(_ => false)`: un endpoint sin metadatos de autorización
   se deniega a todos (401 anónimo / 403 autenticado).
 - Declaraciones permitidas por endpoint: `[AllowAnonymous]`, política `AuthenticatedUser` (solo identidad propia)
-  o `[RequirePermission("<módulo>.<recurso>.<acción>")]`.
+  o `[RequirePermission("<módulo>.<recurso>.<acción>")]`. *Ampliado por ADR-0009:* en los endpoints de dispositivos
+  también se admiten las políticas `DeviceEnrollment` y `EnrolledDevice`.
 - `RequirePermissionAttribute` implementa `IAuthorizationRequirementData` (sin *policy provider* propio) y produce un
   `PermissionRequirement`; `PermissionAuthorizationHandler` delega en el puerto `IPermissionEvaluator`.
 - Implementación actual: `DenyAllPermissionEvaluator` (no concede nada).

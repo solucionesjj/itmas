@@ -16,6 +16,10 @@ solo la arquitectura, la seguridad, la infraestructura y las reglas sobre las qu
                                                                ├──▶ Microsoft Entra ID (OIDC)
                                                                └──▶ postgres (PostgreSQL 18)  [red interna]
                            migrator (one-shot, EF Core bundle) ──▶ postgres
+                           /downloads/agent/  paquetes del agente (volumen de solo lectura)
+
+ Equipos (Windows/Linux/macOS) ── itmas-agent (servicio) ──HTTPS──▶ /api/v1/device-enrollments, /api/v1/inventory-reports
+                                                          └─HTTPS──▶ ipinfo.io (IP pública y ubicación)
 ```
 
 - **Un único origen público**: nginx sirve la SPA y hace de proxy de la API. La API y la base de datos
@@ -24,6 +28,9 @@ solo la arquitectura, la seguridad, la infraestructura y las reglas sobre las qu
   una cookie de sesión `HttpOnly` y nunca ve tokens.
 - **Autorización *default deny***: estar autenticado no concede privilegios; cada endpoint declara su permiso.
 - **Clean Architecture** en el backend: `Domain` ← `Application` ← `Infrastructure` ← `Api`.
+- **Agente de inventario** ([SPEC-0002](specs/features/SPEC-0002-os-inventory-agent.md)): servicio .NET para
+  Windows, Linux y macOS que envía cada día el inventario del equipo. Se autentica con una API key propia del
+  dispositivo, obtenida al enrolarse con un código de autorización. Guía: [agent/README.md](agent/README.md).
 
 Detalle completo en [ARCHITECTURE.md](ARCHITECTURE.md) y [SECURITY.md](SECURITY.md).
 
@@ -39,6 +46,7 @@ Detalle completo en [ARCHITECTURE.md](ARCHITECTURE.md) y [SECURITY.md](SECURITY.
 | Persistencia | PostgreSQL, EF Core + Npgsql | 18 / 10.0 |
 | Pruebas backend | xUnit v3, WebApplicationFactory, Testcontainers | 4.0 / 10.0 / 4.15 |
 | Contenedores | Docker, Docker Compose | 29 / v5 |
+| Agente de dispositivo | .NET Worker Service *self-contained* (Windows Service / systemd / launchd) | 10.0 |
 
 ## Requisitos
 
@@ -98,6 +106,9 @@ Toda la configuración sensible llega por variables de entorno (`.env` → Docke
 | `AUTHZ_BOOTSTRAP_ROOT_OIDS` | `oid` de Entra ID (separados por comas) que se convierten en Root al iniciar sesión **solo si no hay ningún Root activo**. | No |
 | `AUTHZ_ALLOW_GUEST_USERS` | Permite el acceso a invitados B2B del tenant (`false` por defecto). | No |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Endpoint OTLP opcional para trazas, métricas y logs. | No |
+| `INVENTORY_ENROLLMENT_CODE` | Código de autorización con el que se enrolan los agentes (≥ 32 caracteres; lo genera `init-env.sh`). Vacío = enrolamiento desactivado. Rotarlo no afecta a los equipos ya enrolados. | **Sí** |
+| `INVENTORY_HISTORY_RETENTION_DAYS` | Días de histórico de inventarios por equipo (90 por defecto; el último se conserva siempre). | No |
+| `AGENT_DOWNLOADS_DIR` | Carpeta con los paquetes del agente que nginx sirve en `/downloads/agent/` (`./agent/dist`). | No |
 
 El host y el puerto de PostgreSQL son internos de Docker (`postgres:5432`); la API los recibe como
 `Database__Host` / `Database__Port` (ver `docker-compose.yml`). Cambiar contraseñas de la base de datos
@@ -126,6 +137,22 @@ Los usuarios se dan de alta automáticamente, sin privilegios, al iniciar sesió
 Para la sesión local basta con `http://localhost`: los navegadores modernos aceptan cookies `Secure` en
 `localhost`. Cualquier otro host requiere HTTPS (ver [SECURITY.md](SECURITY.md#https-y-tls)).
 
+## Agente de inventario
+
+1. Compila los paquetes de las 5 plataformas, dentro de Docker y sin SDK local. Quedan en `agent/dist/<versión>/` y
+   `agent/dist/latest/`, cada uno con su `SHA256SUMS`, y nginx los publica en `/downloads/agent/`:
+
+   ```bash
+   ./scripts/build-agent.sh
+   ```
+
+2. Comparte con los colaboradores, por un canal interno, el valor de `INVENTORY_ENROLLMENT_CODE`.
+3. Cada colaborador descarga el paquete de su plataforma, verifica la suma y ejecuta `itmas-agent install` como
+   administrador. Detalle por sistema operativo: [agent/README.md](agent/README.md).
+
+Si `.env` ya existía antes de SPEC-0002, añade a mano `INVENTORY_ENROLLMENT_CODE` con un valor aleatorio (por ejemplo,
+`openssl rand -hex 24`). La consulta del inventario en la interfaz llegará con SPEC-0003.
+
 ## Documentación
 
 | Documento | Contenido |
@@ -133,6 +160,7 @@ Para la sesión local basta con `http://localhost`: los navegadores modernos ace
 | [constitution.md](constitution.md) | Reglas permanentes que toda implementación debe respetar. |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Componentes, capas, comunicación y decisiones. |
 | [SECURITY.md](SECURITY.md) | Autenticación, autorización, secretos, protección de la API. |
+| [agent/README.md](agent/README.md) | Instalación, comandos y funcionamiento del agente de inventario. |
 | [DEVELOPMENT.md](DEVELOPMENT.md) | Desarrollo local, migraciones, pruebas, estructura. |
 | [specs/](specs/README.md) | Proceso SDD, plantillas, ADRs y especificaciones. |
 | [agents/](agents/README.md) | Agentes especializados: responsabilidades y límites. |

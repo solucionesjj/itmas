@@ -1,0 +1,198 @@
+{
+   "blockdevices": [
+      {
+         "name": "nbd0",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd1",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd2",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd3",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd4",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd5",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd6",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd7",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "vda",
+         "type": "disk",
+         "size": 63999836160,
+         "rota": true,
+         "rm": false,
+         "tran": "virtio",
+         "model": null,
+         "fstype": null,
+         "mountpoint": null,
+         "children": [
+            {
+               "name": "vda1",
+               "type": "part",
+               "size": 63998787584,
+               "rota": true,
+               "rm": false,
+               "tran": "virtio",
+               "model": null,
+               "fstype": null,
+               "mountpoint": "/etc/hosts"
+            }
+         ]
+      },{
+         "name": "vdb",
+         "type": "disk",
+         "size": 653590528,
+         "rota": true,
+         "rm": false,
+         "tran": "virtio",
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd8",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd9",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd10",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd11",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd12",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd13",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd14",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      },{
+         "name": "nbd15",
+         "type": "disk",
+         "size": 0,
+         "rota": false,
+         "rm": false,
+         "tran": null,
+         "model": null,
+         "fstype": null,
+         "mountpoint": null
+      }
+   ]
+}

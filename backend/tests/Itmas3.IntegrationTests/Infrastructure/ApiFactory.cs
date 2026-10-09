@@ -21,6 +21,9 @@ public sealed class ApiFactory(PostgreSqlFixture database) : WebApplicationFacto
 {
     public const string TenantId = "11111111-1111-1111-1111-111111111111";
 
+    /// <summary>Random per test host: never a real code (constitution §4.6).</summary>
+    public string EnrollmentCode { get; } = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -40,6 +43,9 @@ public sealed class ApiFactory(PostgreSqlFixture database) : WebApplicationFacto
 
         // Generous limit: tests issue many requests from the same client.
         builder.UseSetting("RateLimiting:PermitLimitPerMinute", "10000");
+        builder.UseSetting("RateLimiting:DeviceEnrollmentPermitLimitPerMinute", "1000");
+
+        builder.UseSetting("Inventory:EnrollmentCode", EnrollmentCode);
 
         builder.ConfigureTestServices(services =>
         {

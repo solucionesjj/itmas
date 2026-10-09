@@ -1,7 +1,9 @@
 using Itmas3.Application.Authorization.Abstractions;
 using Itmas3.Application.Authorization.Queries;
+using Itmas3.Application.Inventory.Abstractions;
 using Itmas3.Infrastructure.Authorization;
 using Itmas3.Infrastructure.HealthChecks;
+using Itmas3.Infrastructure.Inventory;
 using Itmas3.Infrastructure.Persistence;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
@@ -43,6 +45,11 @@ public static class DependencyInjection
         services.AddScoped<IAuthorizationUnitOfWork, AuthorizationUnitOfWork>();
         services.AddScoped<IAuthorizationSnapshotProvider, AuthorizationSnapshotProvider>();
         services.AddScoped<IAuthorizationQueries, AuthorizationQueries>();
+
+        // Inventory (SPEC-0002)
+        services.AddScoped<IDeviceRepository, DeviceRepository>();
+        services.AddScoped<IInventoryReportRepository, InventoryReportRepository>();
+        services.AddScoped<IInventoryUnitOfWork, InventoryUnitOfWork>();
 
         return services;
     }

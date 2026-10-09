@@ -24,6 +24,17 @@ del agente de seguridad ([`agents/security.md`](agents/security.md)).
 
 **Secretos en el frontend: ninguno.** La SPA no contiene tenant, client ID, secretos ni tokens; tampoco los necesita.
 
+### Dispositivos (agente de inventario, ADR-0009)
+
+| Aspecto | Implementación |
+|---|---|
+| Enrolamiento | `Authorization: Enrollment <código>`, comparado en tiempo constante con `Inventory__EnrollmentCode` (≥ 32 caracteres). Sin código configurado el endpoint responde `404`. 10 intentos/min por IP. Los fallos se registran en el log, sin el código. |
+| Credencial del dispositivo | 256 bits aleatorios, entregados una sola vez. En la BD solo se guarda su SHA-256 (único). Reenrolar el mismo `hardwareId` la sustituye e invalida la anterior (`device.relinked`). |
+| Uso | `Authorization: Device <apiKey>` solo en `POST /api/v1/inventory-reports` (política `EnrolledDevice`). Un dispositivo no tiene permisos de usuario ni sesión. |
+| En el equipo | Windows: DPAPI (máquina) + ACL de `SYSTEM`/Administradores. Linux y macOS: archivos `0600` de `root`. El código de autorización no se guarda. |
+| Entrada no confiable | Contrato estricto: propiedades desconocidas → `400`, límites por colección y longitud, sin caracteres de control, IPs validadas, cuerpo < 1 MB. |
+| Auditoría | `device.enrolled` / `device.relinked` en `app.audit_events`, con IP de origen, *hostname* y versión de los términos aceptados. |
+
 ## 2. Autorización
 
 Modelo basado en políticas, inspirado en AWS IAM: **Usuario → Políticas → Permisos → Recurso/Acción**, sin roles
@@ -66,6 +77,10 @@ con actor, acción, recurso, fecha, resultado y valores anterior y posterior. La
 tiene `INSERT` y `SELECT`. Consulta: permiso `audit.read`.
 
 El frontend usa los permisos de `/auth/session` solo para ocultar menús y botones: **nunca es una frontera de seguridad**.
+
+Los endpoints de dispositivos usan las políticas `DeviceEnrollment` y `EnrolledDevice` (constitución §3.3, ADR-0009).
+`EndpointAuthorizationConventionTests` verifica que solo `DeviceEnrollmentsController` e `InventoryReportsController`
+las usan.
 
 ## 3. Manejo de secretos y variables de entorno
 
@@ -146,6 +161,19 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
 - [ ] `AUTHZ_BOOTSTRAP_ROOT_OIDS` vacío una vez creado el Root (dejarlo solo como procedimiento de emergencia documentado).
 - [ ] Política de retención y exportación de `app.audit_events`.
 - [ ] Exportación de telemetría (`OTEL_EXPORTER_OTLP_ENDPOINT`) y alertas sobre `Error`/`Critical`.
+- [ ] **IP real del cliente (SPEC-0002, ADR-0011).** Si nginx es el borde y tiene el certificado de Let's Encrypt, no
+      hay que hacer nada. Si TLS lo termina otro proxy del host (certbot con un nginx del host, Caddy, Traefik) o un
+      balanceador, configura en nginx `set_real_ip_from <red del proxy>` y `real_ip_header X-Forwarded-For`. Si no,
+      la IP de conexión de los inventarios será la del proxy.
+- [ ] `INVENTORY_ENROLLMENT_CODE` generado aleatoriamente, compartido solo por un canal interno y rotado periódicamente
+      o ante sospecha de filtración. Rotarlo no afecta a los equipos enrolados.
+- [ ] **Revocar un dispositivo comprometido (v1, hasta SPEC-0003).** Reinstalar el agente en el equipo legítimo
+      invalida la API key anterior. Si el equipo no está disponible, un operador con acceso a la BD invalida la
+      credencial sin borrar datos:
+      `UPDATE app.devices SET api_key_hash = md5(random()::text) || md5(random()::text) WHERE id = '<id>';`
+      Registra la acción en el gestor de incidentes.
+- [ ] Publicar solo paquetes del agente generados por `scripts/build-agent.sh` y su `SHA256SUMS`. Los binarios no están
+      firmados (SPEC-0002 P-11, riesgo aceptado): la integridad depende de HTTPS y de que los usuarios verifiquen la suma.
 
 ## 9. Reportar una vulnerabilidad
 

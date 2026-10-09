@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Itmas3.Agent.Collectors/Itmas3.Agent.Collectors.csproj" />
+    <Project Path="src/Itmas3.Agent/Itmas3.Agent.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Itmas3.Agent.Tests/Itmas3.Agent.Tests.csproj" />
+  </Folder>
+</Solution>

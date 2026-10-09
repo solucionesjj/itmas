@@ -25,6 +25,9 @@ en [`specs/architecture/`](specs/architecture/); las reglas que no pueden romper
 | `api` | API REST, Backend-for-Frontend de autenticación, autorización, health checks. | No |
 | `migrator` | Aplica migraciones EF Core y termina. Único proceso con privilegios DDL. | No |
 | `postgres` | Persistencia. Red interna sin salida. | No |
+| `itmas-agent` (fuera de Docker) | Agente de inventario instalado como servicio en los equipos (SPEC-0002). Envía su inventario por HTTPS al mismo origen público. | No (solo conexiones salientes) |
+
+nginx también sirve los paquetes del agente en `/downloads/agent/` desde un volumen de solo lectura (`AGENT_DOWNLOADS_DIR`).
 
 ## 2. Frontend (Angular 22 + Angular Material / Material Design 3)
 
@@ -78,19 +81,24 @@ el frontend **no necesita ninguna configuración de Entra ID**.
 backend/
 ├── src/
 │   ├── Itmas3.Domain/          Modelo de negocio puro. Sin dependencias. (Entity<TId>, DomainException)
-│   │   └── Authorization/      User, Policy, PolicyStatement, PermissionDefinition (SPEC-0001)
+│   │   ├── Authorization/      User, Policy, PolicyStatement, PermissionDefinition (SPEC-0001)
+│   │   └── Inventory/          Device, InventoryReport (SPEC-0002)
 │   ├── Itmas3.Application/     Casos de uso y puertos. Depende solo de Domain.
 │   │   ├── Abstractions/       ICurrentUser, IPermissionEvaluator (puertos)
 │   │   ├── Authorization/      Convención de nombres de permisos
 │   │   ├── Common/Exceptions/  NotFoundException
 │   │   ├── Identity/GetCurrentUserProfile/   Caso de uso (handler + DTO)
-│   │   └── Authorization/      Catálogo de permisos, evaluador, salvaguardas, casos de uso
-│   │                           (Users/, Policies/, Permissions/) y puerto de consultas (Queries/)
+│   │   ├── Authorization/      Catálogo de permisos, evaluador, salvaguardas, casos de uso
+│   │   │                       (Users/, Policies/, Permissions/) y puerto de consultas (Queries/)
+│   │   └── Inventory/          EnrollDevice, SubmitInventoryReport, AuthenticateDevice, PurgeHistory, DeviceSecrets
 │   ├── Itmas3.Infrastructure/  Adaptadores: EF Core/PostgreSQL, Data Protection, evaluador de permisos
 │   │   ├── Persistence/        AppDbContext, DatabaseOptions, Configurations/, Migrations/
-│   │   └── Authorization/      Repositorios, unidad de trabajo auditada, instantáneas en caché, consultas
+│   │   ├── Authorization/      Repositorios, unidad de trabajo auditada, instantáneas en caché, consultas
+│   │   └── Inventory/          Repositorios de dispositivos e inventarios, unidad de trabajo con auditoría
 │   └── Itmas3.Api/             Presentación y composition root
-│       ├── Controllers/        Controllers delgados (Authorization/: users, policies, permissions, audit-events)
+│       ├── Controllers/        Controllers delgados (Authorization/: users, policies, permissions, audit-events;
+│       │                       Inventory/: device-enrollments, inventory-reports)
+│       ├── Inventory/          Esquemas de autenticación de dispositivos, políticas, rate limiting, purga del histórico
 │       ├── Contracts/          DTOs HTTP (request/response)
 │       ├── Authentication/     BFF OIDC + cookie de sesión
 │       ├── Authorization/      Políticas, [RequirePermission], handler
@@ -177,6 +185,26 @@ Navegador                 nginx                 API (BFF)                       
 - Todas las respuestas no autenticadas son `401` (nunca redirecciones); solo `/auth/login` inicia OIDC.
 - Comunicación interna: HTTP plano dentro de redes privadas de Docker; TLS en el borde (ver SECURITY.md).
 
+### Dispositivos (SPEC-0002, ADR-0009)
+
+Los agentes no usan la cookie BFF. Hay dos esquemas de autenticación que no son por defecto, y cada uno solo lo evalúa
+la política que lo nombra:
+
+| Endpoint | Política | Credencial | Límite |
+|---|---|---|---|
+| `POST /api/v1/device-enrollments` | `DeviceEnrollment` | `Authorization: Enrollment <código>` (`Inventory__EnrollmentCode`) | 10/min por IP |
+| `POST /api/v1/inventory-reports` | `EnrolledDevice` | `Authorization: Device <apiKey>` (se busca por SHA-256) | 12/h por credencial |
+
+Una sesión de usuario no satisface las políticas de dispositivo, y una API key no satisface las de usuario. El agente
+envía `X-CSRF: 1`, así que la protección CSRF no cambia. Con cada inventario se guardan dos IPs (ADR-0011):
+
+- La **IP pública declarada**, que el agente obtiene de ipinfo.io.
+- La **IP de conexión**, que es `RemoteIpAddress` después de `UseForwardedHeaders`. nginx sobrescribe `X-Forwarded-For`,
+  así que el cliente no puede falsearla.
+
+`InventoryHistoryPurgeService` elimina cada 6 h los inventarios más antiguos que la retención configurada, conservando
+siempre el último de cada equipo.
+
 ## 6. Docker
 
 - Imágenes multi-stage: `backend/Dockerfile` (targets `api` y `migrator`), `frontend/Dockerfile` (targets
@@ -185,6 +213,23 @@ Navegador                 nginx                 API (BFF)                       
 - Health checks: `pg_isready` por TCP (no se da por lista a PostgreSQL mientras ejecuta la inicialización),
   `/health` de la API (incluye conectividad con PostgreSQL), `/healthz` de nginx.
 - Redes: `edge` (proxy ↔ API, con salida para Entra ID) y `data` (`internal: true`).
+- Perfil opcional `agent`: `agent-e2e` ejecuta el agente Linux en Ubuntu 24.04 y muestra su inventario, sin enviarlo.
+
+## 6.1 Agente de dispositivo (ADR-0010)
+
+```text
+agent/  (solución independiente: no referencia backend/)
+├── Itmas3.Agent.Collectors   Contrato v1 (records + JSON source-gen), InventoryCollector, ProcessRunner seguro,
+│                             fuentes Windows (registro, WMI) / Linux (/proc, /etc, lsblk, lscpu, apt-mark, ufw, nft,
+│                             iptables) / macOS (sw_vers, sysctl, diskutil, fdesetup, dscl, socketfilterfw), ipinfo.io
+└── Itmas3.Agent              install / uninstall / status / collect / run; AgentWorker + SchedulePolicy;
+                              ItmasApiClient (HTTPS, proxy del sistema); API key protegida (0600 / DPAPI);
+                              gestores de servicio: sc.exe, systemd (con sandbox), launchd
+```
+
+Se publica *self-contained* en un solo archivo por RID (`win-x64`, `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64`)
+con `scripts/build-agent.sh`, dentro de Docker. Corre como `LocalSystem` o `root` porque lo necesita para leer el
+sistema, con los controles compensatorios de la constitución §13.
 
 ## 7. Principios arquitectónicos
 

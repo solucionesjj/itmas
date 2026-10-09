@@ -18,10 +18,13 @@ Este repositorio evoluciona mediante **Specification-Driven Development**. Antes
 | Pruebas backend | `cd backend && dotnet test` (requiere Docker) |
 | Pruebas frontend | `cd frontend && npm test -- --watch=false` |
 | Build frontend | `cd frontend && npm run build` |
+| Pruebas del agente | `cd agent && dotnet test` |
+| Paquetes del agente | `./scripts/build-agent.sh` |
 | Nueva migración | ver [DEVELOPMENT.md §5](DEVELOPMENT.md#5-migraciones-ef-core) |
 
 ## Reglas que más se olvidan
-- Todo endpoint declara autorización: `[AllowAnonymous]`, `[RequirePermission("recurso.accion")]` o la política `AuthenticatedUser`.
+- Todo endpoint declara autorización: `[AllowAnonymous]`, `[RequirePermission("recurso.accion")]`, la política `AuthenticatedUser`
+  o, solo en endpoints de dispositivos, `DeviceEnrollment` / `EnrolledDevice` (ADR-0009).
   Todo permiso usado se declara en el catálogo (`IPermissionDefinitionProvider`). No se usan roles.
 - Nunca secretos en el repositorio, en el frontend, en logs ni en la línea de comandos. Nunca leer ni modificar `.env`.
 - Nada de lógica de negocio en controllers; nada de EF Core fuera de `Infrastructure`.

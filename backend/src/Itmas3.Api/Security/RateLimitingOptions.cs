@@ -13,4 +13,12 @@ internal sealed class RateLimitingOptions
     /// <summary>Sign-in attempts per minute per client IP (protects the OIDC entry point).</summary>
     [Range(1, 1_000)]
     public int AuthenticationPermitLimitPerMinute { get; set; } = 20;
+
+    /// <summary>Device enrollment attempts per minute per client IP (SPEC-0002).</summary>
+    [Range(1, 10_000)]
+    public int DeviceEnrollmentPermitLimitPerMinute { get; set; } = 10;
+
+    /// <summary>Inventory reports per hour per device credential (SPEC-0002).</summary>
+    [Range(1, 10_000)]
+    public int InventoryReportsPermitLimitPerHour { get; set; } = 12;
 }

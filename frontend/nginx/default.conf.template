@@ -47,6 +47,28 @@ server {
         proxy_read_timeout 60s;
     }
 
+    # Agent packages (SPEC-0002 RF-18, ADR-0010): public (no secrets inside), read-only volume, no listing.
+    # Every file is a download; SHA256SUMS is served as text so it can be read in the browser.
+    location ^~ /downloads/agent/ {
+        alias /usr/share/nginx/downloads/agent/;
+        autoindex off;
+        disable_symlinks on;
+        limit_except GET HEAD { deny all; }
+        types { }
+        default_type application/octet-stream;
+        include /etc/nginx/conf.d/security-headers.inc;
+        add_header Content-Disposition "attachment" always;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri =404;
+
+        location ~ /SHA256SUMS$ {
+            default_type "text/plain; charset=utf-8";
+            include /etc/nginx/conf.d/security-headers.inc;
+            add_header Cache-Control "no-cache" always;
+            try_files $uri =404;
+        }
+    }
+
     # Content-hashed bundles produced by the Angular build: cache forever.
     location ~* "-[A-Za-z0-9]{8}\.(?:js|css)$" {
         include /etc/nginx/conf.d/security-headers.inc;

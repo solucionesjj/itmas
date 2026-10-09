@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Unit tests of the agent: parsers with real OS outputs (fixtures/), scheduler, HTTP client, install flow, contract. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Itmas3.Agent.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Itmas3.Agent\Itmas3.Agent.csproj" />
+    <ProjectReference Include="..\..\src\Itmas3.Agent.Collectors\Itmas3.Agent.Collectors.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Contract v1 example shared with the backend integration tests. -->
+    <None Include="..\fixtures\contract\inventory-report.v1.json" Link="fixtures\contract\inventory-report.v1.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

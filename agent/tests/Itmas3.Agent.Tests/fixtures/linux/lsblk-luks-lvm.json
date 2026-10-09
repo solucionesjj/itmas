@@ -1,0 +1,36 @@
+{
+   "blockdevices": [
+      {
+         "name": "nvme0n1", "type": "disk", "size": 1000204886016, "rota": false, "rm": false, "tran": "nvme",
+         "model": "Samsung SSD 980 PRO 1TB", "fstype": null, "mountpoint": null,
+         "children": [
+            {"name": "nvme0n1p1", "type": "part", "size": 1127219200, "rota": false, "rm": false, "tran": "nvme", "model": null, "fstype": "vfat", "mountpoint": "/boot/efi"},
+            {"name": "nvme0n1p2", "type": "part", "size": 2147483648, "rota": false, "rm": false, "tran": "nvme", "model": null, "fstype": "ext4", "mountpoint": "/boot"},
+            {"name": "nvme0n1p3", "type": "part", "size": 996928004096, "rota": false, "rm": false, "tran": "nvme", "model": null, "fstype": "crypto_LUKS", "mountpoint": null,
+               "children": [
+                  {"name": "dm_crypt-0", "type": "crypt", "size": 996911226880, "rota": false, "rm": false, "tran": null, "model": null, "fstype": "LVM2_member", "mountpoint": null,
+                     "children": [
+                        {"name": "ubuntu--vg-ubuntu--lv", "type": "lvm", "size": 996907032576, "rota": false, "rm": false, "tran": null, "model": null, "fstype": "ext4", "mountpoint": "/"},
+                        {"name": "ubuntu--vg-swap", "type": "lvm", "size": 4294967296, "rota": false, "rm": false, "tran": null, "model": null, "fstype": "swap", "mountpoint": "[SWAP]"}
+                     ]
+                  }
+               ]
+            }
+         ]
+      },{
+         "name": "sda", "type": "disk", "size": "4000787030016", "rota": "1", "rm": "0", "tran": "sata",
+         "model": "ST4000NM000A-2HZ100", "fstype": null, "mountpoint": null,
+         "children": [
+            {"name": "sda1", "type": "part", "size": "4000785104896", "rota": "1", "rm": "0", "tran": "sata", "model": null, "fstype": "xfs", "mountpoint": "/srv/backups"}
+         ]
+      },{
+         "name": "sdb", "type": "disk", "size": 31914983424, "rota": false, "rm": true, "tran": "usb",
+         "model": "USB Flash Drive", "fstype": null, "mountpoint": null,
+         "children": [
+            {"name": "sdb1", "type": "part", "size": 31913934848, "rota": false, "rm": true, "tran": "usb", "model": null, "fstype": "exfat", "mountpoint": "/media/usb"}
+         ]
+      },{
+         "name": "loop0", "type": "loop", "size": 67108864, "rota": false, "rm": false, "tran": null, "model": null, "fstype": "squashfs", "mountpoint": "/snap/core22/1612"
+      }
+   ]
+}

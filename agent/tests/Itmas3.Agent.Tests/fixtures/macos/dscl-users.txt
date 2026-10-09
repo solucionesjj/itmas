@@ -1,0 +1,7 @@
+daemon                   1
+nobody                   -2
+root                     0
+_www                     70
+jdoe                     501
+localadmin               502
+guest                    201

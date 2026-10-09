@@ -1,0 +1,9 @@
+root:x:0:
+adm:x:4:deploy
+sudo:x:27:deploy
+docker:x:999:deploy,operator2
+deploy:x:1000:
+backup-op:x:1001:
+svc-app:x:1002:
+operator2:x:1003:
+wheel:x:10:operator2

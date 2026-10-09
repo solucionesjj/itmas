@@ -1,0 +1,42 @@
+{
+   "lscpu": [
+      {
+         "field": "Architecture:",
+         "data": "x86_64",
+         "children": [
+            {"field": "CPU op-mode(s):", "data": "32-bit, 64-bit"},
+            {"field": "Address sizes:", "data": "46 bits physical, 57 bits virtual"},
+            {"field": "Byte Order:", "data": "Little Endian"}
+         ]
+      },{
+         "field": "CPU(s):",
+         "data": "32",
+         "children": [
+            {"field": "On-line CPU(s) list:", "data": "0-31"}
+         ]
+      },{
+         "field": "Vendor ID:",
+         "data": "GenuineIntel",
+         "children": [
+            {
+               "field": "Model name:",
+               "data": "Intel(R) Xeon(R) Gold 6338 CPU @ 2.00GHz",
+               "children": [
+                  {"field": "CPU family:", "data": "6"},
+                  {"field": "Model:", "data": "106"},
+                  {"field": "Thread(s) per core:", "data": "2"},
+                  {"field": "Core(s) per socket:", "data": "8"},
+                  {"field": "Socket(s):", "data": "2"},
+                  {"field": "Stepping:", "data": "6"}
+               ]
+            }
+         ]
+      },{
+         "field": "Virtualization features:",
+         "data": null,
+         "children": [
+            {"field": "Virtualization:", "data": "VT-x"}
+         ]
+      }
+   ]
+}

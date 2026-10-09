@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BusProtocol</key>
+	<string>Apple Fabric</string>
+	<key>DeviceIdentifier</key>
+	<string>disk0</string>
+	<key>Internal</key>
+	<true/>
+	<key>MediaName</key>
+	<string>APPLE SSD AP0512R</string>
+	<key>Removable</key>
+	<false/>
+	<key>RemovableMedia</key>
+	<false/>
+	<key>Size</key>
+	<integer>500277792768</integer>
+	<key>SolidState</key>
+	<true/>
+	<key>TotalSize</key>
+	<integer>500277792768</integer>
+	<key>VirtualOrPhysical</key>
+	<string>Unknown</string>
+	<key>WholeDisk</key>
+	<true/>
+</dict>
+</plist>

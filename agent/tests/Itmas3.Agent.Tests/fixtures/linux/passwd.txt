@@ -1,0 +1,8 @@
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+deploy:x:1000:1000:Deploy user:/home/deploy:/bin/bash
+backup-op:x:1001:1001::/home/backup-op:/bin/bash
+svc-app:x:1002:1002::/opt/app:/usr/sbin/nologin
+operator2:x:1003:1003::/home/operator2:/bin/bash

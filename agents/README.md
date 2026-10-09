@@ -34,6 +34,7 @@ Cada archivo `agents/<nombre>.md` empieza con un bloque YAML legible por máquin
 | `database/**` | database | security |
 | `frontend/src/**` | frontend | security (auth, interceptores) |
 | `frontend/nginx/**` | frontend | security (CSP, cabeceras, proxy) |
+| `agent/**` | device-agent | security (privilegios, credenciales), backend (contrato) |
 | `backend/tests/**`, `frontend/src/**/*.spec.ts` | testing | agente del código probado |
 | `**/Dockerfile`, `docker-compose*.yml`, `.env.example`, `scripts/**` | architecture | security |
 | `constitution.md`, `specs/architecture/**` | architecture | security (+ aprobación humana para enmiendas) |
@@ -49,4 +50,5 @@ Cada archivo `agents/<nombre>.md` empieza con un bloque YAML legible por máquin
 | [frontend](frontend.md) | SPA Angular con Material 3 y configuración del servidor web. |
 | [database](database.md) | Modelo de persistencia, migraciones, roles y privilegios de PostgreSQL. |
 | [security](security.md) | Autenticación, autorización, secretos, amenazas y controles. |
+| [device-agent](device-agent.md) | Agente de dispositivo multiplataforma (inventario), su contrato y su empaquetado. |
 | [testing](testing.md) | Estrategia y suites de pruebas; validación de criterios de aceptación. |

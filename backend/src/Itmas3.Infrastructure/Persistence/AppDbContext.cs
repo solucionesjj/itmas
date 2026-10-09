@@ -1,4 +1,5 @@
 using Itmas3.Domain.Authorization;
+using Itmas3.Domain.Inventory;
 using Itmas3.Infrastructure.Persistence.Records;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<AuditEventRecord> AuditEvents => Set<AuditEventRecord>();
 
     public DbSet<AuthorizationState> AuthorizationState => Set<AuthorizationState>();
+
+    // Inventory (SPEC-0002)
+    public DbSet<Device> Devices => Set<Device>();
+
+    public DbSet<InventoryReport> InventoryReports => Set<InventoryReport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

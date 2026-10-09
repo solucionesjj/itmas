@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>APFSContainerFree</key>
+	<integer>31048466432</integer>
+	<key>APFSContainerReference</key>
+	<string>disk3</string>
+	<key>APFSContainerSize</key>
+	<integer>494384795648</integer>
+	<key>APFSPhysicalStores</key>
+	<array>
+		<dict>
+			<key>APFSPhysicalStore</key>
+			<string>disk0s2</string>
+		</dict>
+	</array>
+	<key>DeviceIdentifier</key>
+	<string>disk3s3s1</string>
+	<key>Encryption</key>
+	<true/>
+	<key>FileVault</key>
+	<true/>
+	<key>FilesystemType</key>
+	<string>apfs</string>
+	<key>FreeSpace</key>
+	<integer>0</integer>
+	<key>Internal</key>
+	<true/>
+	<key>MountPoint</key>
+	<string>/</string>
+	<key>ParentWholeDisk</key>
+	<string>disk3</string>
+	<key>RemovableMedia</key>
+	<false/>
+	<key>TotalSize</key>
+	<integer>494384795648</integer>
+	<key>VolumeName</key>
+	<string>Macintosh HD</string>
+</dict>
+</plist>

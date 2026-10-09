@@ -1,0 +1,3 @@
+# Min/max values for automatic uid selection in useradd
+UID_MIN			 1000
+UID_MAX			60000

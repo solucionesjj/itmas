@@ -1,0 +1,1 @@
+AuthenticationAuthority: ;ShadowHash;HASHLIST:<SALTED-SHA512-PBKDF2> ;DisabledUser;

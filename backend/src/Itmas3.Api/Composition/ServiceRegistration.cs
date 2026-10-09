@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Itmas3.Api.Authentication;
 using Itmas3.Api.Authorization;
 using Itmas3.Api.ErrorHandling;
+using Itmas3.Api.Inventory;
 using Itmas3.Api.Security;
 
 namespace Itmas3.Api.Composition;
@@ -14,6 +15,7 @@ internal static class ServiceRegistration
         services.AddBffAuthentication(configuration, environment);
         services.AddDefaultDenyAuthorization();
         services.AddAuthorizationModule(configuration);
+        services.AddInventoryModule(configuration);
         services.AddApiSecurity(configuration);
 
         services.AddControllers()

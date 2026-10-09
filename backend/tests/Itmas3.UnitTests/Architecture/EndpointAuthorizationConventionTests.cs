@@ -7,8 +7,9 @@ namespace Itmas3.UnitTests.Architecture;
 
 /// <summary>
 /// Default deny (constitution §3): every endpoint must state who can call it. Allowed declarations are
-/// [AllowAnonymous], [RequirePermission("...")] or [Authorize(Policy = AuthorizationPolicies.AuthenticatedUser)].
-/// A bare [Authorize] (any authenticated user) is rejected because it grants privileges implicitly.
+/// [AllowAnonymous], [RequirePermission("...")], [Authorize(Policy = AuthorizationPolicies.AuthenticatedUser)] or, only for
+/// device endpoints, a device policy (ADR-0009). A bare [Authorize] (any authenticated user) is rejected because it
+/// grants privileges implicitly.
 /// </summary>
 public sealed class EndpointAuthorizationConventionTests
 {
@@ -36,13 +37,30 @@ public sealed class EndpointAuthorizationConventionTests
         var requiresPermission = attributes.OfType<RequirePermissionAttribute>().Any();
         var requiresAuthenticatedUserPolicy = attributes.OfType<AuthorizeAttribute>()
             .Any(attribute => attribute.Policy == AuthorizationPolicies.AuthenticatedUser);
+        var requiresDevicePolicy = attributes.OfType<AuthorizeAttribute>()
+            .Any(attribute => attribute.Policy is AuthorizationPolicies.DeviceEnrollment or AuthorizationPolicies.EnrolledDevice);
         var hasBareAuthorize = attributes.OfType<AuthorizeAttribute>()
             .Any(attribute => attribute is not RequirePermissionAttribute && attribute.Policy is null && attribute.Roles is null);
 
         Assert.False(hasBareAuthorize, $"{actionName} uses a bare [Authorize]; declare a permission instead.");
         Assert.True(
-            isAnonymous || requiresPermission || requiresAuthenticatedUserPolicy,
-            $"{actionName} must declare [AllowAnonymous], [RequirePermission] or the AuthenticatedUser policy.");
+            isAnonymous || requiresPermission || requiresAuthenticatedUserPolicy || requiresDevicePolicy,
+            $"{actionName} must declare [AllowAnonymous], [RequirePermission], the AuthenticatedUser policy or a device policy.");
+    }
+
+    [Fact]
+    public void Device_policies_are_only_used_by_device_endpoints()
+    {
+        var deviceActions = ControllerActions()
+            .Where(action => action.GetCustomAttributes<AuthorizeAttribute>(inherit: true)
+                .Concat(action.DeclaringType!.GetCustomAttributes<AuthorizeAttribute>(inherit: true))
+                .Any(attribute => attribute.Policy is AuthorizationPolicies.DeviceEnrollment or AuthorizationPolicies.EnrolledDevice))
+            .Select(action => action.DeclaringType!.Name)
+            .Distinct()
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(["DeviceEnrollmentsController", "InventoryReportsController"], deviceActions);
     }
 
     private static IEnumerable<MethodInfo> ControllerActions() =>

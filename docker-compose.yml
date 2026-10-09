@@ -75,6 +75,9 @@ services:
       EntraId__ClientSecret: ${ENTRA_CLIENT_SECRET:-}
       Authorization__BootstrapRootObjectIds: ${AUTHZ_BOOTSTRAP_ROOT_OIDS:-}
       Authorization__AllowGuestUsers: ${AUTHZ_ALLOW_GUEST_USERS:-false}
+      # Device inventory (SPEC-0002). Empty code = agent enrollment disabled.
+      Inventory__EnrollmentCode: ${INVENTORY_ENROLLMENT_CODE:-}
+      Inventory__HistoryRetentionDays: ${INVENTORY_HISTORY_RETENTION_DAYS:-90}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: itmas3-api
     depends_on:
@@ -107,11 +110,29 @@ services:
     ports:
       # Bound to loopback: the only published port of the whole stack.
       - "127.0.0.1:${FRONTEND_PORT:-8080}:8080"
+    volumes:
+      # Agent packages built by scripts/build-agent.sh, served at /downloads/agent/ (SPEC-0002 RF-18).
+      - ${AGENT_DOWNLOADS_DIR:-./agent/dist}:/usr/share/nginx/downloads/agent:ro
     depends_on:
       api:
         condition: service_healthy
     networks: [edge]
     cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+
+  # Optional smoke test of the Linux agent build (SPEC-0002): docker compose --profile agent run --rm agent-e2e
+  # Prints the inventory of the container without sending it. NET_ADMIN only lets it read the firewall rules.
+  agent-e2e:
+    profiles: [agent]
+    build:
+      context: ./agent
+      target: e2e
+    image: itmas3/agent-e2e:local
+    command: ["collect"]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    cap_add: [NET_ADMIN]
     security_opt: ["no-new-privileges:true"]
 
 networks:

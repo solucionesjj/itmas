@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "collectedAt": "2026-10-08T12:00:00+00:00",
+  "agentVersion": "1.0.0",
+  "system": {
+    "hostname": "srv-app-01",
+    "osFamily": "linux",
+    "osName": "Ubuntu",
+    "osVersion": "24.04",
+    "osBuild": "6.8.0-45-generic",
+    "architecture": "x64"
+  },
+  "hardware": {
+    "memoryBytes": 17179869184,
+    "cpus": [
+      { "model": "Intel(R) Xeon(R) Gold 6338 CPU @ 2.00GHz", "physicalCores": 8, "logicalProcessors": 16 }
+    ],
+    "disks": [
+      { "id": "nvme0n1", "model": "Samsung SSD 980 PRO 1TB", "sizeBytes": 1000204886016, "mediaType": "ssd", "busType": "nvme" }
+    ],
+    "volumes": [
+      {
+        "mountPoint": "/",
+        "fileSystem": "ext4",
+        "sizeBytes": 980000000000,
+        "freeBytes": 512000000000,
+        "diskId": "nvme0n1",
+        "isSystem": true,
+        "encryption": { "status": "encrypted", "method": "luks" }
+      },
+      {
+        "mountPoint": "/boot",
+        "fileSystem": "ext4",
+        "sizeBytes": 2000000000,
+        "freeBytes": 1500000000,
+        "diskId": "nvme0n1",
+        "isSystem": false,
+        "encryption": { "status": "not-encrypted", "method": null }
+      }
+    ]
+  },
+  "network": {
+    "interfaces": [
+      { "name": "eth0", "ipv4": ["10.0.0.15"], "ipv6": ["2001:db8::15"] }
+    ],
+    "publicNetwork": {
+      "ip": "203.0.113.25",
+      "country": "CO",
+      "region": "Bogota D.C.",
+      "city": "Bogotá",
+      "org": "AS64500 Example Networks"
+    }
+  },
+  "software": {
+    "applications": ["nginx", "openssh-server", "postgresql-16"]
+  },
+  "accounts": {
+    "users": [
+      { "name": "root", "enabled": true, "isAdmin": true, "groups": ["root"] },
+      { "name": "deploy", "enabled": true, "isAdmin": true, "groups": ["deploy", "sudo"] },
+      { "name": "backup", "enabled": false, "isAdmin": false, "groups": ["backup"] }
+    ]
+  },
+  "security": {
+    "firewall": {
+      "status": "active",
+      "details": [ { "name": "ufw", "enabled": true } ]
+    }
+  },
+  "unavailable": []
+}

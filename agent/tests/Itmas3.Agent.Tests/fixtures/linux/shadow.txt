@@ -1,0 +1,4 @@
+root:*:19800:0:99999:7:::
+deploy:$y$j9T$placeholder-not-a-secret:19800:0:99999:7:::
+backup-op:!:19800:0:99999:7::19000:
+operator2:$y$j9T$placeholder-not-a-secret:19800:0:99999:7:::
