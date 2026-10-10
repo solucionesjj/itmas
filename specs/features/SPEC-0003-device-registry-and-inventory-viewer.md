@@ -615,6 +615,17 @@ cambios.
 - Auditoría (2026-10-10): la pantalla de SPEC-0001 muestra en español las acciones `device.*` y permite filtrar por el
   tipo de recurso "Equipo". Antes los eventos de equipos aparecían con su código técnico y no se podían filtrar.
 
+**Manual de uso** (constitución §10.4, publicado con SPEC-0004):
+
+| Proceso (`id`) | Acción | Permiso | Pantallas |
+|---|---|---|---|
+| `registrar-equipo` | Nuevo | `devices.create` | `/inventory` |
+| `instalar-agente` | Nuevo (resume `agent/README.md` con el código del equipo) | Código del equipo | — |
+| `gestionar-equipo` | Nuevo | `devices.update`, `devices.delete` | `/inventory` |
+| `listado-de-equipos` | Nuevo | `devices.read` | `/inventory` |
+| `historial-e-informe` | Nuevo | `devices.read`, `devices.reports.read` | `/inventory` |
+| `consultar-auditoria` | Incluye los eventos de equipos | `audit.read` | `/admin/audit` |
+
 **Validación manual:**
 1. CA-18: revisada y aprobada por el solicitante el 2026-10-10.
 2. Pendiente (el solicitante la hará más adelante; la spec se cierra a petición suya): instalar el agente en un equipo con un código generado desde la interfaz, comprobar que aparece como Activo y que,

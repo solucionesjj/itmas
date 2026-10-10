@@ -1,0 +1,131 @@
+// Layout of the manual pages. Colours and typography come from Material 3 tokens.
+:host {
+  display: block;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.page-title {
+  font: var(--mat-sys-headline-small);
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+.supporting-text {
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.search {
+  width: min(480px, 100%);
+}
+
+.category {
+  margin-top: 24px;
+}
+
+.category-title {
+  font: var(--mat-sys-title-medium);
+  margin: 0 0 8px;
+}
+
+.processes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.process-card {
+  display: block;
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+
+  mat-card {
+    height: 100%;
+  }
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 8px 0 16px;
+}
+
+.empty,
+.error-state {
+  padding: 24px 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.error-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+// Rendered Markdown of a process: spacing and tables only. It is inserted with [innerHTML], so its elements do not carry
+// the component attribute: the rules reach them through ::ng-deep, still scoped to this component's host.
+:host ::ng-deep .content {
+  font: var(--mat-sys-body-large);
+  overflow-wrap: anywhere;
+
+  h2 {
+    font: var(--mat-sys-title-large);
+    margin: 32px 0 8px;
+  }
+
+  h3 {
+    font: var(--mat-sys-title-medium);
+    margin: 24px 0 8px;
+  }
+
+  li {
+    margin: 4px 0;
+  }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.9em;
+    padding: 0 4px;
+    border-radius: 4px;
+    background: var(--mat-sys-surface-container-high);
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    display: block;
+    overflow-x: auto;
+  }
+
+  th,
+  td {
+    // Break only words longer than the column, never in the middle of a normal word.
+    overflow-wrap: break-word;
+    min-width: 7em;
+    text-align: start;
+    vertical-align: top;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+  }
+
+  th {
+    font: var(--mat-sys-title-small);
+  }
+
+  a {
+    color: var(--mat-sys-primary);
+  }
+}

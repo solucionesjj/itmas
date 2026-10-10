@@ -13,6 +13,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/login/login-page').then((m) => m.LoginPage),
   },
   {
+    // User manual (SPEC-0004): public, outside the authenticated Shell.
+    path: 'manual',
+    loadComponent: () => import('./layout/public-layout/public-layout').then((m) => m.PublicLayout),
+    loadChildren: () => import('./features/manual/manual.routes'),
+  },
+  {
     path: 'forbidden',
     title: 'Acceso denegado',
     loadComponent: () => import('./features/errors/forbidden-page').then((m) => m.ForbiddenPage),

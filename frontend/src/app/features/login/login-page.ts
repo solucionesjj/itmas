@@ -1,19 +1,24 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { MatButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../auth/services/auth-service';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { StatusMessage } from '../../shared/components/status-message/status-message';
 
 @Component({
   selector: 'app-login-page',
-  imports: [MatButton, MatIcon, StatusMessage],
+  imports: [MatButton, MatIcon, RouterLink, StatusMessage],
   template: `
     <app-status-message icon="lock" [title]="appName" [description]="message()">
       <button actions mat-flat-button (click)="signIn()">
         <mat-icon>login</mat-icon>
         Iniciar sesión con Microsoft
       </button>
+      <a actions mat-button routerLink="/manual">
+        <mat-icon>menu_book</mat-icon>
+        Consultar el manual de uso
+      </a>
     </app-status-message>
   `,
   styles: `

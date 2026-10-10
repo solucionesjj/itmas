@@ -1,0 +1,170 @@
+{
+  "categories": [
+    { "id": "primeros-pasos", "title": "Primeros pasos" },
+    { "id": "usuarios-y-privilegios", "title": "Usuarios y privilegios" },
+    { "id": "inventario", "title": "Inventario de equipos" },
+    { "id": "auditoria", "title": "Auditoría" }
+  ],
+  "processes": [
+    {
+      "id": "iniciar-sesion",
+      "title": "Iniciar y cerrar sesión",
+      "summary": "Entrar en ITMas con la cuenta corporativa de Microsoft, cambiar entre tema claro y oscuro y salir.",
+      "category": "primeros-pasos",
+      "permissions": [],
+      "specs": ["SPEC-0000", "SPEC-0001"],
+      "updated": "2026-10-10",
+      "routes": ["/home"]
+    },
+    {
+      "id": "permisos-y-acceso",
+      "title": "Qué puedo hacer: permisos y cómo solicitarlos",
+      "summary": "Cómo funcionan los permisos y las políticas, por qué un usuario nuevo no ve ninguna sección y a quién pedir acceso.",
+      "category": "primeros-pasos",
+      "permissions": [],
+      "specs": ["SPEC-0001"],
+      "updated": "2026-10-10",
+      "routes": []
+    },
+    {
+      "id": "usar-el-manual",
+      "title": "Consultar este manual",
+      "summary": "Buscar un proceso, abrirlo y compartir su enlace. El manual es público y no necesita iniciar sesión.",
+      "category": "primeros-pasos",
+      "permissions": [],
+      "specs": ["SPEC-0004"],
+      "updated": "2026-10-10",
+      "routes": ["/manual"]
+    },
+    {
+      "id": "alta-de-usuarios",
+      "title": "Alta de usuarios",
+      "summary": "Los usuarios se crean solos la primera vez que inician sesión, sin privilegios. Cómo encontrarlos y revisarlos.",
+      "category": "usuarios-y-privilegios",
+      "permissions": ["users.read"],
+      "specs": ["SPEC-0001"],
+      "updated": "2026-10-10",
+      "routes": ["/admin/users"]
+    },
+    {
+      "id": "activar-desactivar-usuarios",
+      "title": "Activar y desactivar usuarios",
+      "summary": "Impedir que una persona entre en ITMas (y cerrar su sesión) o devolverle el acceso.",
+      "category": "usuarios-y-privilegios",
+      "permissions": ["users.update"],
+      "specs": ["SPEC-0001"],
+      "updated": "2026-10-10",
+      "routes": ["/admin/users"]
+    },
+    {
+      "id": "gestionar-politicas",
+      "title": "Crear, editar, activar y eliminar políticas",
+      "summary": "Agrupar permisos en políticas reutilizables que después se asignan a los usuarios.",
+      "category": "usuarios-y-privilegios",
+      "permissions": ["policies.read", "policies.create", "policies.update", "policies.delete"],
+      "specs": ["SPEC-0001"],
+      "updated": "2026-10-10",
+      "routes": ["/admin/policies"]
+    },
+    {
+      "id": "asignar-politicas",
+      "title": "Asignar y retirar políticas a un usuario",
+      "summary": "Conceder privilegios a una persona asignándole políticas, o quitárselos retirándolas.",
+      "category": "usuarios-y-privilegios",
+      "permissions": ["users.policies.assign", "users.policies.revoke"],
+      "specs": ["SPEC-0001"],
+      "updated": "2026-10-10",
+      "routes": ["/admin/users"]
+    },
+    {
+      "id": "permisos-efectivos",
+      "title": "Consultar los permisos efectivos de un usuario",
+      "summary": "Ver qué puede hacer una persona y qué política le concede cada permiso.",
+      "category": "usuarios-y-privilegios",
+      "permissions": ["users.read"],
+      "specs": ["SPEC-0001"],
+      "updated": "2026-10-10",
+      "routes": ["/admin/users"]
+    },
+    {
+      "id": "administradores-root",
+      "title": "Administradores Root",
+      "summary": "Qué es un usuario Root y cómo se concede o se revoca ese nivel de acceso.",
+      "category": "usuarios-y-privilegios",
+      "permissions": ["Root"],
+      "specs": ["SPEC-0001"],
+      "updated": "2026-10-10",
+      "routes": ["/admin/users"]
+    },
+    {
+      "id": "catalogo-de-permisos",
+      "title": "Consultar el catálogo de permisos",
+      "summary": "Ver todos los permisos del sistema, en qué políticas están y editar su nombre visible o su descripción.",
+      "category": "usuarios-y-privilegios",
+      "permissions": ["permissions.read", "permissions.update"],
+      "specs": ["SPEC-0001"],
+      "updated": "2026-10-10",
+      "routes": ["/admin/permissions"]
+    },
+    {
+      "id": "registrar-equipo",
+      "title": "Registrar un equipo y obtener su código",
+      "summary": "Dar de alta una estación de trabajo o un servidor en el inventario y obtener el código para instalar su agente.",
+      "category": "inventario",
+      "permissions": ["devices.create"],
+      "specs": ["SPEC-0003"],
+      "updated": "2026-10-10",
+      "routes": ["/inventory"]
+    },
+    {
+      "id": "instalar-agente",
+      "title": "Instalar el agente y enrolar el equipo",
+      "summary": "Descargar e instalar el agente de inventario en Windows, Linux o macOS con el código del equipo.",
+      "category": "inventario",
+      "permissions": ["Código del equipo"],
+      "specs": ["SPEC-0002", "SPEC-0003"],
+      "updated": "2026-10-10",
+      "routes": []
+    },
+    {
+      "id": "gestionar-equipo",
+      "title": "Editar un equipo, regenerar su código o eliminarlo",
+      "summary": "Cambiar el nombre, el tipo o el propietario de un equipo, obtener un código nuevo para reinstalar su agente o retirarlo del inventario.",
+      "category": "inventario",
+      "permissions": ["devices.update", "devices.delete"],
+      "specs": ["SPEC-0003"],
+      "updated": "2026-10-10",
+      "routes": ["/inventory"]
+    },
+    {
+      "id": "listado-de-equipos",
+      "title": "Consultar el listado de equipos",
+      "summary": "Ver de un vistazo cada equipo con su colaborador, la fecha del último registro y la cantidad de registros.",
+      "category": "inventario",
+      "permissions": ["devices.read"],
+      "specs": ["SPEC-0003"],
+      "updated": "2026-10-10",
+      "routes": ["/inventory"]
+    },
+    {
+      "id": "historial-e-informe",
+      "title": "Consultar el historial y el informe de un equipo",
+      "summary": "Revisar los inventarios recibidos de un equipo y su último informe por secciones: características, red, almacenamiento, software y más.",
+      "category": "inventario",
+      "permissions": ["devices.read", "devices.reports.read"],
+      "specs": ["SPEC-0003"],
+      "updated": "2026-10-10",
+      "routes": ["/inventory"]
+    },
+    {
+      "id": "consultar-auditoria",
+      "title": "Consultar la auditoría",
+      "summary": "Ver quién hizo cada cambio de usuarios, políticas, permisos y equipos, cuándo y con qué resultado.",
+      "category": "auditoria",
+      "permissions": ["audit.read"],
+      "specs": ["SPEC-0001", "SPEC-0003"],
+      "updated": "2026-10-10",
+      "routes": ["/admin/audit"]
+    }
+  ]
+}

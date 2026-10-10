@@ -49,6 +49,7 @@ frontend/src/app/
 │   └── models/              SessionState, UserProfile
 ├── layout/                  Marco de la aplicación autenticada
 │   ├── shell/               Top app bar + navigation drawer + <router-outlet>
+│   ├── public-layout/       Marco de las páginas públicas (manual): barra con tema e "Iniciar sesión"
 │   ├── navigation/          NAVIGATION_ITEMS (punto de extensión)
 │   ├── theme-toggle/        Selector Claro / Oscuro / Sistema
 │   └── user-menu/           Cuenta y cierre de sesión
@@ -58,8 +59,9 @@ frontend/src/app/
 ├── features/                Una carpeta por área funcional, cargada de forma diferida
 │   ├── home/  login/  errors/
 │   ├── authorization/       Administración (SPEC-0001): users/, policies/, permissions/, audit/, data/ (API y modelos)
-│   └── inventory/           Inventario (SPEC-0003): devices/ (listado, alta, código), history/ (registros),
+│   ├── inventory/           Inventario (SPEC-0003): devices/ (listado, alta, código), history/ (registros),
 │                            report/ (informe por secciones), data/ (API, modelos, etiquetas)
+│   └── manual/              Manual de uso público (SPEC-0004): índice con búsqueda y página por proceso
 ├── app.routes.ts            Rutas (lazy), guards
 └── app.config.ts            Providers: router, HttpClient + interceptores, inicializadores
 ```
@@ -74,6 +76,12 @@ frontend/src/app/
 **Temas.** `styles.scss` define un único tema M3 (`mat.theme` con paletas por defecto `azure`/`blue`, Roboto,
 densidad 0). `mat.theme` emite valores `light-dark()`; `html { color-scheme: light dark }` sigue al sistema y
 `ThemeService` fija `light` o `dark` con `<html data-theme>`. No hay tokens ni componentes personalizados.
+
+**Manual de uso** ([ADR-0013](specs/architecture/adr-0013-user-manual.md)). Su contenido son archivos estáticos en
+`frontend/public/manual/` (`index.json` + un `.md` por proceso) que el build copia a `/manual/`. La ruta `/manual` es
+pública y está fuera del `Shell`. El Markdown se convierte con `marked` y se inserta con `[innerHTML]`, que Angular sanea.
+nginx sirve `/manual/*.md|json` como estáticos (`no-cache`, `404` si no existen) y cualquier otra ruta de `/manual/`
+como la SPA.
 
 **Configuración.** `src/environments/*.ts` solo contiene valores públicos. Como la API está en el mismo origen,
 el frontend **no necesita ninguna configuración de Entra ID**.

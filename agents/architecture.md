@@ -15,6 +15,7 @@ owns:
   - .env.example
   - .gitignore
   - scripts/**
+  - frontend/public/manual/**   # manual de uso (constitución §10.4); el visor es de frontend
 reads:
   - constitution.md
   - ARCHITECTURE.md

@@ -38,4 +38,8 @@ export const NAVIGATION: readonly NavigationGroup[] = [
       { label: 'Auditoría', icon: 'history', route: '/admin/audit', permission: 'audit.read' },
     ],
   },
+  {
+    title: 'Ayuda',
+    items: [{ label: 'Manual de uso', icon: 'menu_book', route: '/manual' }],
+  },
 ];

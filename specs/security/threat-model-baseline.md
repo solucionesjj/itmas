@@ -1,7 +1,7 @@
 # Modelo de amenazas — línea base de la fundación
 
 **Alcance:** navegador ↔ nginx ↔ API ↔ PostgreSQL, y API ↔ Microsoft Entra ID; módulo de autorización (SPEC-0001);
-agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002); registro y consulta del inventario (SPEC-0003).
+agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002); registro y consulta del inventario (SPEC-0003); manual de uso público (SPEC-0004).
 
 ## Activos
 
@@ -14,6 +14,7 @@ agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002); regi
 | Datos de la aplicación | PostgreSQL | Red interna, rol con DML mínimo |
 | Códigos de enrolamiento por equipo | Respuesta de alta/regeneración (una vez); BD solo SHA-256 | 100 bits, un solo uso, `no-store`, invalidados al regenerar o eliminar; límite de frecuencia (ADR-0012) |
 | API keys de dispositivos | Equipos (0600 / DPAPI); BD solo SHA-256 | Única por equipo, invalidada al reenrolar o al eliminar el equipo |
+| Manual de uso | `/manual/` (estáticos públicos de la SPA) | Sin contenido confidencial (constitución §10.4); revisión de `security`; HTML saneado y CSP |
 | Paquetes del agente | `/downloads/agent/` (volumen de solo lectura) | HTTPS + `SHA256SUMS` (sin firma de código) |
 | Inventario (nombres de cuenta, IPs, ubicación) y correo del propietario | `app.inventory_reports`, `app.devices` | Acceso solo vía API con `devices.reports.read` / `devices.read`; retención de 90 días |
 

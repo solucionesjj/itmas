@@ -1,6 +1,6 @@
 # Constitución del proyecto
 
-**Versión:** 1.1.0 · **Vigente desde:** 2026-10-08 · **Origen:** [SPEC-0000](specs/architecture/SPEC-0000-application-foundation.md)
+**Versión:** 1.2.0 · **Vigente desde:** 2026-10-10 · **Origen:** [SPEC-0000](specs/architecture/SPEC-0000-application-foundation.md)
 
 Esta constitución es la política técnica permanente del proyecto. Toda especificación, plan, cambio de código,
 configuración o documentación (hecho por personas o por agentes de IA) debe cumplirla.
@@ -129,7 +129,13 @@ Esta sección aplica a los componentes de servidor. El agente de dispositivo se 
 1. La documentación es parte del cambio: README, ARCHITECTURE, SECURITY y DEVELOPMENT DEBEN actualizarse en el
    mismo cambio que los invalida.
 2. Toda decisión arquitectónica relevante DEBE registrarse como ADR.
-3. Las specs implementadas DEBEN actualizar su estado e indicar los archivos y pruebas que las materializan.
+3. Las specs implementadas DEBEN actualizar su estado, indicar los archivos y pruebas que las materializan y el
+   manual de uso afectado.
+4. **Manual de uso.** El sistema DEBE tener un manual de uso para personas usuarias en `frontend/public/manual/`,
+   consultable desde la aplicación sin iniciar sesión. Toda spec que añada, cambie o retire un proceso visible para
+   personas usuarias DEBE actualizar el manual en el mismo cambio; la spec no pasa a `Implemented` sin ello. El manual
+   describe procesos (qué, quién y con qué permiso, pasos, resultado y problemas frecuentes) y NO DEBE contener
+   secretos, datos personales reales ni detalles internos de infraestructura, porque es público (ADR-0013).
 
 ## §11. Evolución mediante SDD
 
@@ -177,3 +183,4 @@ Esta sección aplica a los componentes de servidor. El agente de dispositivo se 
 | 1.0.0 | 2026-10-07 | Versión inicial (fundación). |
 | 1.0.1 | 2026-10-07 | §3.3: convención de nombres `<recurso>.<acción>` y catálogo obligatorio; §3.4: políticas, sin roles (SPEC-0001, ADR-0008). |
 | 1.1.0 | 2026-10-08 | MINOR: §3.2 y §3.3, autenticación y políticas de dispositivo (ADR-0009). §3.8, excepción acotada para el agente. Nueva §13, agente de dispositivo (ADR-0010). PATCH: §8 aplica a los componentes de servidor (SPEC-0002). |
+| 1.2.0 | 2026-10-10 | MINOR: nueva §10.4, manual de uso público actualizado con cada funcionalidad; §10.3 incluye el manual (ADR-0013). |

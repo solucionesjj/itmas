@@ -35,18 +35,18 @@ describe('Shell navigation', () => {
   };
 
   it('hides the administration section from users without permissions', async () => {
-    expect(await labels()).toEqual(['Inicio']);
+    expect(await labels()).toEqual(['Inicio', 'Manual de uso']);
   });
 
   it('shows only the administration entries the user is allowed to use', async () => {
     permissions.set(['users.read', 'audit.read']);
 
-    expect(await labels()).toEqual(['Inicio', 'Usuarios', 'Auditoría']);
+    expect(await labels()).toEqual(['Inicio', 'Usuarios', 'Auditoría', 'Manual de uso']);
   });
 
   it('shows the inventory to users who can read devices', async () => {
     permissions.set(['devices.read']);
 
-    expect(await labels()).toEqual(['Inicio', 'Equipos']);
+    expect(await labels()).toEqual(['Inicio', 'Equipos', 'Manual de uso']);
   });
 });

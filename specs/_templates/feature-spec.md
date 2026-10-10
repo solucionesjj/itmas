@@ -71,10 +71,17 @@ related: []              # SPEC/ADR relacionados
 | # | Tarea | Agente | Archivos |
 |---|---|---|---|
 
-## 17. Trazabilidad (al implementar)
+## 17. Manual de uso
+<Procesos del manual (`frontend/public/manual/`) que esta spec añade, cambia o retira (constitución §10.4).
+"Ninguno" solo si no cambia nada visible para las personas usuarias.>
+| Proceso (`id`) | Acción (nuevo / cambia / se retira) | Permiso | Pantallas (`routes`) |
+|---|---|---|---|
+
+## 18. Trazabilidad (al implementar)
 - Commits/PRs: …
 - Archivos principales: …
 - Pruebas: …
+- Manual de uso actualizado: …
 
-## 18. Preguntas abiertas
+## 19. Preguntas abiertas
 - …

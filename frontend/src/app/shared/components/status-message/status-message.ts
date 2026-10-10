@@ -56,6 +56,8 @@ import { MatIcon } from '@angular/material/icon';
     }
     .actions {
       display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
       gap: 8px;
       margin-top: 8px;
     }

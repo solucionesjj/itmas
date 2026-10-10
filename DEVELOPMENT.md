@@ -140,7 +140,8 @@ Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json
   su código de enrolamiento, y `AgentSimulator` hace las llamadas del agente. `DeviceRegistryMigrationTests` migra una
   base de datos aparte paso a paso para comprobar la transición de datos de `AddDeviceRegistry`.
 - **Frontend (Vitest):** servicios, guards, interceptores, pipes y componentes (listado, informe y diálogo del
-  inventario, con una API simulada).
+  inventario, con una API simulada) y la coherencia del manual de uso (`manual-consistency.spec.ts`, que lee
+  `public/manual/` con `node:fs`).
 - **Agente:** los *parsers* de cada SO se prueban con salidas reales en `agent/tests/Itmas3.Agent.Tests/fixtures/`
   (Ubuntu 22.04/24.04 y Debian 12 capturadas en contenedores, macOS saneadas a partir de un equipo real, Windows con
   valores documentados de WMI). Ninguna prueba contacta ipinfo.io ni la API. El contrato `v1` está en
@@ -171,6 +172,24 @@ Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json
 5. Pruebas: el caso permitido (usuario con política), el 403 (sin política) y el 401 (anónimo).
 
 `PermissionCatalogConventionTests` falla si un endpoint usa un permiso no declarado.
+
+### 8.1 Mantener el manual de uso
+
+Toda spec que cambie algo visible para las personas usuarias actualiza el manual en el mismo cambio (constitución
+§10.4). La plantilla de spec tiene la sección "Manual de uso" para identificar esos procesos desde el borrador.
+
+1. Cada proceso es un archivo `frontend/public/manual/<id>.md` que empieza por `# <Título>` (el mismo del índice) y
+   sigue la plantilla de SPEC-0004 §8.2: para qué sirve, **Quién puede hacerlo** (permiso), pasos, resultado y
+   problemas frecuentes. Usa los textos exactos de la interfaz en **negrita**.
+2. Regístralo en `frontend/public/manual/index.json`: `id`, `title`, `summary`, `category`, `permissions`, `specs`,
+   `updated` (fecha `YYYY-MM-DD`) y `routes` (pantallas que explica). Si cambias un proceso existente, actualiza
+   `updated` y añade la spec a `specs`.
+3. Para enlazar otro proceso, escribe `[texto](<id-del-proceso>)`.
+4. Es público: nada de secretos, códigos, datos personales reales, nombres o IPs internos ni versiones de componentes.
+5. `npm test` ejecuta `manual-consistency.spec.ts`, que falla si el índice y los archivos no coinciden, si un enlace
+   apunta a un proceso inexistente o si una entrada nueva de la navegación (`NAVIGATION`) no tiene ningún proceso cuyo
+   `routes` la incluya.
+6. Revísalo en `http://localhost:8088/manual` tras `docker compose up --build -d frontend` (o en `ng serve`).
 
 ## 9. Problemas frecuentes
 

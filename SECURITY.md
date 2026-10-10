@@ -22,6 +22,12 @@ del agente de seguridad ([`agents/security.md`](agents/security.md)).
 | Identidad | `GET /auth/session` devuelve solo `displayName` y `username`. Identificador estable: `oid` (+ `tid`); `preferred_username` es solo para mostrar. |
 | Fail-fast | Fuera de `Development` la API **no arranca** sin `TenantId`, `ClientId` y una credencial. |
 
+**Manual de uso público** (SPEC-0004, ADR-0013). `/manual` se lee sin sesión. No da acceso a nada (cada permiso lo
+evalúa la API), pero cualquiera en Internet puede leer los procesos y los nombres de los permisos: por eso no puede
+contener secretos, datos personales reales ni detalles internos de infraestructura (constitución §10.4) y `security`
+revisa cada cambio de `frontend/public/manual/`. El HTML que se genera a partir del Markdown se sanea en Angular y la
+CSP (`script-src 'self'`) impide ejecutar scripts aunque se colaran en un archivo.
+
 **Secretos en el frontend: ninguno.** La SPA no contiene tenant, client ID, secretos ni tokens; tampoco los necesita.
 
 ### Dispositivos (agente de inventario, ADR-0009, ADR-0012)

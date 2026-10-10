@@ -30,3 +30,5 @@ Este repositorio evoluciona mediante **Specification-Driven Development**. Antes
 - Nada de lógica de negocio en controllers; nada de EF Core fuera de `Infrastructure`.
 - Angular Material estándar: no sobrescribir tokens, colores ni tipografías.
 - La documentación se actualiza en el mismo cambio. Commits con el ID de la spec.
+- Si cambia algo que ve una persona usuaria, se actualiza el manual de uso (`frontend/public/manual/`, constitución §10.4):
+  procesos, permisos y pasos. Es público: nada confidencial.

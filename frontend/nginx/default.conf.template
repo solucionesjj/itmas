@@ -69,6 +69,35 @@ server {
         }
     }
 
+    # User manual (SPEC-0004, ADR-0013): public static content. Existing files (index.json, *.md) are served as such and
+    # always revalidated, so a release is visible at once; anything else under /manual is a SPA route (/manual/<id>).
+    location = /manual {
+        include /etc/nginx/conf.d/security-headers.inc;
+        add_header Cache-Control "no-cache" always;
+        try_files /index.html =404;
+    }
+
+    location ^~ /manual/ {
+        limit_except GET HEAD { deny all; }
+        types {
+            application/json json;
+            text/markdown md;
+        }
+        charset utf-8;
+        charset_types application/json text/markdown;
+        include /etc/nginx/conf.d/security-headers.inc;
+        add_header Cache-Control "no-cache" always;
+        try_files $uri /index.html;
+
+        # Content files that do not exist are a 404, never the SPA.
+        location ~ \.(?:md|json)$ {
+            limit_except GET HEAD { deny all; }
+            include /etc/nginx/conf.d/security-headers.inc;
+            add_header Cache-Control "no-cache" always;
+            try_files $uri =404;
+        }
+    }
+
     # Content-hashed bundles produced by the Angular build: cache forever.
     location ~* "-[A-Za-z0-9]{8}\.(?:js|css)$" {
         include /etc/nginx/conf.d/security-headers.inc;

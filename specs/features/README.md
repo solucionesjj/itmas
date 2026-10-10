@@ -8,3 +8,4 @@ Una spec por funcionalidad: `SPEC-NNNN-<slug>.md`, creada a partir de
 | [SPEC-0001](SPEC-0001-policy-based-authorization.md) | Sistema de autorización basado en políticas | Implemented |
 | [SPEC-0002](SPEC-0002-os-inventory-agent.md) | Agente de inventario de sistema operativo | Implemented |
 | [SPEC-0003](SPEC-0003-device-registry-and-inventory-viewer.md) | Registro de equipos e inventario recolectado | Implemented |
+| [SPEC-0004](SPEC-0004-user-manual.md) | Manual de uso del sistema | Implemented |

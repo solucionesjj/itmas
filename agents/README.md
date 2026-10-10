@@ -34,6 +34,7 @@ Cada archivo `agents/<nombre>.md` empieza con un bloque YAML legible por máquin
 | `database/**` | database | security |
 | `frontend/src/**` | frontend | security (auth, interceptores) |
 | `frontend/nginx/**` | frontend | security (CSP, cabeceras, proxy) |
+| `frontend/public/manual/**` (manual de uso) | architecture | agente del área del proceso descrito; security (es público) |
 | `agent/**` | device-agent | security (privilegios, credenciales), backend (contrato) |
 | `backend/tests/**`, `frontend/src/**/*.spec.ts` | testing | agente del código probado |
 | `**/Dockerfile`, `docker-compose*.yml`, `.env.example`, `scripts/**` | architecture | security |

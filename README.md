@@ -162,10 +162,23 @@ Desde SPEC-0003 ya no existe un código de enrolamiento general: si tu `.env` co
 borrar esa línea (la API ya no la lee). Los equipos enrolados antes siguen funcionando: la migración los incorpora
 al inventario como equipos activos.
 
+## Manual de uso
+
+El manual para las personas usuarias está en **`/manual`** (por ejemplo, `http://localhost:8088/manual`). Es público:
+no hace falta iniciar sesión. Se llega también desde la página de inicio de sesión, desde el menú "Ayuda → Manual de
+uso" y desde el botón de ayuda de la barra superior. Describe los procesos del sistema (alta de usuarios, asignación
+de privilegios, registro de equipos, instalación del agente, consulta del inventario…), con el permiso que necesita
+cada uno.
+
+Su contenido está en [`frontend/public/manual/`](frontend/public/manual/) y se actualiza en el mismo cambio que cada
+funcionalidad ([constitución §10.4](constitution.md), [ADR-0013](specs/architecture/adr-0013-user-manual.md)).
+Cómo editarlo: [DEVELOPMENT.md §8.1](DEVELOPMENT.md#81-mantener-el-manual-de-uso).
+
 ## Documentación
 
 | Documento | Contenido |
 |---|---|
+| [Manual de uso](frontend/public/manual/index.json) | Procesos del sistema para las personas usuarias (en la aplicación: `/manual`). |
 | [constitution.md](constitution.md) | Reglas permanentes que toda implementación debe respetar. |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Componentes, capas, comunicación y decisiones. |
 | [SECURITY.md](SECURITY.md) | Autenticación, autorización, secretos, protección de la API. |

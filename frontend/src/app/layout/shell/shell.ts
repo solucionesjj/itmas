@@ -12,6 +12,7 @@ import {
 } from '@angular/material/list';
 import { MatSidenav, MatSidenavContainer, MatSidenavContent } from '@angular/material/sidenav';
 import { MatToolbar } from '@angular/material/toolbar';
+import { MatTooltip } from '@angular/material/tooltip';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthService } from '../../auth/services/auth-service';
@@ -25,6 +26,7 @@ import { UserMenu } from '../user-menu/user-menu';
   selector: 'app-shell',
   imports: [
     MatToolbar,
+    MatTooltip,
     MatIconButton,
     MatIcon,
     MatSidenav,
