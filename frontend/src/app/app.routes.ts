@@ -30,6 +30,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/home-page').then((m) => m.HomePage),
       },
       {
+        path: 'inventory',
+        loadChildren: () => import('./features/inventory/inventory.routes'),
+      },
+      {
         path: 'admin',
         loadChildren: () => import('./features/authorization/authorization.routes'),
       },

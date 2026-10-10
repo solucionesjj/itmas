@@ -19,7 +19,7 @@ El solicitante pide un proceso de enrolamiento: al instalar se introduce un cód
 entrega una API key propia de cada dispositivo. En la v1 no hay interfaz para gestionar códigos (llegará con SPEC-0003).
 
 ## Decisión
-1. **Código de autorización (v1).** Es un único valor secreto, guardado en la configuración del servidor
+1. **Código de autorización (v1).** *Sustituido por [ADR-0012](adr-0012-per-device-enrollment-codes.md) (SPEC-0003): ahora cada equipo tiene su propio código de un solo uso.* Era un único valor secreto, guardado en la configuración del servidor
    (`Inventory__EnrollmentCode`, que `.env` define como `INVENTORY_ENROLLMENT_CODE`):
    - Lo genera `scripts/init-env.sh` y tiene al menos 32 caracteres.
    - Si no está configurado, el enrolamiento está desactivado y el endpoint responde `404`.
@@ -68,7 +68,7 @@ entrega una API key propia de cada dispositivo. En la v1 no hay interfaz para ge
     rotación, límites de frecuencia y auditoría.
   - La API key es *bearer*: su seguridad depende de TLS y de la protección en el equipo (SPEC-0002 §14.2).
   - En la v1 no hay revocación desde la interfaz: existe un procedimiento operativo en SECURITY.md.
-- **Seguimiento:** SPEC-0003 sustituirá el código único por códigos gestionados (caducidad, usos, revocación) y añadirá la revocación de dispositivos.
+- **Seguimiento:** SPEC-0003 sustituyó el código único por códigos por equipo, de un solo uso, y añadió la revocación de dispositivos desde la interfaz (ADR-0012).
 
 ## Impacto en la constitución
 Enmienda **MINOR** (1.1.0): §3.2 admite la autenticación de dispositivos según este ADR, y §3.3 añade las políticas de

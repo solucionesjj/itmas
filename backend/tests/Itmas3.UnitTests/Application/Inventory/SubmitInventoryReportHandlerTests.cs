@@ -1,5 +1,4 @@
 using Itmas3.Application.Common.Exceptions;
-using Itmas3.Application.Inventory;
 using Itmas3.Application.Inventory.Abstractions;
 using Itmas3.Application.Inventory.SubmitInventoryReport;
 using Itmas3.Domain.Common;
@@ -27,6 +26,8 @@ public sealed class SubmitInventoryReportHandlerTests
         Assert.Equal(device.Id, report.DeviceId);
         Assert.Equal("192.0.2.10", report.ConnectionIp);
         Assert.Equal("203.0.113.5", report.PublicIp);
+        Assert.Equal("1.0.0", report.AgentVersion);
+        Assert.Equal(1, report.UnavailableCount);
         Assert.Equal(report.Id, device.LastReportId);
         Assert.Equal("encrypted", device.SystemVolumeEncryption);
         Assert.Equal("active", device.FirewallStatus);
@@ -82,7 +83,7 @@ public sealed class SubmitInventoryReportHandlerTests
 
     private Device AddDevice()
     {
-        var device = Device.Enroll("hw-0001-abcd", DeviceSecrets.Hash("key"), new DeviceEnrollmentData("pc-01", "linux", "1.0.0", "1", Now, null), Now);
+        var device = TestDevices.Active("hw-0001-abcd", Now);
         _devices.Add(device);
         return device;
     }
@@ -97,6 +98,7 @@ public sealed class SubmitInventoryReportHandlerTests
         [new VolumeData(true, "encrypted"), new VolumeData(false, "not-encrypted")],
         "active",
         [new AccountData(true, true), new AccountData(true, false)],
+        1,
         "{}");
 
     private sealed class InMemoryReports : IInventoryReportRepository

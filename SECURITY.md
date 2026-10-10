@@ -24,16 +24,18 @@ del agente de seguridad ([`agents/security.md`](agents/security.md)).
 
 **Secretos en el frontend: ninguno.** La SPA no contiene tenant, client ID, secretos ni tokens; tampoco los necesita.
 
-### Dispositivos (agente de inventario, ADR-0009)
+### Dispositivos (agente de inventario, ADR-0009, ADR-0012)
 
 | Aspecto | Implementación |
 |---|---|
-| Enrolamiento | `Authorization: Enrollment <código>`, comparado en tiempo constante con `Inventory__EnrollmentCode` (≥ 32 caracteres). Sin código configurado el endpoint responde `404`. 10 intentos/min por IP. Los fallos se registran en el log, sin el código. |
-| Credencial del dispositivo | 256 bits aleatorios, entregados una sola vez. En la BD solo se guarda su SHA-256 (único). Reenrolar el mismo `hardwareId` la sustituye e invalida la anterior (`device.relinked`). |
+| Código de enrolamiento | Uno por equipo registrado (SPEC-0003): 100 bits aleatorios en Base32 de Crockford (`XXXXX-XXXXX-XXXXX-XXXXX`). Se muestra una sola vez al crear el equipo o al regenerarlo (`Cache-Control: no-store`; la SPA no lo guarda). En la BD solo está su SHA-256. Es de un solo uso: se consume al enrolar y deja de servir al regenerarlo o al eliminar el equipo. |
+| Enrolamiento | `Authorization: Enrollment <código>` → se busca el equipo por el hash del código. Código desconocido, usado, regenerado o de un equipo eliminado → `401` sin motivo. Hardware ya registrado en otro equipo → `409` auditado (`device.enrollment.rejected`). 10 intentos/min por IP. Los fallos se registran en el log, sin el código. |
+| Credencial del dispositivo | 256 bits aleatorios, entregados una sola vez. En la BD solo se guarda su SHA-256 (único). Reenrolar el equipo con un código regenerado la sustituye e invalida la anterior (`device.relinked`). Eliminar el equipo la invalida (`device.deleted`) y el autenticador solo acepta equipos activos. |
 | Uso | `Authorization: Device <apiKey>` solo en `POST /api/v1/inventory-reports` (política `EnrolledDevice`). Un dispositivo no tiene permisos de usuario ni sesión. |
 | En el equipo | Windows: DPAPI (máquina) + ACL de `SYSTEM`/Administradores. Linux y macOS: archivos `0600` de `root`. El código de autorización no se guarda. |
 | Entrada no confiable | Contrato estricto: propiedades desconocidas → `400`, límites por colección y longitud, sin caracteres de control, IPs validadas, cuerpo < 1 MB. |
-| Auditoría | `device.enrolled` / `device.relinked` en `app.audit_events`, con IP de origen, *hostname* y versión de los términos aceptados. |
+| Auditoría | `device.created`, `device.updated`, `device.enrollment-code.regenerated`, `device.deleted` (actor: el usuario) y `device.enrolled`, `device.relinked`, `device.enrollment.rejected` (actor: el agente, con IP de origen, *hostname* y versión de los términos) en `app.audit_events`. Nunca contienen códigos, API keys ni sus hashes. |
+| Consulta del inventario | `devices.read` (registro) y `devices.reports.read` (historial e informes, que contienen cuentas locales, IPs y ubicación) por separado. La SPA muestra todo dato del equipo como texto (sin `innerHTML`). |
 
 ## 2. Autorización
 
@@ -165,13 +167,12 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
       hay que hacer nada. Si TLS lo termina otro proxy del host (certbot con un nginx del host, Caddy, Traefik) o un
       balanceador, configura en nginx `set_real_ip_from <red del proxy>` y `real_ip_header X-Forwarded-For`. Si no,
       la IP de conexión de los inventarios será la del proxy.
-- [ ] `INVENTORY_ENROLLMENT_CODE` generado aleatoriamente, compartido solo por un canal interno y rotado periódicamente
-      o ante sospecha de filtración. Rotarlo no afecta a los equipos enrolados.
-- [ ] **Revocar un dispositivo comprometido (v1, hasta SPEC-0003).** Reinstalar el agente en el equipo legítimo
-      invalida la API key anterior. Si el equipo no está disponible, un operador con acceso a la BD invalida la
-      credencial sin borrar datos:
-      `UPDATE app.devices SET api_key_hash = md5(random()::text) || md5(random()::text) WHERE id = '<id>';`
-      Registra la acción en el gestor de incidentes.
+- [ ] Entregar los códigos de enrolamiento por un canal interno y seguro, solo a quien instala el agente. Si un código
+      no usado pudo filtrarse, regenerarlo (o eliminar el equipo).
+- [ ] **Revocar un dispositivo comprometido (SPEC-0003).** En **Inventario → Equipos**, *Eliminar* el equipo (permiso
+      `devices.delete`): su código y su API key dejan de servir de inmediato y el historial se conserva. Para volver a
+      inventariar esa máquina, regístrala como equipo nuevo. Registra la acción en el gestor de incidentes.
+- [ ] Revisar periódicamente quién tiene `devices.update` (puede regenerar códigos) y `devices.reports.read` (datos personales).
 - [ ] Publicar solo paquetes del agente generados por `scripts/build-agent.sh` y su `SHA256SUMS`. Los binarios no están
       firmados (SPEC-0002 P-11, riesgo aceptado): la integridad depende de HTTPS y de que los usuarios verifiquen la suma.
 

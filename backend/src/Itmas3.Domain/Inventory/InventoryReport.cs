@@ -35,6 +35,12 @@ public sealed class InventoryReport : Entity<Guid>
 
     public string? City { get; private set; }
 
+    /// <summary>Agent version declared in the report (copied from the payload for the history list, SPEC-0003 RF-15).</summary>
+    public string AgentVersion { get; private set; } = string.Empty;
+
+    /// <summary>Number of sections the agent reported as unavailable (SPEC-0003 RF-15).</summary>
+    public int UnavailableCount { get; private set; }
+
     /// <summary>Validated inventory document (JSON, contract v1).</summary>
     public string Payload { get; private set; }
 
@@ -44,11 +50,18 @@ public sealed class InventoryReport : Entity<Guid>
         DateTimeOffset receivedAt,
         string? connectionIp,
         DeclaredPublicNetwork? publicNetwork,
+        string agentVersion,
+        int unavailableCount,
         string payload)
     {
         if (string.IsNullOrWhiteSpace(payload))
         {
             throw new DomainException("El inventario está vacío.");
+        }
+
+        if (string.IsNullOrWhiteSpace(agentVersion) || unavailableCount < 0)
+        {
+            throw new DomainException("El inventario no indica la versión del agente o sus secciones no disponibles.");
         }
 
         return new InventoryReport(Guid.CreateVersion7(receivedAt), deviceId, collectedAt, receivedAt, payload)
@@ -58,6 +71,8 @@ public sealed class InventoryReport : Entity<Guid>
             CountryCode = publicNetwork?.CountryCode,
             Region = publicNetwork?.Region,
             City = publicNetwork?.City,
+            AgentVersion = agentVersion,
+            UnavailableCount = unavailableCount,
         };
     }
 }

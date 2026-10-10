@@ -41,6 +41,7 @@ public sealed class InventoryReportsController(SubmitInventoryReportHandler hand
                 request.Hardware.Volumes?.Select(volume => new VolumeData(volume.IsSystem, volume.Encryption.Status)).ToList(),
                 request.Security.Firewall?.Status,
                 request.Accounts.Users?.Select(user => new AccountData(user.Enabled, user.IsAdmin)).ToList(),
+                request.Unavailable.Count,
                 JsonSerializer.Serialize(request, PayloadOptions)),
             cancellationToken);
 

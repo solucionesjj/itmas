@@ -75,8 +75,7 @@ services:
       EntraId__ClientSecret: ${ENTRA_CLIENT_SECRET:-}
       Authorization__BootstrapRootObjectIds: ${AUTHZ_BOOTSTRAP_ROOT_OIDS:-}
       Authorization__AllowGuestUsers: ${AUTHZ_ALLOW_GUEST_USERS:-false}
-      # Device inventory (SPEC-0002). Empty code = agent enrollment disabled.
-      Inventory__EnrollmentCode: ${INVENTORY_ENROLLMENT_CODE:-}
+      # Device inventory (SPEC-0002, SPEC-0003). Enrollment codes are issued per device (ADR-0012).
       Inventory__HistoryRetentionDays: ${INVENTORY_HISTORY_RETENTION_DAYS:-90}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       OTEL_SERVICE_NAME: itmas3-api

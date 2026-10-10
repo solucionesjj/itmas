@@ -1,7 +1,7 @@
 # Modelo de amenazas — línea base de la fundación
 
 **Alcance:** navegador ↔ nginx ↔ API ↔ PostgreSQL, y API ↔ Microsoft Entra ID; módulo de autorización (SPEC-0001);
-agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002).
+agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002); registro y consulta del inventario (SPEC-0003).
 
 ## Activos
 
@@ -12,10 +12,10 @@ agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002).
 | Key ring de Data Protection | `app.data_protection_keys` | Solo accesible por la API; cifrado en reposo pendiente para producción |
 | Credenciales de BD | Variables de entorno | Fuera del repositorio; roles separados |
 | Datos de la aplicación | PostgreSQL | Red interna, rol con DML mínimo |
-| Código de autorización de enrolamiento | Variable de entorno de `api` | Fuera del repositorio; ≥ 32 caracteres; comparación en tiempo constante; límite de frecuencia |
-| API keys de dispositivos | Equipos (0600 / DPAPI); BD solo SHA-256 | Única por equipo, invalidada al reenrolar |
+| Códigos de enrolamiento por equipo | Respuesta de alta/regeneración (una vez); BD solo SHA-256 | 100 bits, un solo uso, `no-store`, invalidados al regenerar o eliminar; límite de frecuencia (ADR-0012) |
+| API keys de dispositivos | Equipos (0600 / DPAPI); BD solo SHA-256 | Única por equipo, invalidada al reenrolar o al eliminar el equipo |
 | Paquetes del agente | `/downloads/agent/` (volumen de solo lectura) | HTTPS + `SHA256SUMS` (sin firma de código) |
-| Inventario (nombres de cuenta, IPs, ubicación) | `app.inventory_reports` | Acceso solo vía API; retención de 90 días |
+| Inventario (nombres de cuenta, IPs, ubicación) y correo del propietario | `app.inventory_reports`, `app.devices` | Acceso solo vía API con `devices.reports.read` / `devices.read`; retención de 90 días |
 
 ## STRIDE
 
@@ -33,11 +33,14 @@ agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002).
 | | Open redirect en login | `returnUrl` debe ser local (backend y frontend). |
 | | Clickjacking | `frame-ancestors 'none'`, `X-Frame-Options: DENY`. |
 | **D**enial of service | Fuerza bruta / abuso | Rate limiting global y específico de `/auth/login`; límite de cuerpo 1 MB. |
-| **S**poofing | Equipo falso enrolado con el código filtrado | Código rotable, 10/min por IP, auditoría `device.enrolled` con IP (SPEC-0002). |
+| **S**poofing | Equipo falso enrolado con un código filtrado | Código por equipo y de un solo uso, 100 bits, 10/min por IP, auditoría `device.enrolled` con IP (ADR-0012). |
+| | Usuario con `devices.update` regenera el código de un equipo activo y enrola otro en su lugar | Permiso explícito, auditoría (`device.enrollment-code.regenerated`, `device.relinked` con IP y *hostname*); el equipo legítimo recibe `401`. |
+| | Máquina que se apropia del registro de otra presentando su `hardwareId` | Necesita un código vigente; hardware de otro equipo no eliminado → `409` auditado. |
 | | Uso de la API key robada de un equipo | Clave por equipo, solo envía el inventario de ese equipo, invalidada al reenrolar. |
 | **T**ampering | Inventario falseado por el propio equipo | Inherente al agente; la IP de conexión la registra el servidor y contrasta la IP declarada. |
 | | Binario del agente alterado | Descarga HTTPS + `SHA256SUMS`; compilación reproducible en contenedor. |
-| **I**nformation disclosure | Datos personales del inventario | Sin endpoints de lectura en la v1 (SPEC-0003 añadirá permisos `devices.*`); nada en logs. |
+| **I**nformation disclosure | Datos personales del inventario | Lectura con permisos separados (`devices.read`, `devices.reports.read`); nada en logs; el código del equipo solo en la respuesta que lo emite. |
+| | XSS con datos declarados por un equipo | La SPA solo interpola texto (sin `innerHTML`); CSP sin `unsafe-inline` en scripts. |
 | **D**enial of service | Avalancha de inventarios | 12/h por credencial, cuerpo < 1 MB, límites por colección, envío con variación aleatoria de ±30 min. |
 | **E**levation of privilege | Agente con privilegios elevados usado como vector | Solo lectura, sin puertos, sin órdenes remotas, comandos con ruta absoluta sin *shell*, *sandbox* de systemd. |
 | | Usuario autenticado accede a recursos | Default deny + permisos solo vía políticas asignadas explícitamente (SPEC-0001). |
@@ -56,7 +59,8 @@ agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002).
 | `style-src 'unsafe-inline'` | Requerido por Angular/Material | Revisar nonces de estilo cuando Angular lo soporte sin SSR |
 | Auditoría de negocio fuera de autorización | Solo existe el módulo de autorización | Incluir en cada spec de features |
 | Sesión revocada vigente hasta la siguiente solicitud | Validación por solicitud | Aceptable: no hay estado cliente con privilegios |
-| Código de enrolamiento único y compartido | v1 sin interfaz de gestión (SPEC-0002 P-3b) | SPEC-0003: códigos con caducidad, usos y revocación |
-| Sin revocación de dispositivos desde la interfaz | v1 (SPEC-0002) | Reinstalación o procedimiento SQL (SECURITY.md §8); SPEC-0003 |
+| Códigos de enrolamiento sin caducidad | Decisión del solicitante (SPEC-0003 P-3b) | Un solo uso; regenerar o eliminar el equipo invalida el código |
+| El código del equipo pasa por el navegador del administrador | Hay que entregarlo a quien instala (SPEC-0003 §10.7) | Una sola vez, `no-store`, un solo uso |
+| Nombre del colaborador deducible probando correos | La coincidencia por correo es la trazabilidad pedida (SPEC-0003 RF-4b) | Requiere `devices.create`/`devices.update` y queda auditado |
 | Binarios del agente sin firma de código | Decisión del solicitante (P-11) | `SHA256SUMS`; reevaluar firma si la flota crece |
 | Datos del inventario declarados por el equipo | Inherente a un agente | IP de conexión registrada por el servidor como contraste |

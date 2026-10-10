@@ -146,6 +146,14 @@ export const AUDIT_ACTION_LABELS: Readonly<Record<string, string>> = {
   'policy.deleted': 'Política eliminada',
   'permission.updated': 'Permiso editado',
   'permission.synced': 'Catálogo sincronizado',
+  // Device inventory (SPEC-0002, SPEC-0003)
+  'device.created': 'Equipo registrado',
+  'device.updated': 'Equipo modificado',
+  'device.enrollment-code.regenerated': 'Código de equipo regenerado',
+  'device.deleted': 'Equipo eliminado',
+  'device.enrolled': 'Agente enrolado',
+  'device.relinked': 'Agente reinstalado',
+  'device.enrollment.rejected': 'Enrolamiento rechazado',
 };
 
 export const AUDIT_RESULT_LABELS: Readonly<Record<AuditEvent['result'], string>> = {

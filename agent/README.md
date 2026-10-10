@@ -19,8 +19,9 @@ Descarga: `https://itmas.sacservices.cloud/downloads/agent/latest/` (o `/downloa
 
 ## Antes de instalar
 
-1. Pide al área de TI el **código de autorización**. Se comparte por un canal interno y nunca va en un correo público,
-   un ticket ni la línea de comandos.
+1. Pide al área de TI el **código del equipo**. TI registra antes el equipo en ITMas (**Inventario → Equipos**), que
+   genera un código de un solo uso con el formato `XXXXX-XXXXX-XXXXX-XXXXX` (SPEC-0003). Se entrega por un canal
+   interno y nunca va en un correo público, un ticket ni la línea de comandos.
 2. Descarga el paquete de tu plataforma y `SHA256SUMS` desde la misma URL, y **verifica la suma**. Los binarios no
    están firmados (decisión de SPEC-0002), así que la suma es la única forma de comprobar que el archivo es el
    publicado por ITMas.
@@ -55,8 +56,16 @@ El instalador hace estos pasos, en orden:
    ya configurada, si es una reinstalación) y basta pulsar Enter para aceptarla. Solo admite direcciones `https://`.
 3. **Comprueba la conexión** con ese servidor y su certificado HTTPS. Si falla, explica por qué (certificado no válido,
    nombre que no resuelve, conexión rechazada) y cancela sin cambios, antes de pedir el código.
-4. Pide el **código de autorización**, sin mostrarlo en pantalla.
-5. Enrola el equipo e instala el servicio.
+4. Pide el **código de autorización**: es el código del equipo. No se muestra en pantalla; se aceptan guiones, espacios
+   y minúsculas.
+5. Enrola el equipo e instala el servicio. El código queda consumido y no se guarda en el equipo.
+
+Mensajes del enrolamiento:
+
+| Mensaje | Causa y solución |
+|---|---|
+| `El código de autorización no es válido.` | El código no existe, ya se usó, se regeneró o el equipo se eliminó. Pide a TI que regenere el código del equipo. |
+| `El servidor respondió 409.` | Esta máquina ya está registrada en ITMas como **otro** equipo. TI debe eliminar ese registro (o usar su código) antes de enrolarla con este. |
 
 ### Windows
 
@@ -141,8 +150,10 @@ propuesta por defecto.
   - Windows: `%ProgramData%\ITMas\Agent`, cifrada con DPAPI.
   - Linux: `/var/lib/itmas-agent`, con permisos `0600`.
   - macOS: `/Library/Application Support/ITMas/Agent`, con permisos `0600`.
-- **Credencial rechazada (401):** el agente deja de enviar, lo registra y vuelve a comprobarlo cada 24 h. Para volver
-  a enrolar el equipo, reinstala el agente: la API key anterior queda invalidada.
+- **Credencial rechazada (401):** ocurre cuando el equipo se elimina en ITMas o cuando el agente se reinstaló con otro
+  código. El agente deja de enviar, lo registra y vuelve a comprobarlo cada 24 h. Para volver a enrolar el equipo,
+  pide a TI que regenere su código (o que lo registre de nuevo si se eliminó) y reinstala el agente: la API key
+  anterior queda invalidada.
 
 ## Desarrollo
 

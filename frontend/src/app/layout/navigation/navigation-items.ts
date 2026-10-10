@@ -21,6 +21,10 @@ export const NAVIGATION: readonly NavigationGroup[] = [
     items: [{ label: 'Inicio', icon: 'home', route: '/home' }],
   },
   {
+    title: 'Inventario',
+    items: [{ label: 'Equipos', icon: 'devices', route: '/inventory', permission: 'devices.read' }],
+  },
+  {
     title: 'Administración',
     items: [
       { label: 'Usuarios', icon: 'group', route: '/admin/users', permission: 'users.read' },

@@ -27,6 +27,8 @@ internal sealed partial class GlobalExceptionHandler(
             // Domain messages are written to be client-safe (see DomainException).
             DomainException domainException => Create(StatusCodes.Status422UnprocessableEntity, "Regla de negocio no satisfecha.", domainException.Message),
             NotFoundException => Create(StatusCodes.Status404NotFound, "Recurso no encontrado.", null),
+            // No details: the reason a credential is no longer valid is not disclosed.
+            CredentialRejectedException => Create(StatusCodes.Status401Unauthorized, "No autorizado.", null),
             // Application messages of these types are written to be client-safe.
             ForbiddenException forbidden => Create(StatusCodes.Status403Forbidden, "Operación no permitida.", forbidden.Message),
             ConflictException conflict => Create(StatusCodes.Status409Conflict, "Conflicto con el estado actual.", conflict.Message),

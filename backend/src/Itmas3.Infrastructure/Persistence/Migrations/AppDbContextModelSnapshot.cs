@@ -158,13 +158,11 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                         .HasColumnName("id");
 
                     b.Property<string>("AgentVersion")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("agent_version");
 
                     b.Property<string>("ApiKeyHash")
-                        .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("character(64)")
                         .HasColumnName("api_key_hash")
@@ -181,7 +179,15 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                         .HasColumnName("country_code")
                         .IsFixedLength();
 
-                    b.Property<DateTimeOffset>("EnrolledAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTimeOffset?>("EnrolledAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("enrolled_at");
 
@@ -190,13 +196,22 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(45)")
                         .HasColumnName("enrolled_from_ip");
 
+                    b.Property<string>("EnrollmentCodeHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("enrollment_code_hash")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset?>("EnrollmentCodeIssuedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("enrollment_code_issued_at");
+
                     b.Property<string>("FirewallStatus")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("firewall_status");
 
                     b.Property<string>("HardwareId")
-                        .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")
                         .HasColumnName("hardware_id");
@@ -206,7 +221,6 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                         .HasColumnName("has_local_admins");
 
                     b.Property<string>("Hostname")
-                        .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("hostname");
@@ -228,8 +242,13 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_seen_at");
 
-                    b.Property<string>("OsFamily")
+                    b.Property<string>("Name")
                         .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("OsFamily")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("os_family");
@@ -244,6 +263,11 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("os_version");
 
+                    b.Property<string>("OwnerEmail")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("owner_email");
+
                     b.Property<string>("PublicIp")
                         .HasMaxLength(45)
                         .HasColumnType("character varying(45)")
@@ -254,20 +278,41 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(256)")
                         .HasColumnName("region");
 
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
                     b.Property<string>("SystemVolumeEncryption")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("system_volume_encryption");
 
-                    b.Property<DateTimeOffset>("TermsAcceptedAt")
+                    b.Property<DateTimeOffset?>("TermsAcceptedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("terms_accepted_at");
 
                     b.Property<string>("TermsVersion")
-                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("terms_version");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("device_type");
 
                     b.HasKey("Id")
                         .HasName("pk_devices");
@@ -276,15 +321,23 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_devices_api_key_hash");
 
+                    b.HasIndex("EnrollmentCodeHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_devices_enrollment_code_hash");
+
                     b.HasIndex("HardwareId")
                         .IsUnique()
-                        .HasDatabaseName("ix_devices_hardware_id");
+                        .HasDatabaseName("ix_devices_hardware_id")
+                        .HasFilter("status <> 'deleted'");
 
                     b.HasIndex("Hostname")
                         .HasDatabaseName("ix_devices_hostname");
 
                     b.HasIndex("LastReportId")
                         .HasDatabaseName("ix_devices_last_report_id");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_devices_status");
 
                     b.ToTable("devices", "app");
                 });
@@ -294,6 +347,12 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("AgentVersion")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("agent_version");
 
                     b.Property<string>("City")
                         .HasMaxLength(256)
@@ -337,6 +396,10 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
                         .HasColumnName("region");
+
+                    b.Property<int>("UnavailableCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("unavailable_count");
 
                     b.HasKey("Id")
                         .HasName("pk_inventory_reports");

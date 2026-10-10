@@ -1,0 +1,465 @@
+<app-device-header [device]="report()?.device ?? null" fallbackTitle="Informe del equipo">
+  <a mat-stroked-button [routerLink]="['/inventory', id(), 'reports']">
+    <mat-icon>history</mat-icon>
+    Ver registros
+  </a>
+</app-device-header>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Cargando informe" />
+}
+
+@if (notFound()) {
+  <p class="empty">
+    {{
+      reportId()
+        ? 'El registro no existe o ya no se conserva.'
+        : 'Este equipo todavía no ha enviado inventario.'
+    }}
+  </p>
+} @else if (failed()) {
+  <div class="error-state" role="alert">
+    <span class="supporting-text">No se pudo cargar el informe.</span>
+    <button mat-stroked-button (click)="retry()">
+      <mat-icon>refresh</mat-icon>
+      Reintentar
+    </button>
+  </div>
+} @else if (report(); as report) {
+  @let inv = report.inventory;
+  <div class="meta supporting-text">
+    <span>Recopilado: {{ report.collectedAt | date: 'medium' }}</span>
+    <span>Recibido: {{ report.receivedAt | date: 'medium' }}</span>
+  </div>
+
+  @if (!report.isLatest) {
+    <div class="notice" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>Este no es el último registro del equipo.</span>
+      <a mat-button [routerLink]="['/inventory', id(), 'reports', 'latest']"
+        >Ver el último informe</a
+      >
+    </div>
+  }
+
+  <nav class="index" aria-label="Secciones del informe">
+    @for (section of sections; track section.id) {
+      <button mat-stroked-button type="button" (click)="scrollTo(section.id)">
+        {{ section.title }}
+      </button>
+    }
+    @if (inv.unavailable.length > 0) {
+      <button mat-stroked-button type="button" (click)="scrollTo('unavailable')">
+        Datos no disponibles
+      </button>
+    }
+  </nav>
+
+  <div class="sections">
+    <!-- Características del equipo -->
+    <mat-card
+      appearance="outlined"
+      class="report-card"
+      id="section-system"
+      aria-labelledby="title-system"
+    >
+      <mat-card-header>
+        <mat-card-title id="title-system">Características del equipo</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <dl class="facts">
+          <dt>Nombre del host</dt>
+          <dd>{{ inv.system.hostname }}</dd>
+          <dt>Sistema operativo</dt>
+          <dd>{{ inv.system.osName }} ({{ label('osFamily', inv.system.osFamily) }})</dd>
+          <dt>Versión</dt>
+          <dd>{{ inv.system.osVersion }}</dd>
+          <dt>Compilación</dt>
+          <dd>{{ inv.system.osBuild ?? 'No disponible' }}</dd>
+          <dt>Arquitectura</dt>
+          <dd>{{ inv.system.architecture }}</dd>
+          <dt>Memoria RAM</dt>
+          <dd>{{ unavailableText('hardware.memory') ?? (inv.hardware.memoryBytes | bytes) }}</dd>
+          <dt>Procesadores</dt>
+          <dd>
+            @if (inv.hardware.cpus; as cpus) {
+              @for (cpu of cpus; track $index) {
+                {{ cpu.model }} · {{ cpu.physicalCores }} núcleos físicos ·
+                {{ cpu.logicalProcessors }} procesadores lógicos<br />
+              } @empty {
+                No disponible
+              }
+            } @else {
+              {{ unavailableText('hardware.cpus') ?? 'No disponible' }}
+            }
+          </dd>
+          <dt>Versión del agente</dt>
+          <dd>{{ inv.agentVersion }}</dd>
+        </dl>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Seguridad -->
+    <mat-card
+      appearance="outlined"
+      class="report-card"
+      id="section-security"
+      aria-labelledby="title-security"
+    >
+      <mat-card-header>
+        <mat-card-title id="title-security">Seguridad</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <dl class="facts">
+          <dt>Disco del sistema</dt>
+          <dd>
+            {{
+              unavailableText('hardware.volumes') ??
+                (systemVolume()
+                  ? encryption(systemVolume()!)
+                  : 'Desconocido (no se identificó el volumen de arranque)')
+            }}
+          </dd>
+          <dt>Firewall</dt>
+          <dd>
+            @if (inv.security.firewall; as firewall) {
+              {{ label('firewall', firewall.status) }}
+              @for (detail of firewall.details; track $index) {
+                <span class="secondary"
+                  >{{ detail.name }}: {{ detail.enabled ? 'Activo' : 'Inactivo' }}</span
+                >
+              }
+            } @else {
+              {{ unavailableText('security.firewall') ?? 'No disponible' }}
+            }
+          </dd>
+        </dl>
+        @if (inv.hardware.volumes; as volumes) {
+          <h3 class="subsection-title">Cifrado por volumen</h3>
+          <dl class="facts">
+            @for (volume of volumes; track $index) {
+              <dt>{{ volume.mountPoint }}</dt>
+              <dd>{{ encryption(volume) }}</dd>
+            }
+          </dl>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Red -->
+    <mat-card
+      appearance="outlined"
+      class="report-card"
+      id="section-network"
+      aria-labelledby="title-network"
+    >
+      <mat-card-header>
+        <mat-card-title id="title-network">Red</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <dl class="facts">
+          <dt>IP pública declarada</dt>
+          <dd>
+            @if (inv.network.publicNetwork; as network) {
+              {{ network.ip }}
+              @if (location()) {
+                <span class="secondary">{{ location() }}</span>
+              }
+              @if (network.org) {
+                <span class="secondary">{{ network.org }}</span>
+              }
+            } @else {
+              {{ unavailableText('network.publicNetwork') ?? 'No disponible' }}
+            }
+          </dd>
+          <dt>IP de conexión</dt>
+          <dd>
+            {{ report.connectionIp ?? 'Desconocida' }}
+            <span class="secondary">Registrada por el servidor al recibir el inventario.</span>
+          </dd>
+        </dl>
+        @if (ipMismatch()) {
+          <p class="notice warning" role="note">
+            <mat-icon aria-hidden="true">warning</mat-icon>
+            <span>
+              La IP pública declarada y la IP de conexión no coinciden. Puede deberse a un proxy,
+              una VPN o un dato manipulado.
+            </span>
+          </p>
+        }
+
+        <h3 class="subsection-title">Interfaces</h3>
+        @if (inv.network.interfaces; as interfaces) {
+          <div class="table-container">
+            <table mat-table [dataSource]="interfaces" aria-label="Interfaces de red">
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Interfaz</th>
+                <td mat-cell *matCellDef="let item">{{ item.name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="ipv4">
+                <th mat-header-cell *matHeaderCellDef>IPv4</th>
+                <td mat-cell *matCellDef="let item">
+                  @for (ip of item.ipv4; track $index) {
+                    {{ ip }}<br />
+                  } @empty {
+                    —
+                  }
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="ipv6">
+                <th mat-header-cell *matHeaderCellDef>IPv6</th>
+                <td mat-cell *matCellDef="let item">
+                  @for (ip of item.ipv6; track $index) {
+                    {{ ip }}<br />
+                  } @empty {
+                    —
+                  }
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="interfaceColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: interfaceColumns"></tr>
+              <tr class="mat-mdc-no-data-row" *matNoDataRow>
+                <td class="empty" [attr.colspan]="interfaceColumns.length">
+                  Sin interfaces activas.
+                </td>
+              </tr>
+            </table>
+          </div>
+        } @else {
+          <p class="supporting-text">
+            {{ unavailableText('network.interfaces') ?? 'No disponible' }}
+          </p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Almacenamiento -->
+    <mat-card
+      appearance="outlined"
+      class="report-card"
+      id="section-storage"
+      aria-labelledby="title-storage"
+    >
+      <mat-card-header>
+        <mat-card-title id="title-storage">Almacenamiento</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <h3 class="subsection-title">Discos</h3>
+        @if (inv.hardware.disks; as disks) {
+          <div class="table-container">
+            <table mat-table [dataSource]="disks" aria-label="Discos">
+              <ng-container matColumnDef="model">
+                <th mat-header-cell *matHeaderCellDef>Modelo</th>
+                <td mat-cell *matCellDef="let disk">
+                  {{ disk.model ?? 'Desconocido' }}
+                  <span class="secondary">{{ disk.id }}</span>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="size">
+                <th mat-header-cell *matHeaderCellDef>Capacidad</th>
+                <td mat-cell *matCellDef="let disk">{{ disk.sizeBytes | bytes }}</td>
+              </ng-container>
+              <ng-container matColumnDef="mediaType">
+                <th mat-header-cell *matHeaderCellDef>Tecnología</th>
+                <td mat-cell *matCellDef="let disk">{{ label('mediaType', disk.mediaType) }}</td>
+              </ng-container>
+              <ng-container matColumnDef="busType">
+                <th mat-header-cell *matHeaderCellDef>Bus</th>
+                <td mat-cell *matCellDef="let disk">{{ label('busType', disk.busType) }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="diskColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: diskColumns"></tr>
+              <tr class="mat-mdc-no-data-row" *matNoDataRow>
+                <td class="empty" [attr.colspan]="diskColumns.length">
+                  Sin discos físicos informados.
+                </td>
+              </tr>
+            </table>
+          </div>
+        } @else {
+          <p class="supporting-text">{{ unavailableText('hardware.disks') ?? 'No disponible' }}</p>
+        }
+
+        <h3 class="subsection-title">Volúmenes</h3>
+        @if (inv.hardware.volumes; as volumes) {
+          <div class="table-container">
+            <table mat-table [dataSource]="volumes" aria-label="Volúmenes">
+              <ng-container matColumnDef="mountPoint">
+                <th mat-header-cell *matHeaderCellDef>Volumen</th>
+                <td mat-cell *matCellDef="let volume">
+                  {{ volume.mountPoint }}
+                  @if (volume.isSystem) {
+                    <span class="secondary">Volumen de arranque</span>
+                  }
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="fileSystem">
+                <th mat-header-cell *matHeaderCellDef>Sistema de archivos</th>
+                <td mat-cell *matCellDef="let volume">{{ volume.fileSystem ?? 'Desconocido' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="size">
+                <th mat-header-cell *matHeaderCellDef>Capacidad</th>
+                <td mat-cell *matCellDef="let volume">{{ volume.sizeBytes | bytes }}</td>
+              </ng-container>
+              <ng-container matColumnDef="usage">
+                <th mat-header-cell *matHeaderCellDef>Espacio libre</th>
+                <td mat-cell *matCellDef="let volume">
+                  <div class="usage">
+                    <span
+                      >{{ volume.freeBytes | bytes }} libres ({{
+                        100 - usedPercent(volume) | number: '1.0-0'
+                      }}
+                      %)</span
+                    >
+                    <mat-progress-bar
+                      mode="determinate"
+                      [value]="usedPercent(volume)"
+                      [attr.aria-label]="'Uso de ' + volume.mountPoint"
+                    />
+                  </div>
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="disk">
+                <th mat-header-cell *matHeaderCellDef>Disco</th>
+                <td mat-cell *matCellDef="let volume">{{ volume.diskId ?? '—' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="encryption">
+                <th mat-header-cell *matHeaderCellDef>Cifrado</th>
+                <td mat-cell *matCellDef="let volume">{{ encryption(volume) }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="volumeColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: volumeColumns"></tr>
+              <tr class="mat-mdc-no-data-row" *matNoDataRow>
+                <td class="empty" [attr.colspan]="volumeColumns.length">
+                  Sin volúmenes informados.
+                </td>
+              </tr>
+            </table>
+          </div>
+        } @else {
+          <p class="supporting-text">
+            {{ unavailableText('hardware.volumes') ?? 'No disponible' }}
+          </p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Usuarios locales -->
+    <mat-card
+      appearance="outlined"
+      class="report-card"
+      id="section-accounts"
+      aria-labelledby="title-accounts"
+    >
+      <mat-card-header>
+        <mat-card-title id="title-accounts">Usuarios locales</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (inv.accounts.users; as users) {
+          <div class="table-container">
+            <table mat-table [dataSource]="users" aria-label="Usuarios locales">
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Cuenta</th>
+                <td mat-cell *matCellDef="let user">{{ user.name }}</td>
+              </ng-container>
+              <ng-container matColumnDef="enabled">
+                <th mat-header-cell *matHeaderCellDef>Habilitada</th>
+                <td mat-cell *matCellDef="let user">{{ user.enabled ? 'Sí' : 'No' }}</td>
+              </ng-container>
+              <ng-container matColumnDef="isAdmin">
+                <th mat-header-cell *matHeaderCellDef>Administrador</th>
+                <td mat-cell *matCellDef="let user">
+                  @if (user.isAdmin) {
+                    <mat-chip-set>
+                      <mat-chip [disableRipple]="true" [highlighted]="user.enabled"
+                        >Administrador</mat-chip
+                      >
+                    </mat-chip-set>
+                  } @else {
+                    No
+                  }
+                </td>
+              </ng-container>
+              <ng-container matColumnDef="groups">
+                <th mat-header-cell *matHeaderCellDef>Grupos</th>
+                <td mat-cell *matCellDef="let user">{{ user.groups.join(', ') || '—' }}</td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="accountColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: accountColumns"></tr>
+              <tr class="mat-mdc-no-data-row" *matNoDataRow>
+                <td class="empty" [attr.colspan]="accountColumns.length">
+                  Sin cuentas locales informadas.
+                </td>
+              </tr>
+            </table>
+          </div>
+        } @else {
+          <p class="supporting-text">{{ unavailableText('accounts.users') ?? 'No disponible' }}</p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Software instalado -->
+    <mat-card
+      appearance="outlined"
+      class="report-card"
+      id="section-software"
+      aria-labelledby="title-software"
+    >
+      <mat-card-header>
+        <mat-card-title id="title-software">Software instalado</mat-card-title>
+        @if (inv.software.applications; as all) {
+          <mat-card-subtitle>{{ all.length }} aplicaciones</mat-card-subtitle>
+        }
+      </mat-card-header>
+      <mat-card-content>
+        @if (inv.software.applications) {
+          <mat-form-field appearance="outline" class="software-filter">
+            <mat-label>Filtrar aplicaciones</mat-label>
+            <mat-icon matPrefix>search</mat-icon>
+            <input
+              matInput
+              maxlength="100"
+              [value]="softwareFilter()"
+              (input)="softwareFilter.set($any($event.target).value)"
+            />
+          </mat-form-field>
+          <ul class="software-list" aria-label="Aplicaciones instaladas">
+            @for (application of applications(); track $index) {
+              <li>{{ application }}</li>
+            } @empty {
+              <li class="empty">Ninguna aplicación coincide con el filtro.</li>
+            }
+          </ul>
+        } @else {
+          <p class="supporting-text">
+            {{ unavailableText('software.applications') ?? 'No disponible' }}
+          </p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Datos no disponibles -->
+    @if (inv.unavailable.length > 0) {
+      <mat-card
+        appearance="outlined"
+        class="report-card"
+        id="section-unavailable"
+        aria-labelledby="title-unavailable"
+      >
+        <mat-card-header>
+          <mat-card-title id="title-unavailable">Datos no disponibles</mat-card-title>
+          <mat-card-subtitle>El agente no pudo obtener estas secciones.</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <dl class="facts">
+            @for (item of inv.unavailable; track item.section) {
+              <dt>{{ label('section', item.section) }}</dt>
+              <dd>{{ label('reason', item.reason) }}</dd>
+            }
+          </dl>
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+}

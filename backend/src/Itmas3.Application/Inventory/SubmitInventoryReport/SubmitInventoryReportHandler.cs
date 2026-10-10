@@ -25,6 +25,7 @@ public sealed record SubmitInventoryReportCommand(
     IReadOnlyList<VolumeData>? Volumes,
     string? FirewallStatus,
     IReadOnlyList<AccountData>? Accounts,
+    int UnavailableCount,
     string PayloadJson);
 
 /// <summary>Use case: store an inventory sent by an enrolled device (RF-15, RF-16, RN-1, RN-5).</summary>
@@ -52,7 +53,8 @@ public sealed class SubmitInventoryReportHandler(
         {
             // RN-1: the device comes from the authenticated credential, never from the payload.
             var device = await devices.GetAsync(command.DeviceId, ct) ?? throw new NotFoundException("Device not found.");
-            var report = InventoryReport.Receive(device.Id, command.CollectedAt, now, command.ConnectionIp, command.PublicNetwork, command.PayloadJson);
+            var report = InventoryReport.Receive(
+                device.Id, command.CollectedAt, now, command.ConnectionIp, command.PublicNetwork, command.AgentVersion, command.UnavailableCount, command.PayloadJson);
             reports.Add(report);
             device.ApplyReport(report, summary);
             return report.Id;

@@ -25,7 +25,7 @@ describe('permissionGuard', () => {
     });
   });
 
-  const run = (permission?: string) =>
+  const run = (permission?: string | readonly string[]) =>
     TestBed.runInInjectionContext(() =>
       permissionGuard(
         { data: permission ? { permission } : {} } as ActivatedRouteSnapshot,
@@ -45,5 +45,13 @@ describe('permissionGuard', () => {
 
   it('sends users without the permission to the access denied page', () => {
     expect(TestBed.inject(Router).serializeUrl(run('users.read') as UrlTree)).toBe('/forbidden');
+  });
+
+  it('requires every permission of a list', () => {
+    granted.add('devices.read');
+
+    expect(run(['devices.read', 'devices.reports.read'])).not.toBe(true);
+    granted.add('devices.reports.read');
+    expect(run(['devices.read', 'devices.reports.read'])).toBe(true);
   });
 });

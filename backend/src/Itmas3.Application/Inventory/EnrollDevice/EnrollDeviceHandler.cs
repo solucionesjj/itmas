@@ -1,11 +1,18 @@
 using Itmas3.Application.Authorization.Abstractions;
+using Itmas3.Application.Common.Exceptions;
 using Itmas3.Application.Inventory.Abstractions;
 using Itmas3.Domain.Common;
 using Itmas3.Domain.Inventory;
 
 namespace Itmas3.Application.Inventory.EnrollDevice;
 
+/// <summary>
+/// Enrollment of the agent of <paramref name="DeviceId"/>, the device that owns the presented code; the code hash is
+/// checked again inside the transaction so it can be used only once (ADR-0012).
+/// </summary>
 public sealed record EnrollDeviceCommand(
+    Guid DeviceId,
+    string EnrollmentCodeHash,
     string HardwareId,
     string Hostname,
     string OsFamily,
@@ -18,8 +25,9 @@ public sealed record EnrollDeviceCommand(
 public sealed record EnrollDeviceResult(Guid DeviceId, string ApiKey, bool Relinked);
 
 /// <summary>
-/// Use case: enroll a device that presented a valid authorization code (RF-14). Requires accepted terms (RN-3).
-/// A known hardware id is re-linked and its previous API key stops working (RN-4).
+/// Use case: enroll the agent of a registered device with its one-time code (SPEC-0003 RF-7..RF-10, ADR-0012).
+/// Requires accepted terms (SPEC-0002 RN-3). Re-enrolling an active device replaces its API key (RF-9). A hardware id
+/// that belongs to another non-deleted device is rejected (409) and audited (RF-10).
 /// </summary>
 public sealed class EnrollDeviceHandler(
     IDeviceRepository devices,
@@ -43,26 +51,38 @@ public sealed class EnrollDeviceHandler(
 
         var apiKey = DeviceSecrets.NewApiKey();
         var apiKeyHash = DeviceSecrets.Hash(apiKey);
+        var hardwareId = command.HardwareId.Trim();
         var data = new DeviceEnrollmentData(
             command.Hostname, command.OsFamily, command.AgentVersion, command.TermsVersion, command.TermsAcceptedAt, command.SourceIp);
 
-        return await unitOfWork.ExecuteAsync(async (audit, ct) =>
+        var outcome = await unitOfWork.ExecuteAsync<(EnrollDeviceResult? Result, bool Conflict)>(async (audit, ct) =>
         {
-            var device = await devices.FindByHardwareIdAsync(command.HardwareId.Trim(), ct);
-            var relinked = device is not null;
-            var before = device is null ? null : new { device.Hostname, device.EnrolledAt, device.EnrolledFromIp, device.TermsVersion };
-
-            if (device is null)
+            var device = await devices.GetAsync(command.DeviceId, ct);
+            if (device is null || device.Status == DeviceStatus.Deleted || device.EnrollmentCodeHash != command.EnrollmentCodeHash)
             {
-                device = Device.Enroll(command.HardwareId, apiKeyHash, data, now);
-                devices.Add(device);
-            }
-            else
-            {
-                device.Relink(apiKeyHash, data, now);
+                // Consumed or replaced between authentication and now: same answer as an unknown code.
+                return (null, false);
             }
 
-            audit.Actor = new AuditActor(null, $"Agente {device.Hostname}");
+            audit.Actor = new AuditActor(null, $"Agente {command.Hostname.Trim()}");
+
+            var owner = await devices.FindCurrentByHardwareIdAsync(hardwareId, ct);
+            if (owner is not null && owner.Id != device.Id)
+            {
+                audit.Record(
+                    InventoryAuditActions.DeviceEnrollmentRejected,
+                    InventoryAuditActions.DeviceResourceType,
+                    device.Id.ToString(),
+                    null,
+                    new { Reason = "hardware-registered-as-another-device", OtherDeviceId = owner.Id, command.Hostname, command.SourceIp });
+                return (null, true);
+            }
+
+            var before = device.Status == DeviceStatus.Active
+                ? new { device.Hostname, device.EnrolledAt, device.EnrolledFromIp, device.TermsVersion }
+                : null;
+            var relinked = device.Enroll(hardwareId, apiKeyHash, data, now);
+
             audit.Record(
                 relinked ? InventoryAuditActions.DeviceRelinked : InventoryAuditActions.DeviceEnrolled,
                 InventoryAuditActions.DeviceResourceType,
@@ -70,6 +90,7 @@ public sealed class EnrollDeviceHandler(
                 before,
                 new
                 {
+                    device.Name,
                     device.Hostname,
                     device.OsFamily,
                     device.AgentVersion,
@@ -78,7 +99,15 @@ public sealed class EnrollDeviceHandler(
                     device.EnrolledFromIp,
                 });
 
-            return new EnrollDeviceResult(device.Id, apiKey, relinked);
+            return (new EnrollDeviceResult(device.Id, apiKey, relinked), false);
         }, cancellationToken);
+
+        if (outcome.Conflict)
+        {
+            // The rejection is already audited (committed with the trail): only now is it reported to the agent.
+            throw new ConflictException("Este equipo ya está registrado en el inventario con otro nombre. Elimine primero ese registro.");
+        }
+
+        return outcome.Result ?? throw new CredentialRejectedException();
     }
 }

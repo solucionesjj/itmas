@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 
 namespace Itmas3.Api.Inventory;
 
-/// <summary>Composition of the device inventory module (SPEC-0002, ADR-0009).</summary>
+/// <summary>Composition of the device inventory module (SPEC-0002, SPEC-0003, ADR-0009, ADR-0012).</summary>
 internal static class InventoryModuleSetup
 {
     public static IServiceCollection AddInventoryModule(this IServiceCollection services, IConfiguration configuration)
@@ -19,9 +19,6 @@ internal static class InventoryModuleSetup
         services.AddOptions<InventoryOptions>()
             .Bind(section)
             .ValidateDataAnnotations()
-            .Validate(
-                options => !options.EnrollmentEnabled || options.EnrollmentCode!.Length >= InventoryOptions.MinEnrollmentCodeLength,
-                $"Inventory:EnrollmentCode must have at least {InventoryOptions.MinEnrollmentCodeLength} characters (or be empty to disable enrollment).")
             .ValidateOnStart();
 
         services.AddSingleton(serviceProvider =>
@@ -52,7 +49,7 @@ internal static class InventoryModuleSetup
 
         services.AddRateLimiter(options =>
         {
-            // Per client IP: also slows down brute force against the authorization code.
+            // Per client IP: also slows down brute force against enrollment codes.
             options.AddPolicy(RateLimitingPolicies.DeviceEnrollment, context =>
             {
                 var limits = context.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;

@@ -43,4 +43,10 @@ describe('Shell navigation', () => {
 
     expect(await labels()).toEqual(['Inicio', 'Usuarios', 'Auditoría']);
   });
+
+  it('shows the inventory to users who can read devices', async () => {
+    permissions.set(['devices.read']);
+
+    expect(await labels()).toEqual(['Inicio', 'Equipos']);
+  });
 });

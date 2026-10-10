@@ -1,6 +1,7 @@
 using Itmas3.Application.Authorization.Abstractions;
 using Itmas3.Application.Authorization.Queries;
 using Itmas3.Application.Inventory.Abstractions;
+using Itmas3.Application.Inventory.Queries;
 using Itmas3.Infrastructure.Authorization;
 using Itmas3.Infrastructure.HealthChecks;
 using Itmas3.Infrastructure.Inventory;
@@ -46,10 +47,11 @@ public static class DependencyInjection
         services.AddScoped<IAuthorizationSnapshotProvider, AuthorizationSnapshotProvider>();
         services.AddScoped<IAuthorizationQueries, AuthorizationQueries>();
 
-        // Inventory (SPEC-0002)
+        // Inventory (SPEC-0002, SPEC-0003)
         services.AddScoped<IDeviceRepository, DeviceRepository>();
         services.AddScoped<IInventoryReportRepository, InventoryReportRepository>();
         services.AddScoped<IInventoryUnitOfWork, InventoryUnitOfWork>();
+        services.AddScoped<IInventoryQueries, InventoryQueries>();
 
         return services;
     }

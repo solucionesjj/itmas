@@ -29,10 +29,41 @@ public sealed class DeviceSecretsTests
     }
 
     [Fact]
-    public void Fixed_time_comparison_matches_only_equal_values()
+    public void Enrollment_codes_are_random_grouped_crockford_base32()
     {
-        Assert.True(DeviceSecrets.FixedTimeEquals("abc", "abc"));
-        Assert.False(DeviceSecrets.FixedTimeEquals("abc", "abd"));
-        Assert.False(DeviceSecrets.FixedTimeEquals("abc", "abcd"));
+        var codes = Enumerable.Range(0, 100).Select(_ => DeviceSecrets.NewEnrollmentCode()).ToList();
+
+        Assert.Equal(100, codes.Distinct(StringComparer.Ordinal).Count());
+        Assert.All(codes, code => Assert.Matches("^[0-9A-HJKMNP-TV-Z]{5}(-[0-9A-HJKMNP-TV-Z]{5}){3}$", code));
+    }
+
+    [Theory]
+    [InlineData("ABCDE-FGH1J-KMNPQ-RSTVW", "ABCDEFGH1JKMNPQRSTVW")]
+    [InlineData("abcde fghij kmnpq rstvw", "ABCDEFGH1JKMNPQRSTVW")]
+    [InlineData("ABCDE-FGHLJ-KMNPQ-RSTV0", "ABCDEFGH1JKMNPQRSTV0")]
+    [InlineData("ABCDEFGHIJKMNPQRSTVO", "ABCDEFGH1JKMNPQRSTV0")]
+    public void Enrollment_codes_are_normalized_as_typed_by_people(string typed, string expected) =>
+        Assert.Equal(expected, DeviceSecrets.NormalizeEnrollmentCode(typed));
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("ABCDE-FGHIJ-KMNPQ")]
+    [InlineData("ABCDE-FGHIJ-KMNPQ-RSTVW-X")]
+    [InlineData("ABCDE-FGHIJ-KMNPQ-RSTVU")]
+    [InlineData("ABCDE_FGHIJ_KMNPQ_RSTVW")]
+    [InlineData("a3f1c9e2b7d4a3f1c9e2b7d4a3f1c9e2b7d4a3f1c9e2b7d4")]
+    public void Malformed_enrollment_codes_are_rejected_without_hashing(string? code)
+    {
+        Assert.Null(DeviceSecrets.NormalizeEnrollmentCode(code));
+        Assert.Null(DeviceSecrets.HashEnrollmentCode(code));
+    }
+
+    [Fact]
+    public void Every_spelling_of_a_code_has_the_same_hash()
+    {
+        var code = DeviceSecrets.NewEnrollmentCode();
+
+        Assert.Equal(DeviceSecrets.HashEnrollmentCode(code), DeviceSecrets.HashEnrollmentCode(code.Replace("-", " ", StringComparison.Ordinal).ToLowerInvariant()));
     }
 }

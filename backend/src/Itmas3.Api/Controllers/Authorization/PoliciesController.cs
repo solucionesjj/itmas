@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Globalization;
 using Itmas3.Api.Authorization;
 using Itmas3.Api.Contracts.Authorization;
 using Itmas3.Application.Authorization;
@@ -71,7 +70,7 @@ public sealed class PoliciesController(IAuthorizationQueries queries) : Controll
         [FromServices] UpdatePolicyHandler handler,
         CancellationToken cancellationToken)
     {
-        if (!TryParseETag(ifMatch, out var expectedRevision))
+        if (!EntityTags.TryParse(ifMatch, out var expectedRevision))
         {
             return Problem(statusCode: StatusCodes.Status428PreconditionRequired, title: "Falta la cabecera If-Match con la versión de la política.");
         }
@@ -93,22 +92,5 @@ public sealed class PoliciesController(IAuthorizationQueries queries) : Controll
         return NoContent();
     }
 
-    private void SetETag(int revision) => Response.Headers.ETag = $"\"{revision.ToString(CultureInfo.InvariantCulture)}\"";
-
-    private static bool TryParseETag(string? value, out int revision)
-    {
-        revision = 0;
-        var trimmed = value?.Trim();
-        if (string.IsNullOrEmpty(trimmed))
-        {
-            return false;
-        }
-
-        if (trimmed.StartsWith("W/", StringComparison.Ordinal))
-        {
-            trimmed = trimmed[2..];
-        }
-
-        return int.TryParse(trimmed.Trim('"'), NumberStyles.None, CultureInfo.InvariantCulture, out revision);
-    }
+    private void SetETag(int revision) => Response.Headers.ETag = EntityTags.Format(revision);
 }

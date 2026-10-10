@@ -10,14 +10,29 @@ internal sealed class DeviceRepository(AppDbContext db) : IDeviceRepository
     public Task<Device?> GetAsync(Guid id, CancellationToken cancellationToken) =>
         db.Devices.SingleOrDefaultAsync(device => device.Id == id, cancellationToken);
 
-    public Task<Device?> FindByHardwareIdAsync(string hardwareId, CancellationToken cancellationToken) =>
-        db.Devices.SingleOrDefaultAsync(device => device.HardwareId == hardwareId, cancellationToken);
+    public Task<Device?> FindCurrentByHardwareIdAsync(string hardwareId, CancellationToken cancellationToken) =>
+        db.Devices.SingleOrDefaultAsync(
+            device => device.HardwareId == hardwareId && device.Status != DeviceStatus.Deleted, cancellationToken);
 
-    public async Task<Guid?> FindIdByApiKeyHashAsync(string apiKeyHash, CancellationToken cancellationToken) =>
+    public async Task<Guid?> FindActiveIdByApiKeyHashAsync(string apiKeyHash, CancellationToken cancellationToken) =>
         await db.Devices.AsNoTracking()
-            .Where(device => device.ApiKeyHash == apiKeyHash)
+            .Where(device => device.ApiKeyHash == apiKeyHash && device.Status == DeviceStatus.Active)
             .Select(device => (Guid?)device.Id)
             .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<Guid?> FindIdByEnrollmentCodeHashAsync(string enrollmentCodeHash, CancellationToken cancellationToken) =>
+        await db.Devices.AsNoTracking()
+            .Where(device => device.EnrollmentCodeHash == enrollmentCodeHash && device.Status != DeviceStatus.Deleted)
+            .Select(device => (Guid?)device.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+
+    public Task<bool> NameExistsAsync(string name, Guid? excludeId, CancellationToken cancellationToken)
+    {
+        var lowered = name.ToLowerInvariant();
+        return db.Devices.AnyAsync(
+            device => device.Status != DeviceStatus.Deleted && device.Name.ToLower() == lowered && device.Id != excludeId,
+            cancellationToken);
+    }
 
     public void Add(Device device) => db.Devices.Add(device);
 }

@@ -1,0 +1,186 @@
+<div class="page-header">
+  <h1 class="page-title">Equipos</h1>
+  <button *appIfPermission="'devices.create'" mat-flat-button (click)="create()">
+    <mat-icon>add</mat-icon>
+    Nuevo equipo
+  </button>
+</div>
+<p class="supporting-text">
+  Estaciones de trabajo y servidores del inventario. Cada equipo recibe un código para enrolar su
+  agente.
+</p>
+
+<div class="filters">
+  <mat-form-field appearance="outline">
+    <mat-label>Buscar por equipo, colaborador o correo</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput maxlength="100" (input)="onSearch($any($event.target).value)" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Estado</mat-label>
+    <mat-select [value]="status()" (valueChange)="onStatus($event)">
+      <mat-option value="current">Pendientes y activos</mat-option>
+      <mat-option value="pending">Pendientes</mat-option>
+      <mat-option value="active">Activos</mat-option>
+      <mat-option value="deleted">Eliminados</mat-option>
+      <mat-option value="all">Todos</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Tipo</mat-label>
+    <mat-select [value]="type()" (valueChange)="onType($event)">
+      <mat-option value="">Todos</mat-option>
+      <mat-option value="workstation">Estaciones de trabajo</mat-option>
+      <mat-option value="server">Servidores</mat-option>
+    </mat-select>
+  </mat-form-field>
+</div>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Cargando equipos" />
+}
+
+@if (failed()) {
+  <div class="error-state" role="alert">
+    <span class="supporting-text">No se pudo cargar el listado de equipos.</span>
+    <button mat-stroked-button (click)="retry()">
+      <mat-icon>refresh</mat-icon>
+      Reintentar
+    </button>
+  </div>
+} @else {
+  <div class="table-container">
+    <table
+      mat-table
+      matSort
+      matSortActive="name"
+      matSortDirection="asc"
+      [dataSource]="result()?.items ?? []"
+      (matSortChange)="onSort($event)"
+      aria-label="Equipos"
+    >
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre del equipo</th>
+        <td mat-cell *matCellDef="let device">
+          {{ device.name }}
+          @if (hostnameHint(device); as hostname) {
+            <span class="secondary">{{ hostname }}</span>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="type">
+        <th mat-header-cell *matHeaderCellDef>Tipo</th>
+        <td mat-cell *matCellDef="let device">{{ typeLabel(device.type) }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="owner">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Usuario asociado</th>
+        <td mat-cell *matCellDef="let device">
+          {{ ownerLabel(device.owner) }}
+          @if (device.owner?.name) {
+            <span class="secondary">{{ device.owner.email }}</span>
+          }
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="lastCollectedAt">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Último registro</th>
+        <td mat-cell *matCellDef="let device">
+          {{ device.lastCollectedAt ? (device.lastCollectedAt | date: 'medium') : 'Sin registros' }}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="reportCount">
+        <th mat-header-cell *matHeaderCellDef>Registros</th>
+        <td mat-cell *matCellDef="let device">{{ device.reportCount }}</td>
+      </ng-container>
+
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef>Estado</th>
+        <td mat-cell *matCellDef="let device">
+          <mat-chip-set>
+            <mat-chip [disableRipple]="true" [highlighted]="device.status === 'pending'">
+              {{ statusLabel(device.status) }}
+            </mat-chip>
+          </mat-chip-set>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef><span class="cdk-visually-hidden">Acciones</span></th>
+        <td mat-cell *matCellDef="let device" class="actions-cell">
+          @if (canReadReports()) {
+            <button
+              mat-icon-button
+              matTooltip="Ver registros"
+              [attr.aria-label]="'Ver registros de ' + device.name"
+              (click)="openHistory(device)"
+            >
+              <mat-icon>history</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              matTooltip="Ver último informe"
+              [attr.aria-label]="'Ver último informe de ' + device.name"
+              [disabled]="device.reportCount === 0"
+              (click)="openLatest(device)"
+            >
+              <mat-icon>lab_profile</mat-icon>
+            </button>
+          }
+          @if (canManage() && device.status !== 'deleted') {
+            <button
+              mat-icon-button
+              [matMenuTriggerFor]="menu"
+              [attr.aria-label]="'Más acciones de ' + device.name"
+            >
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu">
+              <button *appIfPermission="'devices.update'" mat-menu-item (click)="edit(device)">
+                <mat-icon>edit</mat-icon>
+                <span>Editar</span>
+              </button>
+              <button
+                *appIfPermission="'devices.update'"
+                mat-menu-item
+                (click)="regenerate(device)"
+              >
+                <mat-icon>key</mat-icon>
+                <span>Regenerar código</span>
+              </button>
+              <button *appIfPermission="'devices.delete'" mat-menu-item (click)="delete(device)">
+                <mat-icon>delete</mat-icon>
+                <span>Eliminar</span>
+              </button>
+            </mat-menu>
+          }
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="columns"></tr>
+      <tr mat-row *matRowDef="let row; columns: columns"></tr>
+      <tr class="mat-mdc-no-data-row" *matNoDataRow>
+        <td class="empty" [attr.colspan]="columns.length">
+          @if (loading()) {
+            Cargando…
+          } @else if (unfiltered()) {
+            Todavía no hay equipos registrados.
+          } @else {
+            Ningún equipo coincide con la búsqueda.
+          }
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <mat-paginator
+    [length]="result()?.total ?? 0"
+    [pageIndex]="pageIndex()"
+    [pageSize]="pageSize()"
+    [pageSizeOptions]="[10, 20, 50, 100]"
+    (page)="onPage($event)"
+    aria-label="Paginación de equipos"
+  />
+}

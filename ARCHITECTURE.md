@@ -53,10 +53,13 @@ frontend/src/app/
 │   ├── theme-toggle/        Selector Claro / Oscuro / Sistema
 │   └── user-menu/           Cuenta y cierre de sesión
 ├── shared/                  Componentes de presentación reutilizables (sin estado global)
-│   └── components/          status-message, confirm-dialog
+│   ├── components/          status-message, confirm-dialog
+│   └── pipes/               bytes (tamaños en unidades binarias)
 ├── features/                Una carpeta por área funcional, cargada de forma diferida
 │   ├── home/  login/  errors/
-│   └── authorization/       Administración (SPEC-0001): users/, policies/, permissions/, audit/, data/ (API y modelos)
+│   ├── authorization/       Administración (SPEC-0001): users/, policies/, permissions/, audit/, data/ (API y modelos)
+│   └── inventory/           Inventario (SPEC-0003): devices/ (listado, alta, código), history/ (registros),
+│                            report/ (informe por secciones), data/ (API, modelos, etiquetas)
 ├── app.routes.ts            Rutas (lazy), guards
 └── app.config.ts            Providers: router, HttpClient + interceptores, inicializadores
 ```
@@ -82,7 +85,7 @@ backend/
 ├── src/
 │   ├── Itmas3.Domain/          Modelo de negocio puro. Sin dependencias. (Entity<TId>, DomainException)
 │   │   ├── Authorization/      User, Policy, PolicyStatement, PermissionDefinition (SPEC-0001)
-│   │   └── Inventory/          Device, InventoryReport (SPEC-0002)
+│   │   └── Inventory/          Device (registro + enrolamiento, SPEC-0002/0003), InventoryReport
 │   ├── Itmas3.Application/     Casos de uso y puertos. Depende solo de Domain.
 │   │   ├── Abstractions/       ICurrentUser, IPermissionEvaluator (puertos)
 │   │   ├── Authorization/      Convención de nombres de permisos
@@ -90,14 +93,15 @@ backend/
 │   │   ├── Identity/GetCurrentUserProfile/   Caso de uso (handler + DTO)
 │   │   ├── Authorization/      Catálogo de permisos, evaluador, salvaguardas, casos de uso
 │   │   │                       (Users/, Policies/, Permissions/) y puerto de consultas (Queries/)
-│   │   └── Inventory/          EnrollDevice, SubmitInventoryReport, AuthenticateDevice, PurgeHistory, DeviceSecrets
+│   │   └── Inventory/          EnrollDevice, SubmitInventoryReport, AuthenticateDevice, PurgeHistory, DeviceSecrets,
+│   │                           ManageDevices/ (registro), Queries/ (listado, historial, informe), permisos
 │   ├── Itmas3.Infrastructure/  Adaptadores: EF Core/PostgreSQL, Data Protection, evaluador de permisos
 │   │   ├── Persistence/        AppDbContext, DatabaseOptions, Configurations/, Migrations/
 │   │   ├── Authorization/      Repositorios, unidad de trabajo auditada, instantáneas en caché, consultas
-│   │   └── Inventory/          Repositorios de dispositivos e inventarios, unidad de trabajo con auditoría
+│   │   └── Inventory/          Repositorios, consultas del inventario, unidad de trabajo con auditoría
 │   └── Itmas3.Api/             Presentación y composition root
 │       ├── Controllers/        Controllers delgados (Authorization/: users, policies, permissions, audit-events;
-│       │                       Inventory/: device-enrollments, inventory-reports)
+│       │                       Inventory/: devices, devices/{id}/reports, device-enrollments, inventory-reports)
 │       ├── Inventory/          Esquemas de autenticación de dispositivos, políticas, rate limiting, purga del histórico
 │       ├── Contracts/          DTOs HTTP (request/response)
 │       ├── Authentication/     BFF OIDC + cookie de sesión
@@ -148,6 +152,10 @@ El orden importa y está en `Composition/RequestPipeline.cs`:
 - **Autorización (SPEC-0001)**: `users`, `user_external_identities`, `policies`, `policy_statements`,
   `policy_assignments`, `permissions`, `authorization_state` (versión para invalidar cachés) y `audit_events`
   (*append-only*). Detalle en [specs/database/README.md](specs/database/README.md).
+- **Inventario (SPEC-0002, SPEC-0003)**: `devices` (registro del equipo, estado `pending`/`active`/`deleted`, hash del
+  código de enrolamiento y de la API key, resumen del último inventario; nombre e identificador de hardware únicos
+  entre equipos no eliminados mediante índices parciales; `xmin` como token de concurrencia) e `inventory_reports`
+  (inventario completo en `jsonb`, histórico de 90 días).
 
 ### Modelo de autorización
 
@@ -185,14 +193,14 @@ Navegador                 nginx                 API (BFF)                       
 - Todas las respuestas no autenticadas son `401` (nunca redirecciones); solo `/auth/login` inicia OIDC.
 - Comunicación interna: HTTP plano dentro de redes privadas de Docker; TLS en el borde (ver SECURITY.md).
 
-### Dispositivos (SPEC-0002, ADR-0009)
+### Dispositivos (SPEC-0002, SPEC-0003, ADR-0009, ADR-0012)
 
 Los agentes no usan la cookie BFF. Hay dos esquemas de autenticación que no son por defecto, y cada uno solo lo evalúa
 la política que lo nombra:
 
 | Endpoint | Política | Credencial | Límite |
 |---|---|---|---|
-| `POST /api/v1/device-enrollments` | `DeviceEnrollment` | `Authorization: Enrollment <código>` (`Inventory__EnrollmentCode`) | 10/min por IP |
+| `POST /api/v1/device-enrollments` | `DeviceEnrollment` | `Authorization: Enrollment <código del equipo>` (un solo uso; se busca por SHA-256) | 10/min por IP |
 | `POST /api/v1/inventory-reports` | `EnrolledDevice` | `Authorization: Device <apiKey>` (se busca por SHA-256) | 12/h por credencial |
 
 Una sesión de usuario no satisface las políticas de dispositivo, y una API key no satisface las de usuario. El agente
@@ -201,6 +209,11 @@ envía `X-CSRF: 1`, así que la protección CSRF no cambia. Con cada inventario 
 - La **IP pública declarada**, que el agente obtiene de ipinfo.io.
 - La **IP de conexión**, que es `RemoteIpAddress` después de `UseForwardedHeaders`. nginx sobrescribe `X-Forwarded-For`,
   así que el cliente no puede falsearla.
+
+Cada equipo se registra antes en el inventario (`/api/v1/devices`, permisos `devices.*`), que emite su código de
+enrolamiento de un solo uso ([ADR-0012](specs/architecture/adr-0012-per-device-enrollment-codes.md)). El código
+identifica el equipo: el enrolamiento lo vincula al identificador de hardware del agente, emite la API key y consume el
+código. Eliminar el equipo invalida su código y su API key en la misma transacción.
 
 `InventoryHistoryPurgeService` elimina cada 6 h los inventarios más antiguos que la retención configurada, conservando
 siempre el último de cada equipo.

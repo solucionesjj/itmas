@@ -1,0 +1,73 @@
+// Shared layout of the inventory pages. Layout only: colours and typography come from Material 3 tokens.
+:host {
+  display: block;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.page-title {
+  font: var(--mat-sys-headline-small);
+  margin: 0;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}
+
+.supporting-text {
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 16px;
+}
+
+.filters mat-form-field {
+  min-width: 220px;
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+}
+
+tr.clickable {
+  cursor: pointer;
+}
+
+.secondary {
+  display: block;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.actions-cell {
+  white-space: nowrap;
+  text-align: end;
+}
+
+.empty {
+  padding: 24px 16px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.error-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 16px 0;
+}

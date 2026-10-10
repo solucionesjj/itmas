@@ -14,24 +14,27 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using static Itmas3.IntegrationTests.Infrastructure.AgentSimulator;
 
 namespace Itmas3.IntegrationTests.Api;
 
-/// <summary>SPEC-0002 acceptance criteria of the device endpoints, through the HTTP API.</summary>
+/// <summary>
+/// SPEC-0002 acceptance criteria of the device endpoints, through the HTTP API. Since SPEC-0003 every agent enrolls with
+/// the one-time code of a registered device (ADR-0012).
+/// </summary>
 public sealed class InventoryTests(PostgreSqlFixture database) : ApiTestBase(database)
 {
-    private static readonly Uri Enrollments = new("/api/v1/device-enrollments", UriKind.Relative);
-    private static readonly Uri Reports = new("/api/v1/inventory-reports", UriKind.Relative);
-
     [Fact]
     public async Task CA04_valid_code_enrolls_the_device_and_is_audited()
     {
         var hardwareId = NewHardwareId();
-        var response = await EnrollRawAsync(Factory.CreateAnonymousClient(), Factory.EnrollmentCode, hardwareId);
+        var (registered, code) = await Factory.RegisterDeviceAsync();
+        var response = await EnrollRawAsync(Factory.CreateAnonymousClient(), code, hardwareId);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var body = await ReadJsonAsync(response);
         var deviceId = body.GetProperty("deviceId").GetGuid();
+        Assert.Equal(registered, deviceId);
         Assert.Equal(43, body.GetProperty("apiKey").GetString()!.Length);
 
         await using var scope = Factory.Services.CreateAsyncScope();
@@ -39,9 +42,11 @@ public sealed class InventoryTests(PostgreSqlFixture database) : ApiTestBase(dat
         var device = await db.Devices.SingleAsync(item => item.Id == deviceId, Ct);
         Assert.Equal(hardwareId, device.HardwareId);
         Assert.Equal("1", device.TermsVersion);
+        Assert.Equal(DeviceStatus.Active, device.Status);
+        Assert.Null(device.EnrollmentCodeHash);
         Assert.NotEqual(body.GetProperty("apiKey").GetString(), device.ApiKeyHash);
 
-        var audit = await db.AuditEvents.SingleAsync(item => item.ResourceId == deviceId.ToString(), Ct);
+        var audit = await db.AuditEvents.SingleAsync(item => item.ResourceId == deviceId.ToString() && item.Action == "device.enrolled", Ct);
         Assert.Equal("device.enrolled", audit.Action);
         Assert.Equal("success", audit.Result);
         var after = JsonNode.Parse(audit.After!)!;
@@ -51,6 +56,7 @@ public sealed class InventoryTests(PostgreSqlFixture database) : ApiTestBase(dat
 
     [Theory]
     [InlineData("wrong-code-wrong-code-wrong-code-0000")]
+    [InlineData("ABCDE-FGH1J-KMNPQ-RSTVW")]
     [InlineData("")]
     public async Task CA04_invalid_or_missing_code_is_rejected_without_creating_devices(string code)
     {
@@ -67,13 +73,14 @@ public sealed class InventoryTests(PostgreSqlFixture database) : ApiTestBase(dat
     }
 
     [Fact]
-    public async Task Enrollment_is_disabled_without_a_configured_code()
+    public async Task CA17_a_former_deployment_wide_code_does_not_enroll()
     {
-        await using var factory = Factory.WithWebHostBuilder(builder => builder.UseSetting("Inventory:EnrollmentCode", string.Empty));
+        // Same shape as the codes init-env.sh used to generate for INVENTORY_ENROLLMENT_CODE.
+        var formerCode = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(24));
 
-        var response = await EnrollRawAsync(factory.CreateClient(), Factory.EnrollmentCode, NewHardwareId());
+        var response = await EnrollRawAsync(Factory.CreateAnonymousClient(), formerCode, NewHardwareId());
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
@@ -82,8 +89,9 @@ public sealed class InventoryTests(PostgreSqlFixture database) : ApiTestBase(dat
         var client = Factory.CreateAnonymousClient();
         var body = EnrollmentBody(NewHardwareId());
         body["termsVersion"] = "0";
+        var (_, code) = await Factory.RegisterDeviceAsync();
 
-        var response = await SendAsync(client, HttpMethod.Post, Enrollments, $"Enrollment {Factory.EnrollmentCode}", body.ToJsonString());
+        var response = await SendAsync(client, HttpMethod.Post, Enrollments, $"Enrollment {code}", body.ToJsonString());
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
     }
@@ -142,7 +150,8 @@ public sealed class InventoryTests(PostgreSqlFixture database) : ApiTestBase(dat
     {
         var hardwareId = NewHardwareId();
         var (deviceId, oldKey) = await EnrollAsync(Factory.CreateAnonymousClient(), hardwareId);
-        var (sameDevice, newKey) = await EnrollAsync(Factory.CreateAnonymousClient(), hardwareId);
+        var newCode = await Factory.IssueEnrollmentCodeAsync(deviceId);
+        var (sameDevice, newKey) = await EnrollAsync(Factory.CreateAnonymousClient(), hardwareId, newCode);
 
         Assert.Equal(deviceId, sameDevice);
         Assert.Equal(HttpStatusCode.Unauthorized, (await SubmitAsync(Factory.CreateAnonymousClient(), oldKey, ContractFixture())).StatusCode);
@@ -214,6 +223,7 @@ public sealed class InventoryTests(PostgreSqlFixture database) : ApiTestBase(dat
     public async Task CA16_device_and_user_credentials_are_not_interchangeable()
     {
         var (_, key) = await EnrollAsync(Factory.CreateAnonymousClient());
+        var (_, code) = await Factory.RegisterDeviceAsync();
         var root = await Factory.CreateAuthenticatedClientAsync(isRoot: true);
 
         // A user session (even Root) cannot use device endpoints.
@@ -224,8 +234,8 @@ public sealed class InventoryTests(PostgreSqlFixture database) : ApiTestBase(dat
         var deviceClient = Factory.CreateAnonymousClient();
         deviceClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Device", key);
         Assert.Equal(HttpStatusCode.Unauthorized, (await deviceClient.GetAsync(new Uri("/api/v1/users", UriKind.Relative), Ct)).StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await SendAsync(Factory.CreateAnonymousClient(), HttpMethod.Post, Reports, $"Device {Factory.EnrollmentCode}", ContractFixture().ToJsonString())).StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await SendAsync(Factory.CreateAnonymousClient(), HttpMethod.Post, Reports, $"Enrollment {Factory.EnrollmentCode}", ContractFixture().ToJsonString())).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await SendAsync(Factory.CreateAnonymousClient(), HttpMethod.Post, Reports, $"Device {code}", ContractFixture().ToJsonString())).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await SendAsync(Factory.CreateAnonymousClient(), HttpMethod.Post, Reports, $"Enrollment {code}", ContractFixture().ToJsonString())).StatusCode);
     }
 
     [Fact]
@@ -304,61 +314,14 @@ public sealed class InventoryTests(PostgreSqlFixture database) : ApiTestBase(dat
 
     private ApiFactoryWithRemoteIp WithRemoteIp(string ip) => new(Factory, ip);
 
-    private async Task<(Guid DeviceId, string ApiKey)> EnrollAsync(HttpClient client, string? hardwareId = null)
+    /// <summary>Enrolls with <paramref name="code"/> or, when omitted, with the code of a newly registered device.</summary>
+    private async Task<(Guid DeviceId, string ApiKey)> EnrollAsync(HttpClient client, string? hardwareId = null, string? code = null)
     {
-        var response = await EnrollRawAsync(client, Factory.EnrollmentCode, hardwareId ?? NewHardwareId());
+        code ??= (await Factory.RegisterDeviceAsync()).EnrollmentCode;
+        var response = await EnrollRawAsync(client, code, hardwareId ?? NewHardwareId());
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var body = await ReadJsonAsync(response);
         return (body.GetProperty("deviceId").GetGuid(), body.GetProperty("apiKey").GetString()!);
-    }
-
-    private static Task<HttpResponseMessage> EnrollRawAsync(HttpClient client, string code, string hardwareId) =>
-        SendAsync(client, HttpMethod.Post, Enrollments, $"Enrollment {code}", EnrollmentBody(hardwareId).ToJsonString());
-
-    private static Task<HttpResponseMessage> SubmitAsync(HttpClient client, string apiKey, JsonNode report) =>
-        SendAsync(client, HttpMethod.Post, Reports, $"Device {apiKey}", report.ToJsonString());
-
-    private static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpMethod method, Uri uri, string authorization, string json)
-    {
-        using var request = new HttpRequestMessage(method, uri) { Content = Json(json) };
-        request.Headers.TryAddWithoutValidation("Authorization", authorization);
-        request.Headers.Add("X-CSRF", "1");
-        return await client.SendAsync(request, Ct);
-    }
-
-    private static StringContent Json(string json) => new(json, Encoding.UTF8, "application/json");
-
-    private static JsonObject EnrollmentBody(string hardwareId) => new()
-    {
-        ["hardwareId"] = hardwareId,
-        ["hostname"] = "srv-app-01",
-        ["osFamily"] = "linux",
-        ["agentVersion"] = "1.0.0",
-        ["termsVersion"] = "1",
-        ["termsAcceptedAt"] = DateTimeOffset.UtcNow.AddMinutes(-1).ToString("O"),
-    };
-
-    private static string NewHardwareId() => $"hw-{Guid.NewGuid():N}";
-
-    /// <summary>Contract v1 example shared with the agent tests (agent/tests/fixtures/contract).</summary>
-    private static JsonNode ContractFixture()
-    {
-        var node = JsonNode.Parse(File.ReadAllText(Path.Combine(RepositoryRoot(), "agent", "tests", "fixtures", "contract", "inventory-report.v1.json")))!;
-        node["collectedAt"] = DateTimeOffset.UtcNow.AddMinutes(-1).ToString("O");
-        return node;
-    }
-
-    private static string RepositoryRoot()
-    {
-        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "constitution.md")))
-            {
-                return directory.FullName;
-            }
-        }
-
-        throw new InvalidOperationException("Repository root not found.");
     }
 
     /// <summary>Test host whose requests arrive from a fixed client address (TestServer has none by default).</summary>

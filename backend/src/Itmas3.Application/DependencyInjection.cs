@@ -12,7 +12,9 @@ using Itmas3.Application.Authorization.Users.SetRootStatus;
 using Itmas3.Application.Authorization.Users.SetUserStatus;
 using Itmas3.Application.Identity.GetCurrentUserProfile;
 using Itmas3.Application.Inventory.AuthenticateDevice;
+using Itmas3.Application.Inventory;
 using Itmas3.Application.Inventory.EnrollDevice;
+using Itmas3.Application.Inventory.ManageDevices;
 using Itmas3.Application.Inventory.PurgeHistory;
 using Itmas3.Application.Inventory.SubmitInventoryReport;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,11 +43,17 @@ public static class DependencyInjection
         services.AddScoped<UpdatePermissionHandler>();
         services.AddScoped<SynchronizePermissionCatalogHandler>();
 
-        // Inventory (SPEC-0002)
+        // Inventory (SPEC-0002, SPEC-0003)
+        services.AddSingleton<IPermissionDefinitionProvider, InventoryPermissionDefinitions>();
         services.AddScoped<DeviceAuthenticator>();
+        services.AddScoped<EnrollmentCodeAuthenticator>();
         services.AddScoped<EnrollDeviceHandler>();
         services.AddScoped<SubmitInventoryReportHandler>();
         services.AddScoped<PurgeInventoryHistoryHandler>();
+        services.AddScoped<RegisterDeviceHandler>();
+        services.AddScoped<UpdateDeviceHandler>();
+        services.AddScoped<RegenerateEnrollmentCodeHandler>();
+        services.AddScoped<DeleteDeviceHandler>();
 
         return services;
     }

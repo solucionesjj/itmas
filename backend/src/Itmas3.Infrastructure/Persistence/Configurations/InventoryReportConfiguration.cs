@@ -16,6 +16,7 @@ internal sealed class InventoryReportConfiguration : IEntityTypeConfiguration<In
         builder.Property(report => report.CountryCode).HasMaxLength(2).IsFixedLength();
         builder.Property(report => report.Region).HasMaxLength(Device.MaxTextLength);
         builder.Property(report => report.City).HasMaxLength(Device.MaxTextLength);
+        builder.Property(report => report.AgentVersion).HasMaxLength(50).IsRequired();
         builder.Property(report => report.Payload).HasColumnType("jsonb").IsRequired();
 
         builder.HasIndex(report => new { report.DeviceId, report.CollectedAt }).IsDescending(false, true);

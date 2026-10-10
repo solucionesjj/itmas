@@ -3,12 +3,15 @@ import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth-service';
 
 /**
- * Route guard driven by `data: { permission: '<resource>.<action>' }`. UX only: the API enforces the same permission.
- * Users without it are sent to the "access denied" page.
+ * Route guard driven by `data: { permission: '<resource>.<action>' }`, or a list of permissions that are all required.
+ * UX only: the API enforces the same permissions. Users without them are sent to the "access denied" page.
  */
 export const permissionGuard: CanActivateFn = (route) => {
-  const permission = route.data['permission'] as string | undefined;
-  return !permission || inject(AuthService).hasPermission(permission)
+  const required = route.data['permission'] as string | readonly string[] | undefined;
+  const permissions =
+    required === undefined ? [] : typeof required === 'string' ? [required] : required;
+  const auth = inject(AuthService);
+  return permissions.every((permission) => auth.hasPermission(permission))
     ? true
     : inject(Router).createUrlTree(['/forbidden']);
 };

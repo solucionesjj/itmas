@@ -41,6 +41,9 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
 
     public int Port => _container.GetMappedPublicPort(PostgreSqlBuilder.PostgreSqlPort);
 
+    /// <summary>Superuser connection to the default database, for tests that need a scratch database of their own.</summary>
+    public string AdminConnectionString => _container.GetConnectionString();
+
     public string ConnectionStringFor(string username, string password) =>
         new NpgsqlConnectionStringBuilder
         {

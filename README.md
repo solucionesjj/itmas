@@ -30,7 +30,10 @@ solo la arquitectura, la seguridad, la infraestructura y las reglas sobre las qu
 - **Clean Architecture** en el backend: `Domain` ← `Application` ← `Infrastructure` ← `Api`.
 - **Agente de inventario** ([SPEC-0002](specs/features/SPEC-0002-os-inventory-agent.md)): servicio .NET para
   Windows, Linux y macOS que envía cada día el inventario del equipo. Se autentica con una API key propia del
-  dispositivo, obtenida al enrolarse con un código de autorización. Guía: [agent/README.md](agent/README.md).
+  dispositivo, obtenida al enrolarse con el código de un solo uso de su equipo. Guía: [agent/README.md](agent/README.md).
+- **Inventario de equipos** ([SPEC-0003](specs/features/SPEC-0003-device-registry-and-inventory-viewer.md)): registro
+  de estaciones de trabajo y servidores con su propietario, código de enrolamiento por equipo (ADR-0012), listado
+  resumido, historial de registros e informe por secciones del último inventario.
 
 Detalle completo en [ARCHITECTURE.md](ARCHITECTURE.md) y [SECURITY.md](SECURITY.md).
 
@@ -106,7 +109,6 @@ Toda la configuración sensible llega por variables de entorno (`.env` → Docke
 | `AUTHZ_BOOTSTRAP_ROOT_OIDS` | `oid` de Entra ID (separados por comas) que se convierten en Root al iniciar sesión **solo si no hay ningún Root activo**. | No |
 | `AUTHZ_ALLOW_GUEST_USERS` | Permite el acceso a invitados B2B del tenant (`false` por defecto). | No |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Endpoint OTLP opcional para trazas, métricas y logs. | No |
-| `INVENTORY_ENROLLMENT_CODE` | Código de autorización con el que se enrolan los agentes (≥ 32 caracteres; lo genera `init-env.sh`). Vacío = enrolamiento desactivado. Rotarlo no afecta a los equipos ya enrolados. | **Sí** |
 | `INVENTORY_HISTORY_RETENTION_DAYS` | Días de histórico de inventarios por equipo (90 por defecto; el último se conserva siempre). | No |
 | `AGENT_DOWNLOADS_DIR` | Carpeta con los paquetes del agente que nginx sirve en `/downloads/agent/` (`./agent/dist`). | No |
 
@@ -146,12 +148,19 @@ Para la sesión local basta con `http://localhost`: los navegadores modernos ace
    ./scripts/build-agent.sh
    ```
 
-2. Comparte con los colaboradores, por un canal interno, el valor de `INVENTORY_ENROLLMENT_CODE`.
-3. Cada colaborador descarga el paquete de su plataforma, verifica la suma y ejecuta `itmas-agent install` como
-   administrador. Detalle por sistema operativo: [agent/README.md](agent/README.md).
+2. Registra el equipo en **Inventario → Equipos → Nuevo equipo** (permiso `devices.create`): nombre, tipo (estación de
+   trabajo o servidor) y, opcionalmente, el correo del propietario. ITMas muestra **una sola vez** su código de
+   enrolamiento (`XXXXX-XXXXX-XXXXX-XXXXX`); cópialo y entrégalo de forma segura a quien instalará el agente.
+3. Quien instala descarga el paquete de su plataforma, verifica la suma y ejecuta `itmas-agent install` como
+   administrador, con el código del equipo. Detalle por sistema operativo: [agent/README.md](agent/README.md).
 
-Si `.env` ya existía antes de SPEC-0002, añade a mano `INVENTORY_ENROLLMENT_CODE` con un valor aleatorio (por ejemplo,
-`openssl rand -hex 24`). La consulta del inventario en la interfaz llegará con SPEC-0003.
+El código sirve una sola vez. Para reinstalar el agente, usa **Regenerar código** en el menú del equipo. **Eliminar** un
+equipo invalida su código y su API key: el agente deja de poder enviar inventario. Los permisos del inventario
+(`devices.read`, `devices.create`, `devices.update`, `devices.delete`, `devices.reports.read`) se conceden con políticas.
+
+Desde SPEC-0003 ya no existe un código de enrolamiento general: si tu `.env` conserva `INVENTORY_ENROLLMENT_CODE`, puedes
+borrar esa línea (la API ya no la lee). Los equipos enrolados antes siguen funcionando: la migración los incorpora
+al inventario como equipos activos.
 
 ## Documentación
 

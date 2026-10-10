@@ -136,8 +136,11 @@ Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json
   (Testcontainers) inicializado con el **mismo** script de roles, migrado con el rol migrador y consultado con
   el rol de la app. Endpoints exclusivos de prueba (`TestEndpointsController`) ejercitan comportamiento
   transversal sin añadir funcionalidades falsas al producto. La autenticación se sustituye por un esquema de
-  prueba (`X-Test-User`); Entra ID nunca se contacta.
-- **Frontend (Vitest):** servicios, guards e interceptores.
+  prueba (`X-Test-User`); Entra ID nunca se contacta. `ApiFactory.RegisterDeviceAsync` registra equipos y devuelve
+  su código de enrolamiento, y `AgentSimulator` hace las llamadas del agente. `DeviceRegistryMigrationTests` migra una
+  base de datos aparte paso a paso para comprobar la transición de datos de `AddDeviceRegistry`.
+- **Frontend (Vitest):** servicios, guards, interceptores, pipes y componentes (listado, informe y diálogo del
+  inventario, con una API simulada).
 - **Agente:** los *parsers* de cada SO se prueban con salidas reales en `agent/tests/Itmas3.Agent.Tests/fixtures/`
   (Ubuntu 22.04/24.04 y Debian 12 capturadas en contenedores, macOS saneadas a partir de un equipo real, Windows con
   valores documentados de WMI). Ninguna prueba contacta ipinfo.io ni la API. El contrato `v1` está en
@@ -177,6 +180,7 @@ Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json
 | `required variable ... is missing a value` | Falta `.env` o una variable obligatoria: ejecuta `./scripts/init-env.sh`. |
 | Botón de login muestra "no disponible" | Entra ID no configurado (normal en Development sin `ENTRA_*`). |
 | Sesión cerrada tras actualizar a SPEC-0001 | Las sesiones previas no tienen id de usuario de la aplicación: vuelve a iniciar sesión. |
+| El agente dice "El código de autorización no es válido." | Desde SPEC-0003 cada equipo tiene su código de un solo uso: regístralo (o regenera su código) en **Inventario → Equipos**. |
 | No veo la sección Administración | Tu usuario no tiene permisos: configura `AUTHZ_BOOTSTRAP_ROOT_OIDS` (README) o pide políticas a un Root. |
 | `400 Bad Request - Invalid Hostname` | Se accedió con un host no incluido en `APP_ALLOWED_HOSTS` (p. ej. `127.0.0.1`). Usa `http://localhost:<puerto>`: además, el `redirect_uri` de Entra ID y la cookie de sesión dependen del host. |
 | Entra ID: `AADSTS50011` (redirect URI mismatch) | Registra en el App Registration (plataforma Web) exactamente `http://localhost:<FRONTEND_PORT>/signin-oidc` y `/signout-callback-oidc`. |
