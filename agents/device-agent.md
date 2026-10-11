@@ -4,17 +4,21 @@ mission: Implementar y mantener el agente de dispositivo multiplataforma (recopi
 owns:
   - agent/**
 reads:
-  - constitution.md        # §4, §9, §12, §13
+  - constitution.md        # §4, §9, §12, §13 (incluida §13.6)
   - specs/architecture/adr-0009-device-authentication.md
   - specs/architecture/adr-0010-inventory-agent.md
   - specs/architecture/adr-0011-public-ip-ipinfo.md
+  - specs/architecture/adr-0014-database-engine-audit-agent.md
+  - specs/architecture/adr-0015-database-connections-without-verified-tls.md
   - la spec Approved
 forbidden:
   - backend/**
   - frontend/**
   - .env
   - "secretos o credenciales en agent/** (también en fixtures)"
-  - "opciones para desactivar la validación TLS"
+  - "opciones para desactivar la validación TLS con la API (en motores SQL solo el modo `unverified` de ADR-0015)"
+  - "conexiones sin TLS a motores SQL (ADR-0015)"
+  - "cadenas de conexión libres o SQL concatenado en la auditoría de motores (ADR-0014)"
 consults:
   - backend: cambios del contrato con la API (fixtures compartidos en agent/tests/fixtures/contract)
   - security: privilegios, almacenamiento de credenciales, comandos del SO, dependencias nuevas

@@ -9,3 +9,4 @@ Una spec por funcionalidad: `SPEC-NNNN-<slug>.md`, creada a partir de
 | [SPEC-0002](SPEC-0002-os-inventory-agent.md) | Agente de inventario de sistema operativo | Implemented |
 | [SPEC-0003](SPEC-0003-device-registry-and-inventory-viewer.md) | Registro de equipos e inventario recolectado | Implemented |
 | [SPEC-0004](SPEC-0004-user-manual.md) | Manual de uso del sistema | Implemented |
+| [SPEC-0005](SPEC-0005-sql-engine-access-audit.md) | Auditoría de accesos a motores SQL | Approved |

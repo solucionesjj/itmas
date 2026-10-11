@@ -56,6 +56,7 @@ specs/
 | [SPEC-0002](features/SPEC-0002-os-inventory-agent.md) | Agente de inventario de sistema operativo | Implemented |
 | [SPEC-0003](features/SPEC-0003-device-registry-and-inventory-viewer.md) | Registro de equipos e inventario recolectado | Implemented |
 | [SPEC-0004](features/SPEC-0004-user-manual.md) | Manual de uso del sistema | Implemented |
+| [SPEC-0005](features/SPEC-0005-sql-engine-access-audit.md) | Auditoría de accesos a motores SQL | Approved |
 | [ADR-0001](architecture/adr-0001-clean-architecture.md) | Clean Architecture en 4 proyectos | Accepted |
 | [ADR-0002](architecture/adr-0002-authentication-bff.md) | Autenticación BFF con Microsoft Entra ID | Accepted |
 | [ADR-0003](architecture/adr-0003-authorization-default-deny.md) | Autorización *default deny* basada en permisos | Accepted |
@@ -69,3 +70,5 @@ specs/
 | [ADR-0011](architecture/adr-0011-public-ip-ipinfo.md) | IP pública con ipinfo.io desde el agente; IP de conexión en el servidor | Accepted |
 | [ADR-0012](architecture/adr-0012-per-device-enrollment-codes.md) | Códigos de enrolamiento por equipo | Accepted |
 | [ADR-0013](architecture/adr-0013-user-manual.md) | Manual de uso actualizado con cada funcionalidad (enmienda 1.2.0) | Accepted |
+| [ADR-0014](architecture/adr-0014-database-engine-audit-agent.md) | Auditoría de motores de bases de datos desde el agente (enmienda 1.3.0) | Accepted |
+| [ADR-0015](architecture/adr-0015-database-connections-without-verified-tls.md) | Conexiones a motores con certificados no válidos (enmienda 2.0.0) | Accepted |

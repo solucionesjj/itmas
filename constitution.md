@@ -1,6 +1,6 @@
 # Constitución del proyecto
 
-**Versión:** 1.2.0 · **Vigente desde:** 2026-10-10 · **Origen:** [SPEC-0000](specs/architecture/SPEC-0000-application-foundation.md)
+**Versión:** 2.0.0 · **Vigente desde:** 2026-10-11 · **Origen:** [SPEC-0000](specs/architecture/SPEC-0000-application-foundation.md)
 
 Esta constitución es la política técnica permanente del proyecto. Toda especificación, plan, cambio de código,
 configuración o documentación (hecho por personas o por agentes de IA) debe cumplirla.
@@ -68,6 +68,9 @@ Los términos **DEBE**, **NO DEBE**, **DEBERÍA** y **PUEDE** tienen el sentido 
 6. Los tests DEBEN usar valores generados aleatoriamente o marcadores evidentes (`placeholder-not-a-secret`).
 
 ## §5. Acceso a datos
+
+Esta sección regula la persistencia de la aplicación. Los motores que audita el agente de dispositivo (§13.6) no
+son bases de datos de ITMas y se rigen por §13.
 
 1. PostgreSQL es la única base de datos; el acceso desde .NET DEBE hacerse con EF Core (proveedor Npgsql).
 2. NO DEBE construirse SQL concatenando o interpolando entrada. Cualquier SQL explícito DEBE ser parametrizado
@@ -169,10 +172,25 @@ Esta sección aplica a los componentes de servidor. El agente de dispositivo se 
 3. Se comunica con la API solo por HTTPS, con validación del certificado que NO DEBE poder desactivarse. No abre
    puertos de escucha y NO DEBE aceptar órdenes del servidor ni descargar código.
 4. Si se ejecuta con privilegios elevados (§3.8), DEBE limitarse a leer el sistema y ejecutar los comandos del SO con
-   ruta absoluta, sin *shell*, con argumentos fijos y con un tiempo máximo. Su directorio de instalación solo es
-   escribible por administradores.
+   ruta absoluta, sin *shell*, con argumentos fijos y con un tiempo máximo, y, según §13.6, a leer el catálogo de
+   seguridad de los motores de bases de datos configurados. Su directorio de instalación solo es escribible por
+   administradores.
 5. Se compila dentro de un contenedor y se distribuye con sumas SHA-256 publicadas. Cada dependencia externa en tiempo
    de ejecución se justifica en un ADR.
+6. **Auditoría de motores de bases de datos** (ADR-0014). El agente PUEDE conectarse, solo para leer, a motores de bases
+   de datos locales o remotos que el administrador del equipo configure en el propio equipo. Cada conexión:
+   - DEBE usar una cuenta del motor dedicada al agente, con el mínimo privilegio que permita leer el catálogo de
+     seguridad.
+   - DEBE ejecutar solo consultas de catálogo de texto fijo, sin concatenar datos, tampoco los que devuelve el motor.
+   - NO DEBE leer datos de usuario, hashes ni contraseñas.
+   - DEBE tener un tiempo máximo.
+   - DEBE ir cifrada. DEBE autenticar al servidor, salvo que el administrador del equipo elija expresamente, para esa
+     conexión, aceptar un certificado no válido (ADR-0015). Esas conexiones DEBEN quedar señaladas en ITMas. Esta
+     excepción no se aplica a la comunicación con la API (§13.3).
+
+   Sus credenciales son propias de cada conexión: las introduce el administrador en el equipo, se guardan protegidas
+   por el SO como la credencial del dispositivo y NO DEBEN enviarse a la API ni aparecer en logs ni en la línea de
+   comandos. Las conexiones NO DEBEN poder configurarse desde el servidor (§13.3).
 
 ---
 
@@ -184,3 +202,5 @@ Esta sección aplica a los componentes de servidor. El agente de dispositivo se 
 | 1.0.1 | 2026-10-07 | §3.3: convención de nombres `<recurso>.<acción>` y catálogo obligatorio; §3.4: políticas, sin roles (SPEC-0001, ADR-0008). |
 | 1.1.0 | 2026-10-08 | MINOR: §3.2 y §3.3, autenticación y políticas de dispositivo (ADR-0009). §3.8, excepción acotada para el agente. Nueva §13, agente de dispositivo (ADR-0010). PATCH: §8 aplica a los componentes de servidor (SPEC-0002). |
 | 1.2.0 | 2026-10-10 | MINOR: nueva §10.4, manual de uso público actualizado con cada funcionalidad; §10.3 incluye el manual (ADR-0013). |
+| 1.3.0 | 2026-10-11 | MINOR: nueva §13.6, auditoría de solo lectura de motores de bases de datos desde el agente; §13.4 remite a ella (ADR-0014). PATCH: §5 regula la persistencia de la aplicación (SPEC-0005). |
+| 2.0.0 | 2026-10-11 | MAJOR: §13.6 admite, por conexión y por elección expresa del administrador del equipo, aceptar un certificado no válido en las conexiones a motores; el cifrado sigue siendo obligatorio y §13.3 no cambia (ADR-0015). |
