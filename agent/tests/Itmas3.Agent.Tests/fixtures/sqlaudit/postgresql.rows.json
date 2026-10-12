@@ -1,0 +1,79 @@
+{
+  "instance": { "version": "18.0 (Debian 18.0-1.pgdg13+1)", "versionNumber": 180000 },
+  "roles": [
+    { "oid": 10, "name": "postgres", "superuser": true, "createRole": true, "createDb": true, "canLogin": true, "replication": true, "bypassRls": true, "validUntil": null },
+    { "oid": 6181, "name": "pg_read_all_data", "superuser": false, "createRole": false, "createDb": false, "canLogin": false, "replication": false, "bypassRls": false, "validUntil": null },
+    { "oid": 16384, "name": "app", "superuser": false, "createRole": false, "createDb": true, "canLogin": true, "replication": false, "bypassRls": false, "validUntil": "2027-01-01T00:00:00" },
+    { "oid": 16385, "name": "lectura", "superuser": false, "createRole": false, "createDb": false, "canLogin": false, "replication": false, "bypassRls": false, "validUntil": null },
+    { "oid": 16386, "name": "O'Brien\"; DROP ROLE app;--", "superuser": false, "createRole": false, "createDb": false, "canLogin": true, "replication": false, "bypassRls": false, "validUntil": "2020-01-01T00:00:00" },
+    { "oid": 16387, "name": "itmas_agent", "superuser": false, "createRole": false, "createDb": false, "canLogin": true, "replication": false, "bypassRls": false, "validUntil": null }
+  ],
+  "memberships": [
+    { "roleOid": 16385, "memberOid": 16384 },
+    { "roleOid": 6181, "memberOid": 16386 },
+    { "roleOid": 6181, "memberOid": 16386 }
+  ],
+  "databases": [
+    { "name": "bloqueada", "ownerOid": 10, "allowConnections": true },
+    { "name": "postgres", "ownerOid": 10, "allowConnections": true },
+    { "name": "template0", "ownerOid": 10, "allowConnections": false },
+    { "name": "ventas;<db>", "ownerOid": 16384, "allowConnections": true }
+  ],
+  "clusterAcls": [
+    { "class": "database", "database": "postgres", "schema": null, "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 10, "parentOwnerOid": null, "grantee": 0, "grantor": 10, "privilege": "TEMPORARY", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+    { "class": "database", "database": "postgres", "schema": null, "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 10, "parentOwnerOid": null, "grantee": 0, "grantor": 10, "privilege": "CONNECT", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+    { "class": "database", "database": "postgres", "schema": null, "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 10, "parentOwnerOid": null, "grantee": 10, "grantor": 10, "privilege": "CREATE", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+    { "class": "database", "database": "template0", "schema": null, "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 10, "parentOwnerOid": null, "grantee": 0, "grantor": 10, "privilege": "TEMPORARY", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+    { "class": "database", "database": "ventas;<db>", "schema": null, "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 16384, "parentOwnerOid": null, "grantee": 16384, "grantor": 16384, "privilege": "CONNECT", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+    { "class": "database", "database": "ventas;<db>", "schema": null, "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 16384, "parentOwnerOid": null, "grantee": 16386, "grantor": 16384, "privilege": "CONNECT", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+    { "class": "database", "database": "ventas;<db>", "schema": null, "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 16384, "parentOwnerOid": null, "grantee": 16386, "grantor": 16384, "privilege": "CREATE", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+    { "class": "database", "database": "ventas;<db>", "schema": null, "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 16384, "parentOwnerOid": null, "grantee": 16386, "grantor": 16384, "privilege": "TEMPORARY", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+    { "class": "server", "database": null, "schema": null, "name": "pg_default", "arguments": null, "column": null, "objectType": "tablespace", "ownerOid": 10, "parentOwnerOid": null, "grantee": null, "grantor": null, "privilege": null, "isGrantable": false, "isSystem": true, "isBuiltin": false },
+    { "class": "server", "database": null, "schema": null, "name": "ts_datos", "arguments": null, "column": null, "objectType": "tablespace", "ownerOid": 16384, "parentOwnerOid": null, "grantee": 16385, "grantor": 16384, "privilege": "CREATE", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+    { "class": "server", "database": null, "schema": null, "name": "work_mem", "arguments": null, "column": null, "objectType": "parameter", "ownerOid": 0, "parentOwnerOid": null, "grantee": 16384, "grantor": 10, "privilege": "SET", "isGrantable": false, "isSystem": false, "isBuiltin": false }
+  ],
+  "databaseCatalogs": [
+    {
+      "database": "postgres",
+      "acls": [
+        { "class": "schema", "database": null, "schema": "pg_catalog", "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 10, "parentOwnerOid": null, "grantee": 0, "grantor": 10, "privilege": "USAGE", "isGrantable": false, "isSystem": true, "isBuiltin": true },
+        { "class": "object", "database": null, "schema": "pg_catalog", "name": "pg_class", "arguments": null, "column": null, "objectType": "table", "ownerOid": 10, "parentOwnerOid": 10, "grantee": 0, "grantor": 10, "privilege": "SELECT", "isGrantable": false, "isSystem": true, "isBuiltin": true },
+        { "class": "object", "database": null, "schema": "pg_catalog", "name": "pg_authid", "arguments": null, "column": null, "objectType": "table", "ownerOid": 10, "parentOwnerOid": 10, "grantee": 0, "grantor": 10, "privilege": "SELECT", "isGrantable": false, "isSystem": true, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "pg_catalog", "name": "now", "arguments": "", "column": null, "objectType": "function", "ownerOid": 10, "parentOwnerOid": 10, "grantee": 0, "grantor": 10, "privilege": "EXECUTE", "isGrantable": false, "isSystem": true, "isBuiltin": true },
+        { "class": "object", "database": null, "schema": "pg_catalog", "name": "pg_ls_dir", "arguments": "text", "column": null, "objectType": "function", "ownerOid": 10, "parentOwnerOid": 10, "grantee": 4569, "grantor": 10, "privilege": "EXECUTE", "isGrantable": false, "isSystem": true, "isBuiltin": true },
+        { "class": "object", "database": null, "schema": null, "name": "plpgsql", "arguments": null, "column": null, "objectType": "language", "ownerOid": 10, "parentOwnerOid": null, "grantee": 0, "grantor": 10, "privilege": "USAGE", "isGrantable": false, "isSystem": true, "isBuiltin": true }
+      ]
+    },
+    {
+      "database": "ventas;<db>",
+      "acls": [
+        { "class": "schema", "database": null, "schema": "public", "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 6171, "parentOwnerOid": null, "grantee": 0, "grantor": 6171, "privilege": "USAGE", "isGrantable": false, "isSystem": true, "isBuiltin": true },
+        { "class": "schema", "database": null, "schema": "public", "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 6171, "parentOwnerOid": null, "grantee": 0, "grantor": 6171, "privilege": "CREATE", "isGrantable": false, "isSystem": true, "isBuiltin": false },
+        { "class": "schema", "database": null, "schema": "esquema\"raro", "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 16384, "parentOwnerOid": null, "grantee": 16384, "grantor": 16384, "privilege": "USAGE", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "schema", "database": null, "schema": "esquema\"raro", "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 16384, "parentOwnerOid": null, "grantee": 16384, "grantor": 16384, "privilege": "CREATE", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "schema", "database": null, "schema": "esquema\"raro", "name": null, "arguments": null, "column": null, "objectType": null, "ownerOid": 16384, "parentOwnerOid": null, "grantee": 16385, "grantor": 16384, "privilege": "USAGE", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "facturas", "arguments": null, "column": null, "objectType": "table", "ownerOid": 16384, "parentOwnerOid": 16384, "grantee": 16385, "grantor": 16384, "privilege": "SELECT", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "facturas", "arguments": null, "column": null, "objectType": "table", "ownerOid": 16384, "parentOwnerOid": 16384, "grantee": 16385, "grantor": 16384, "privilege": "UPDATE", "isGrantable": true, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "facturas", "arguments": null, "column": null, "objectType": "table", "ownerOid": 16384, "parentOwnerOid": 16384, "grantee": 16384, "grantor": 16384, "privilege": "SELECT", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "tabla'; drop", "arguments": null, "column": null, "objectType": "table", "ownerOid": 16386, "parentOwnerOid": 16384, "grantee": 16384, "grantor": 16386, "privilege": "SELECT", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "tabla'; drop", "arguments": null, "column": null, "objectType": "table", "ownerOid": 16386, "parentOwnerOid": 16384, "grantee": 16384, "grantor": 16386, "privilege": "INSERT", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "tabla'; drop", "arguments": null, "column": null, "objectType": "table", "ownerOid": 16386, "parentOwnerOid": 16384, "grantee": 16384, "grantor": 16386, "privilege": "UPDATE", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "tabla'; drop", "arguments": null, "column": null, "objectType": "table", "ownerOid": 16386, "parentOwnerOid": 16384, "grantee": 16384, "grantor": 16386, "privilege": "DELETE", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "tabla'; drop", "arguments": null, "column": null, "objectType": "table", "ownerOid": 16386, "parentOwnerOid": 16384, "grantee": 16384, "grantor": 16386, "privilege": "TRUNCATE", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "tabla'; drop", "arguments": null, "column": null, "objectType": "table", "ownerOid": 16386, "parentOwnerOid": 16384, "grantee": 16384, "grantor": 16386, "privilege": "REFERENCES", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "tabla'; drop", "arguments": null, "column": null, "objectType": "table", "ownerOid": 16386, "parentOwnerOid": 16384, "grantee": 16384, "grantor": 16386, "privilege": "TRIGGER", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "tabla'; drop", "arguments": null, "column": null, "objectType": "table", "ownerOid": 16386, "parentOwnerOid": 16384, "grantee": 16384, "grantor": 16386, "privilege": "MAINTAIN", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "column", "database": null, "schema": "esquema\"raro", "name": "facturas", "arguments": null, "column": "email]", "objectType": "table", "ownerOid": 16384, "parentOwnerOid": null, "grantee": 16385, "grantor": 16384, "privilege": "SELECT", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "calcular", "arguments": "integer, text", "column": null, "objectType": "function", "ownerOid": 16384, "parentOwnerOid": 16384, "grantee": 0, "grantor": 16384, "privilege": "EXECUTE", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "calcular", "arguments": "integer", "column": null, "objectType": "function", "ownerOid": 16384, "parentOwnerOid": 16384, "grantee": 16384, "grantor": 16384, "privilege": "EXECUTE", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "estado", "arguments": null, "column": null, "objectType": "type", "ownerOid": 16384, "parentOwnerOid": 16384, "grantee": 0, "grantor": 16384, "privilege": "USAGE", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "object", "database": null, "schema": "esquema\"raro", "name": "contador", "arguments": null, "column": null, "objectType": "sequence", "ownerOid": 16384, "parentOwnerOid": 16384, "grantee": null, "grantor": null, "privilege": null, "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "default-privileges", "database": null, "schema": "esquema\"raro", "name": null, "arguments": null, "column": null, "objectType": "table", "ownerOid": 16384, "parentOwnerOid": null, "grantee": 16385, "grantor": 16384, "privilege": "SELECT", "isGrantable": false, "isSystem": false, "isBuiltin": false },
+        { "class": "default-privileges", "database": null, "schema": null, "name": null, "arguments": null, "column": null, "objectType": "function", "ownerOid": 16384, "parentOwnerOid": null, "grantee": 16384, "grantor": 16384, "privilege": "EXECUTE", "isGrantable": false, "isSystem": false, "isBuiltin": false }
+      ]
+    }
+  ],
+  "unavailable": [
+    { "section": "database:bloqueada", "reason": "permission-denied" }
+  ]
+}

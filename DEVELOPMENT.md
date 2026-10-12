@@ -28,8 +28,10 @@ Genera `.env` con contraseñas aleatorias. Completa los valores de Entra ID si v
 │   ├── Directory.Build.props / Directory.Packages.props   Reglas de build y versiones centralizadas
 │   └── Dockerfile         Targets: api (por defecto), migrator
 ├── agent/                 Agente de inventario (SPEC-0002, ADR-0010): solución .NET independiente
-│   ├── src/Itmas3.Agent{,.Collectors}   Ejecutable (install/uninstall/status/collect/run) y colectores por SO
-│   ├── tests/Itmas3.Agent.Tests         Parsers con salidas reales (fixtures/), contrato v1, planificador, instalación
+│   ├── src/Itmas3.Agent{,.Collectors}   Ejecutable (install/uninstall/status/collect/run/sql), colectores por SO y
+│   │                                    de motores SQL (SqlAudit/)
+│   ├── tests/Itmas3.Agent.Tests         Parsers con salidas reales (fixtures/), contratos, planificador, instalación, SQL
+│   ├── tests/Itmas3.Agent.IntegrationTests  Auditoría SQL contra motores reales en contenedores (Testcontainers)
 │   ├── packaging/, terms/               Plantillas systemd/launchd/newsyslog y términos versionados
 │   └── Dockerfile                       Targets: test, artifacts (paquetes + SHA256SUMS), e2e
 ├── database/init/         Bootstrap de PostgreSQL (roles de mínimo privilegio)
@@ -124,7 +126,8 @@ cuando sea posible y nunca se edita una migración ya aplicada en un entorno com
 | Backend: todo | `cd backend && dotnet test` | .NET SDK + Docker |
 | Frontend | `cd frontend && npm test -- --watch=false` | Node 24 |
 | Frontend en Docker | `docker build --target test ./frontend` | Docker |
-| Agente | `cd agent && dotnet test` | .NET SDK |
+| Agente: unitarias | `cd agent && dotnet test tests/Itmas3.Agent.Tests` | .NET SDK |
+| Agente: motores SQL reales (Testcontainers, ~5 min) | `cd agent && dotnet test tests/Itmas3.Agent.IntegrationTests` | .NET SDK + Docker |
 | Agente en Docker + paquetes | `./scripts/build-agent.sh` | Docker |
 | Agente Linux en contenedor (inventario sin envío) | `docker compose --profile agent run --rm agent-e2e` | Docker |
 
@@ -138,7 +141,10 @@ Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json
   transversal sin añadir funcionalidades falsas al producto. La autenticación se sustituye por un esquema de
   prueba (`X-Test-User`); Entra ID nunca se contacta. `ApiFactory.RegisterDeviceAsync` registra equipos y devuelve
   su código de enrolamiento, y `AgentSimulator` hace las llamadas del agente. `DeviceRegistryMigrationTests` migra una
-  base de datos aparte paso a paso para comprobar la transición de datos de `AddDeviceRegistry`.
+  base de datos aparte paso a paso para comprobar la transición de datos de `AddDeviceRegistry`. `SqlAuditTests` cubre
+  los criterios de SPEC-0005 en la API (incluido el límite de 16 MB con Kestrel real) y
+  `SqlAuditPerformanceTests` procesa dos instantáneas sintéticas con el volumen de RNF-5 (20 000 cuentas y 200 000
+  permisos) y exige menos de 30 s por instantánea; tarda algo menos de medio minuto.
 - **Frontend (Vitest):** servicios, guards, interceptores, pipes y componentes (listado, informe y diálogo del
   inventario, con una API simulada) y la coherencia del manual de uso (`manual-consistency.spec.ts`, que lee
   `public/manual/` con `node:fs`).
@@ -146,8 +152,14 @@ Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json
   (Ubuntu 22.04/24.04 y Debian 12 capturadas en contenedores, macOS saneadas a partir de un equipo real, Windows con
   valores documentados de WMI). Ninguna prueba contacta ipinfo.io ni la API. El contrato `v1` está en
   `agent/tests/fixtures/contract/inventory-report.v1.json`: el agente debe emitir exactamente esas propiedades y la
-  API debe aceptarlas (`ContractTests` y `InventoryTests.Contract_fixture_shared_with_the_agent_is_accepted`). Si
-  cambias el contrato, cambia ese archivo y ambos lados en el mismo cambio, y despliega primero la API.
+  API debe aceptarlas (`ContractTests` y `InventoryTests.Contract_fixture_shared_with_the_agent_is_accepted`). Lo mismo
+  vale para la auditoría SQL con `agent/tests/fixtures/contract/sql-audit.v1.json` (en la API, `SqlAuditTests` y
+  `SqlAuditSnapshotValidatorTests` parten de él). Si cambias un contrato, cambia ese archivo y ambos lados en el mismo
+  cambio, y despliega primero la API.
+- **Auditoría SQL del agente:** los *mappers* de cada motor se prueban con filas de catálogo de ejemplo
+  (`fixtures/sqlaudit/`); `Itmas3.Agent.IntegrationTests` levanta PostgreSQL 18, MySQL 9.7 y MariaDB 12.3 (y SQL Server
+  2019/2022/2025 cuando Docker puede emular amd64; en Apple Silicon activa Rosetta en Docker Desktop, si no se omiten con
+  su motivo) y comprueba la recolección con la cuenta de mínimo privilegio y los tres modos TLS.
 - **Verificación manual del agente:** `itmas-agent collect` en cada plataforma. La instalación como servicio se
   probó con systemd en arm64 nativo; en Windows y macOS es una verificación documentada (SPEC-0002 §17).
 

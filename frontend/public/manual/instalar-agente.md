@@ -2,7 +2,8 @@
 
 El agente de inventario se instala en cada equipo y envía una vez al día sus datos técnicos a ITMas (sistema
 operativo, hardware, red, discos, software instalado, cuentas locales, cifrado y firewall). Solo lee y envía: no
-permite controlar el equipo.
+permite controlar el equipo. Opcionalmente puede auditar los accesos de motores SQL, solo si se configura después de
+instalarlo (ver [Configurar las conexiones SQL del agente](configurar-conexiones-sql)).
 
 **Quién puede hacerlo:** una persona con permisos de administrador en el equipo y el **código del equipo** que le
 entregó el área de TI (ver [Registrar un equipo y obtener su código](registrar-equipo)).
@@ -24,7 +25,8 @@ entregó el área de TI (ver [Registrar un equipo y obtener su código](registra
    - **Linux:** `sudo ./itmas-agent install`
    - **macOS:** `sudo ./itmas-agent install`. Si macOS lo bloquea, permítelo en *Ajustes del Sistema → Privacidad y
      seguridad → Abrir igualmente* (solo tras comprobar la suma).
-3. Lee los términos y condiciones y escribe `ACEPTO` para continuar.
+3. Lee los términos y condiciones (versión 2: incluyen la auditoría opcional de motores SQL) y escribe `ACEPTO` para
+   continuar. Los equipos que ya tenían el agente instalado no tienen que volver a aceptarlos.
 4. Pulsa Enter para aceptar la dirección del servidor que propone el instalador (o escribe la que te indique TI).
 5. Cuando pida el **código de autorización**, escribe el código del equipo. No se ve al escribirlo; puedes usar
    guiones o espacios.
@@ -42,4 +44,5 @@ En ITMas, el equipo pasa a **Activo** y aparece su primer registro. Para ver el 
 | "El código de autorización no es válido." | El código ya se usó, se regeneró o el equipo se eliminó. Pide a TI un código nuevo. |
 | "El servidor respondió 409." | Esta máquina ya está registrada en ITMas como otro equipo. TI debe eliminar ese registro antes. |
 | Error de certificado o de conexión | Revisa la dirección del servidor y la conexión a Internet; el instalador no continúa sin una conexión segura. |
+| En Linux, el agente no arranca y menciona "ICU" | Instala la biblioteca ICU de tu distribución (paquete `libicu`; viene de serie en Ubuntu y Debian). |
 | Quiero desinstalarlo | Ejecuta `itmas-agent uninstall` como administrador. Los datos ya enviados se conservan en ITMas. |

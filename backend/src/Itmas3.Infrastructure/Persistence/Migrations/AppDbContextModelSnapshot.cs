@@ -414,6 +414,537 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                     b.ToTable("inventory_reports", "app");
                 });
 
+            modelBuilder.Entity("Itmas3.Domain.SqlAudit.SqlAccessChange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<string>("ChangeType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("change_type");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("details");
+
+                    b.Property<DateTimeOffset>("DetectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("detected_at");
+
+                    b.Property<Guid>("InstanceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("instance_id");
+
+                    b.Property<Guid?>("ItemId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("item_id");
+
+                    b.Property<string>("Target")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("target");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sql_access_changes");
+
+                    b.HasIndex("DetectedAt")
+                        .HasDatabaseName("ix_sql_access_changes_detected_at");
+
+                    b.HasIndex("InstanceId")
+                        .HasDatabaseName("ix_sql_access_changes_instance_id");
+
+                    b.HasIndex("ItemId")
+                        .HasDatabaseName("ix_sql_access_changes_item_id");
+
+                    b.HasIndex("AccountId", "DetectedAt")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("ix_sql_access_changes_account_id_detected_at");
+
+                    b.ToTable("sql_access_changes", "app");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.SqlAudit.SqlAccessItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<string>("ColumnName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("column_name");
+
+                    b.Property<string>("DatabaseName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("database_name");
+
+                    b.Property<DateTimeOffset>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_seen_at");
+
+                    b.Property<string>("Grantor")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("grantor");
+
+                    b.Property<string>("IdentityHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("identity_hash")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("InstanceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("instance_id");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("kind");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<string>("ObjectName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("object_name");
+
+                    b.Property<string>("ObjectType")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("object_type");
+
+                    b.Property<string>("Permission")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("permission");
+
+                    b.Property<DateTimeOffset?>("RemovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("removed_at");
+
+                    b.Property<short>("Risk")
+                        .HasColumnType("smallint")
+                        .HasColumnName("risk_level");
+
+                    b.Property<Guid?>("RoleAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_account_id");
+
+                    b.Property<string>("SchemaName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("schema_name");
+
+                    b.Property<string>("SecurableClass")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("securable_class");
+
+                    b.Property<string>("State")
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("state");
+
+                    b.Property<DateTimeOffset?>("ValidatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("validated_at");
+
+                    b.Property<string>("ValidatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("validated_by");
+
+                    b.Property<Guid?>("ValidatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("validated_by_user_id");
+
+                    b.Property<string>("ValidationStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("validation_status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sql_access_items");
+
+                    b.HasIndex("RemovedAt")
+                        .HasDatabaseName("ix_sql_access_items_removed_at");
+
+                    b.HasIndex("RoleAccountId")
+                        .HasDatabaseName("ix_sql_access_items_role_account_id");
+
+                    b.HasIndex("AccountId", "IdentityHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_sql_access_items_account_id_identity_hash");
+
+                    b.HasIndex("AccountId", "ValidationStatus")
+                        .HasDatabaseName("ix_sql_access_items_account_id_validation_status")
+                        .HasFilter("removed_at IS NULL");
+
+                    b.HasIndex("InstanceId", "Risk", "ValidationStatus")
+                        .HasDatabaseName("ix_sql_access_items_instance_id_risk_level_validation_status")
+                        .HasFilter("removed_at IS NULL");
+
+                    b.ToTable("sql_access_items", "app");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.SqlAudit.SqlAccount", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccountType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("account_type");
+
+                    b.Property<string>("DatabaseName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("database_name");
+
+                    b.Property<string>("DefaultDatabase")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("default_database");
+
+                    b.Property<string>("DefaultSchema")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("default_schema");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.Property<DateTimeOffset?>("EngineCreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("engine_created_at");
+
+                    b.Property<DateTimeOffset?>("EngineModifiedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("engine_modified_at");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("fingerprint")
+                        .IsFixedLength();
+
+                    b.Property<DateTimeOffset>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("first_seen_at");
+
+                    b.Property<bool>("HasPassword")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_password");
+
+                    b.Property<string>("Host")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("host");
+
+                    b.Property<string>("IdentityHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("identity_hash")
+                        .IsFixedLength();
+
+                    b.Property<short>("InheritedRisk")
+                        .HasColumnType("smallint")
+                        .HasColumnName("inherited_risk_level");
+
+                    b.Property<Guid>("InstanceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("instance_id");
+
+                    b.Property<bool>("IsOrphaned")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_orphaned");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_seen_at");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("level");
+
+                    b.Property<bool>("Locked")
+                        .HasColumnType("boolean")
+                        .HasColumnName("locked");
+
+                    b.Property<string>("LoginName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("login_name");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("name");
+
+                    b.Property<short>("OwnRisk")
+                        .HasColumnType("smallint")
+                        .HasColumnName("risk_level");
+
+                    b.Property<bool?>("PasswordExpirationEnforced")
+                        .HasColumnType("boolean")
+                        .HasColumnName("password_expiration_enforced");
+
+                    b.Property<bool?>("PasswordExpired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("password_expired");
+
+                    b.Property<bool?>("PasswordPolicyEnforced")
+                        .HasColumnType("boolean")
+                        .HasColumnName("password_policy_enforced");
+
+                    b.Property<DateTimeOffset?>("PasswordValidUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("password_valid_until");
+
+                    b.Property<DateTimeOffset?>("RemovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("removed_at");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTimeOffset?>("ValidatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("validated_at");
+
+                    b.Property<string>("ValidatedBy")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("validated_by");
+
+                    b.Property<Guid?>("ValidatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("validated_by_user_id");
+
+                    b.Property<string>("ValidatedFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .HasColumnName("validated_fingerprint")
+                        .IsFixedLength();
+
+                    b.Property<string>("ValidationStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("validation_status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sql_accounts");
+
+                    b.HasIndex("RemovedAt")
+                        .HasDatabaseName("ix_sql_accounts_removed_at");
+
+                    b.HasIndex("InstanceId", "IdentityHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_sql_accounts_instance_id_identity_hash");
+
+                    b.HasIndex("InstanceId", "Name")
+                        .HasDatabaseName("ix_sql_accounts_instance_id_name");
+
+                    b.ToTable("sql_accounts", "app");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.SqlAudit.SqlInstance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Alias")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("alias");
+
+                    b.Property<string>("AuthenticationMode")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("authentication_mode");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Databases")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("databases");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("device_id");
+
+                    b.Property<string>("Edition")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("edition");
+
+                    b.Property<string>("Engine")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("engine");
+
+                    b.Property<string>("Host")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("host");
+
+                    b.Property<string>("InstanceName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("instance_name");
+
+                    b.Property<DateTimeOffset?>("LastCollectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_collected_at");
+
+                    b.Property<DateTimeOffset?>("LastReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_received_at");
+
+                    b.Property<int>("OmittedBuiltinPermissions")
+                        .HasColumnType("integer")
+                        .HasColumnName("omitted_builtin_permissions");
+
+                    b.Property<int?>("Port")
+                        .HasColumnType("integer")
+                        .HasColumnName("port");
+
+                    b.Property<int>("RiskCatalogVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("risk_catalog_version");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("TlsMode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("tls_mode");
+
+                    b.Property<string>("Unavailable")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("unavailable");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sql_instances");
+
+                    b.HasIndex("Alias")
+                        .HasDatabaseName("ix_sql_instances_alias");
+
+                    b.HasIndex("DeviceId", "Engine", "Host", "Port", "InstanceName")
+                        .IsUnique()
+                        .HasDatabaseName("ix_sql_instances_device_id_engine_host_port_instance_name");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("DeviceId", "Engine", "Host", "Port", "InstanceName"), false);
+
+                    b.ToTable("sql_instances", "app");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.SqlAudit.SqlSnapshotReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Applied")
+                        .HasColumnType("boolean")
+                        .HasColumnName("applied");
+
+                    b.Property<DateTimeOffset>("CollectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("collected_at");
+
+                    b.Property<string>("ConnectionIp")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)")
+                        .HasColumnName("connection_ip");
+
+                    b.Property<Guid>("DeviceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("device_id");
+
+                    b.Property<Guid>("InstanceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("instance_id");
+
+                    b.Property<int>("ProcessingMs")
+                        .HasColumnType("integer")
+                        .HasColumnName("processing_ms");
+
+                    b.Property<DateTimeOffset>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("received_at");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_sql_snapshot_receipts");
+
+                    b.HasIndex("InstanceId")
+                        .HasDatabaseName("ix_sql_snapshot_receipts_instance_id");
+
+                    b.HasIndex("ReceivedAt")
+                        .HasDatabaseName("ix_sql_snapshot_receipts_received_at");
+
+                    b.HasIndex("DeviceId", "SubmissionId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_sql_snapshot_receipts_device_id_submission_id");
+
+                    b.ToTable("sql_snapshot_receipts", "app");
+                });
+
             modelBuilder.Entity("Itmas3.Infrastructure.Persistence.Records.AuditEventRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -684,6 +1215,89 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_inventory_reports_devices_device_id");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.SqlAudit.SqlAccessChange", b =>
+                {
+                    b.HasOne("Itmas3.Domain.SqlAudit.SqlAccount", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sql_access_changes_sql_accounts_account_id");
+
+                    b.HasOne("Itmas3.Domain.SqlAudit.SqlInstance", null)
+                        .WithMany()
+                        .HasForeignKey("InstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sql_access_changes_sql_instances_instance_id");
+
+                    b.HasOne("Itmas3.Domain.SqlAudit.SqlAccessItem", null)
+                        .WithMany()
+                        .HasForeignKey("ItemId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_sql_access_changes_sql_access_items_item_id");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.SqlAudit.SqlAccessItem", b =>
+                {
+                    b.HasOne("Itmas3.Domain.SqlAudit.SqlAccount", null)
+                        .WithMany()
+                        .HasForeignKey("AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sql_access_items_sql_accounts_account_id");
+
+                    b.HasOne("Itmas3.Domain.SqlAudit.SqlInstance", null)
+                        .WithMany()
+                        .HasForeignKey("InstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sql_access_items_sql_instances_instance_id");
+
+                    b.HasOne("Itmas3.Domain.SqlAudit.SqlAccount", null)
+                        .WithMany()
+                        .HasForeignKey("RoleAccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_sql_access_items_sql_accounts_role_account_id");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.SqlAudit.SqlAccount", b =>
+                {
+                    b.HasOne("Itmas3.Domain.SqlAudit.SqlInstance", null)
+                        .WithMany()
+                        .HasForeignKey("InstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sql_accounts_sql_instances_instance_id");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.SqlAudit.SqlInstance", b =>
+                {
+                    b.HasOne("Itmas3.Domain.Inventory.Device", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sql_instances_devices_device_id");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.SqlAudit.SqlSnapshotReceipt", b =>
+                {
+                    b.HasOne("Itmas3.Domain.Inventory.Device", null)
+                        .WithMany()
+                        .HasForeignKey("DeviceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sql_snapshot_receipts_devices_device_id");
+
+                    b.HasOne("Itmas3.Domain.SqlAudit.SqlInstance", null)
+                        .WithMany()
+                        .HasForeignKey("InstanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_sql_snapshot_receipts_sql_instances_instance_id");
                 });
 #pragma warning restore 612, 618
         }

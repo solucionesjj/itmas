@@ -15,5 +15,5 @@ internal sealed class InventoryOptions
 
     /// <summary>Accepted versions of the agent terms and conditions, comma separated.</summary>
     [Required]
-    public string AcceptedTermsVersions { get; set; } = Application.Inventory.InventorySettings.CurrentTermsVersion;
+    public string AcceptedTermsVersions { get; set; } = Application.Inventory.InventorySettings.DefaultAcceptedTermsVersions;
 }

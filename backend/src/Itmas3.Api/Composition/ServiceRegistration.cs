@@ -4,6 +4,7 @@ using Itmas3.Api.Authorization;
 using Itmas3.Api.ErrorHandling;
 using Itmas3.Api.Inventory;
 using Itmas3.Api.Security;
+using Itmas3.Api.SqlAudit;
 
 namespace Itmas3.Api.Composition;
 
@@ -16,6 +17,7 @@ internal static class ServiceRegistration
         services.AddDefaultDenyAuthorization();
         services.AddAuthorizationModule(configuration);
         services.AddInventoryModule(configuration);
+        services.AddSqlAuditModule(configuration);
         services.AddApiSecurity(configuration);
 
         services.AddControllers()

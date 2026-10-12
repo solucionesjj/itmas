@@ -17,6 +17,10 @@ using Itmas3.Application.Inventory.EnrollDevice;
 using Itmas3.Application.Inventory.ManageDevices;
 using Itmas3.Application.Inventory.PurgeHistory;
 using Itmas3.Application.Inventory.SubmitInventoryReport;
+using Itmas3.Application.SqlAudit;
+using Itmas3.Application.SqlAudit.Maintenance;
+using Itmas3.Application.SqlAudit.SubmitSnapshot;
+using Itmas3.Application.SqlAudit.Validation;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Itmas3.Application;
@@ -54,6 +58,16 @@ public static class DependencyInjection
         services.AddScoped<UpdateDeviceHandler>();
         services.AddScoped<RegenerateEnrollmentCodeHandler>();
         services.AddScoped<DeleteDeviceHandler>();
+
+        // SQL access audit (SPEC-0005)
+        services.AddSingleton<IPermissionDefinitionProvider, SqlAuditPermissionDefinitions>();
+        services.AddScoped<SubmitSqlAuditSnapshotHandler>();
+        services.AddScoped<ValidateSqlAccountHandler>();
+        services.AddScoped<UnvalidateSqlAccountHandler>();
+        services.AddScoped<ValidateSqlAccessItemHandler>();
+        services.AddScoped<UnvalidateSqlAccessItemHandler>();
+        services.AddScoped<PurgeSqlAuditHistoryHandler>();
+        services.AddScoped<RecalculateSqlRiskHandler>();
 
         return services;
     }

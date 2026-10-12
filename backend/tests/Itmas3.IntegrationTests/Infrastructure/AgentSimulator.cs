@@ -8,6 +8,7 @@ public static class AgentSimulator
 {
     public static readonly Uri Enrollments = new("/api/v1/device-enrollments", UriKind.Relative);
     public static readonly Uri Reports = new("/api/v1/inventory-reports", UriKind.Relative);
+    public static readonly Uri SqlSnapshots = new("/api/v1/sql-audit-snapshots", UriKind.Relative);
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
@@ -16,6 +17,9 @@ public static class AgentSimulator
 
     public static Task<HttpResponseMessage> SubmitAsync(HttpClient client, string apiKey, JsonNode report) =>
         SendAsync(client, HttpMethod.Post, Reports, $"Device {apiKey}", report.ToJsonString());
+
+    public static Task<HttpResponseMessage> SubmitSqlSnapshotAsync(HttpClient client, string apiKey, JsonNode snapshot) =>
+        SendAsync(client, HttpMethod.Post, SqlSnapshots, $"Device {apiKey}", snapshot.ToJsonString());
 
     public static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpMethod method, Uri uri, string authorization, string json)
     {
@@ -44,6 +48,18 @@ public static class AgentSimulator
     {
         var node = JsonNode.Parse(File.ReadAllText(Path.Combine(RepositoryRoot(), "agent", "tests", "fixtures", "contract", "inventory-report.v1.json")))!;
         node["collectedAt"] = DateTimeOffset.UtcNow.AddMinutes(-1).ToString("O");
+        return node;
+    }
+
+    /// <summary>
+    /// SQL audit contract v1 example shared with the agent tests (SPEC-0005 §12.2), with a new submission id and a
+    /// recent collection date so each call is a new snapshot.
+    /// </summary>
+    public static JsonNode SqlAuditFixture(DateTimeOffset? collectedAt = null)
+    {
+        var node = JsonNode.Parse(File.ReadAllText(Path.Combine(RepositoryRoot(), "agent", "tests", "fixtures", "contract", "sql-audit.v1.json")))!;
+        node["submissionId"] = Guid.NewGuid().ToString();
+        node["collectedAt"] = (collectedAt ?? DateTimeOffset.UtcNow.AddMinutes(-1)).ToString("O");
         return node;
     }
 

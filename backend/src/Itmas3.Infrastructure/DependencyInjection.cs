@@ -2,10 +2,13 @@ using Itmas3.Application.Authorization.Abstractions;
 using Itmas3.Application.Authorization.Queries;
 using Itmas3.Application.Inventory.Abstractions;
 using Itmas3.Application.Inventory.Queries;
+using Itmas3.Application.SqlAudit.Abstractions;
+using Itmas3.Application.SqlAudit.Queries;
 using Itmas3.Infrastructure.Authorization;
 using Itmas3.Infrastructure.HealthChecks;
 using Itmas3.Infrastructure.Inventory;
 using Itmas3.Infrastructure.Persistence;
+using Itmas3.Infrastructure.SqlAudit;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,6 +55,15 @@ public static class DependencyInjection
         services.AddScoped<IInventoryReportRepository, InventoryReportRepository>();
         services.AddScoped<IInventoryUnitOfWork, InventoryUnitOfWork>();
         services.AddScoped<IInventoryQueries, InventoryQueries>();
+
+        // SQL access audit (SPEC-0005)
+        services.AddScoped<ISqlInstanceRepository, SqlInstanceRepository>();
+        services.AddScoped<ISqlSnapshotReceiptRepository, SqlSnapshotReceiptRepository>();
+        services.AddScoped<ISqlAccountRepository, SqlAccountRepository>();
+        services.AddScoped<ISqlAccessItemStore, SqlAccessItemStore>();
+        services.AddScoped<ISqlAccessChangeRepository, SqlAccessChangeRepository>();
+        services.AddScoped<ISqlAuditUnitOfWork, SqlAuditUnitOfWork>();
+        services.AddScoped<ISqlAuditQueries, SqlAuditQueries>();
 
         return services;
     }

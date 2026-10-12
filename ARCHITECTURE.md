@@ -61,6 +61,9 @@ frontend/src/app/
 │   ├── authorization/       Administración (SPEC-0001): users/, policies/, permissions/, audit/, data/ (API y modelos)
 │   ├── inventory/           Inventario (SPEC-0003): devices/ (listado, alta, código), history/ (registros),
 │                            report/ (informe por secciones), data/ (API, modelos, etiquetas)
+│   ├── sql-audit/           Auditoría SQL (SPEC-0005): instances/ (listado), instance/ (pestañas Cuentas y Permisos),
+│                            account/ (detalle, roles, permisos, historial), components/ (etiqueta de riesgo, estado,
+│                            casilla "Válido" con actualización optimista), data/ (API, modelos, etiquetas)
 │   └── manual/              Manual de uso público (SPEC-0004): índice con búsqueda y página por proceso
 ├── app.routes.ts            Rutas (lazy), guards
 └── app.config.ts            Providers: router, HttpClient + interceptores, inicializadores
@@ -103,13 +106,18 @@ backend/
 │   │   │                       (Users/, Policies/, Permissions/) y puerto de consultas (Queries/)
 │   │   └── Inventory/          EnrollDevice, SubmitInventoryReport, AuthenticateDevice, PurgeHistory, DeviceSecrets,
 │   │                           ManageDevices/ (registro), Queries/ (listado, historial, informe), permisos
+│   │   └── SqlAudit/           SubmitSnapshot (diferencias, riesgo, registro de cambios), Validation/, Maintenance/
+│   │                           (purga, recálculo del riesgo), Queries/, permisos, códigos del contrato
 │   ├── Itmas3.Infrastructure/  Adaptadores: EF Core/PostgreSQL, Data Protection, evaluador de permisos
 │   │   ├── Persistence/        AppDbContext, DatabaseOptions, Configurations/, Migrations/
 │   │   ├── Authorization/      Repositorios, unidad de trabajo auditada, instantáneas en caché, consultas
-│   │   └── Inventory/          Repositorios, consultas del inventario, unidad de trabajo con auditoría
+│   │   ├── Inventory/          Repositorios, consultas del inventario, unidad de trabajo con auditoría
+│   │   └── SqlAudit/           Repositorios y almacén de elementos por lotes (COPY binario, ExecuteUpdate), consultas
 │   └── Itmas3.Api/             Presentación y composition root
 │       ├── Controllers/        Controllers delgados (Authorization/: users, policies, permissions, audit-events;
-│       │                       Inventory/: devices, devices/{id}/reports, device-enrollments, inventory-reports)
+│       │                       Inventory/: devices, devices/{id}/reports, device-enrollments, inventory-reports;
+│       │                       SqlAudit/: sql-audit-snapshots, sql-instances, sql-accounts, sql-access-items)
+│       ├── SqlAudit/           Opciones, límite de frecuencia por equipo, mantenimiento (purga y recálculo del riesgo)
 │       ├── Inventory/          Esquemas de autenticación de dispositivos, políticas, rate limiting, purga del histórico
 │       ├── Contracts/          DTOs HTTP (request/response)
 │       ├── Authentication/     BFF OIDC + cookie de sesión
@@ -164,6 +172,12 @@ El orden importa y está en `Composition/RequestPipeline.cs`:
   código de enrolamiento y de la API key, resumen del último inventario; nombre e identificador de hardware únicos
   entre equipos no eliminados mediante índices parciales; `xmin` como token de concurrencia) e `inventory_reports`
   (inventario completo en `jsonb`, histórico de 90 días).
+- **Auditoría SQL (SPEC-0005)**: `sql_instances` (una por equipo + motor + *host* + puerto + instancia, con las bases de
+  datos y las partes no disponibles de la última instantánea en `jsonb`), `sql_accounts` (atributos, huella, riesgo
+  propio y heredado, validación), `sql_access_items` (pertenencias a roles y permisos con su objeto asegurable, riesgo y
+  validación; hasta 200 000 por instancia, con índices parciales sobre los actuales), `sql_access_changes` (registro de
+  cambios, 1 año) y `sql_snapshot_receipts` (idempotencia por `submissionId` y duración del procesamiento). No se guarda
+  el JSON de las instantáneas: el estado actual y el registro de cambios bastan.
 
 ### Modelo de autorización
 
@@ -210,6 +224,7 @@ la política que lo nombra:
 |---|---|---|---|
 | `POST /api/v1/device-enrollments` | `DeviceEnrollment` | `Authorization: Enrollment <código del equipo>` (un solo uso; se busca por SHA-256) | 10/min por IP |
 | `POST /api/v1/inventory-reports` | `EnrolledDevice` | `Authorization: Device <apiKey>` (se busca por SHA-256) | 12/h por credencial |
+| `POST /api/v1/sql-audit-snapshots` | `EnrolledDevice` | `Authorization: Device <apiKey>` | 120/h por credencial; cuerpo de hasta 16 MB solo en esta ruta (nginx y la acción) |
 
 Una sesión de usuario no satisface las políticas de dispositivo, y una API key no satisface las de usuario. El agente
 envía `X-CSRF: 1`, así que la protección CSRF no cambia. Con cada inventario se guardan dos IPs (ADR-0011):
@@ -222,6 +237,16 @@ Cada equipo se registra antes en el inventario (`/api/v1/devices`, permisos `dev
 enrolamiento de un solo uso ([ADR-0012](specs/architecture/adr-0012-per-device-enrollment-codes.md)). El código
 identifica el equipo: el enrolamiento lo vincula al identificador de hardware del agente, emite la API key y consume el
 código. Eliminar el equipo invalida su código y su API key en la misma transacción.
+
+**Auditoría SQL (SPEC-0005).** El agente envía una instantánea por conexión configurada. La API la procesa en la propia
+petición y en una transacción (sin cola en el MVP; RNF-3 fija cuándo introducirla): registra la instancia, calcula el
+riesgo con el catálogo del servidor (`SqlRiskCatalog`), compara por identidad (hash SHA-256 de la clave canónica de cada
+cuenta y elemento) y escribe el registro de cambios. Responde `202` y un `submissionId` repetido no se procesa dos veces,
+para que una cola futura no cambie el contrato. Las partes que el agente no pudo leer conservan su estado. Las
+inserciones masivas usan `COPY` binario de Npgsql con el texto del comando derivado del modelo de EF Core, y las
+actualizaciones, `ExecuteUpdate` por lotes. La duración se publica en la métrica
+`itmas.sql_audit.snapshot.processing.duration` (medidor `Itmas3.SqlAudit`). `SqlAuditMaintenanceService` recalcula al
+arrancar el riesgo de las instancias evaluadas con un catálogo anterior y purga cada 6 h el historial vencido.
 
 `InventoryHistoryPurgeService` elimina cada 6 h los inventarios más antiguos que la retención configurada, conservando
 siempre el último de cada equipo.
@@ -243,14 +268,19 @@ agent/  (solución independiente: no referencia backend/)
 ├── Itmas3.Agent.Collectors   Contrato v1 (records + JSON source-gen), InventoryCollector, ProcessRunner seguro,
 │                             fuentes Windows (registro, WMI) / Linux (/proc, /etc, lsblk, lscpu, apt-mark, ufw, nft,
 │                             iptables) / macOS (sw_vers, sysctl, diskutil, fdesetup, dscl, socketfilterfw), ipinfo.io
-└── Itmas3.Agent              install / uninstall / status / collect / run; AgentWorker + SchedulePolicy;
+│                             SqlAudit/: colectores de SQL Server, PostgreSQL, MySQL y MariaDB (consultas fijas de
+│                             catálogo, una conexión por base de datos) y mappers puros al contrato sql-audit v1
+└── Itmas3.Agent              install / uninstall / status / collect / run / sql (add, update, list, test, remove);
+                              AgentWorker + SchedulePolicy;
                               ItmasApiClient (HTTPS, proxy del sistema); API key protegida (0600 / DPAPI);
                               gestores de servicio: sc.exe, systemd (con sandbox), launchd
 ```
 
 Se publica *self-contained* en un solo archivo por RID (`win-x64`, `linux-x64`, `linux-arm64`, `osx-x64`, `osx-arm64`)
 con `scripts/build-agent.sh`, dentro de Docker. Corre como `LocalSystem` o `root` porque lo necesita para leer el
-sistema, con los controles compensatorios de la constitución §13.
+sistema, con los controles compensatorios de la constitución §13. La auditoría SQL (§13.6, ADR-0014, ADR-0015) se
+conecta solo a los motores configurados en el equipo, siempre con TLS y una cuenta de solo lectura por conexión, con
+los controladores `Microsoft.Data.SqlClient`, `Npgsql` y `MySqlConnector` incluidos en el ejecutable.
 
 ## 7. Principios arquitectónicos
 

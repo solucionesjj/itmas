@@ -1,0 +1,28 @@
+TÉRMINOS Y CONDICIONES DE USO DEL AGENTE ITMas (versión 2)
+
+Este agente se instala en equipos de propiedad de la organización o administrados por ella, como parte de la
+gestión del inventario tecnológico, la auditoría de accesos y la seguridad de la información que la organización
+realiza en el marco de sus acuerdos contractuales y de sus políticas internas. Al instalarlo, usted declara estar
+autorizado para instalar software en este equipo y reconoce que:
+
+1. Inventario del equipo. El agente recopilará una vez al día información técnica del equipo: nombre del equipo,
+   sistema operativo y versión, aplicaciones instaladas, cuentas de usuario locales y los grupos a los que
+   pertenecen, direcciones IP locales, características de memoria, procesador y discos, estado de cifrado de los
+   discos y estado del firewall.
+2. Dirección IP pública. Para conocer la dirección IP pública del equipo y su ubicación aproximada (país, región y
+   ciudad), el agente consultará una vez al día un proveedor externo (ipinfo.io), sin enviarle ningún otro dato del
+   equipo.
+3. Auditoría de motores de bases de datos. Solo si el administrador del equipo la configura, el agente se conectará,
+   con cuentas de solo lectura creadas para este fin, a los motores de bases de datos que se le indiquen, y
+   recopilará una vez al día las cuentas y roles definidos en ellos y los permisos que tienen asignados. No accede al
+   contenido de las bases de datos ni a contraseñas, y no modifica los motores.
+4. La información se enviará de forma cifrada a la plataforma ITMas, que registrará además la dirección IP desde la
+   que recibe la conexión.
+5. La finalidad es exclusivamente la gestión del inventario tecnológico, la auditoría de accesos y la seguridad de la
+   información de la organización. La información no se utilizará para otros fines.
+6. El agente no accede al contenido de sus archivos, correos, navegación ni actividad personal, y no permite controlar
+   el equipo de forma remota.
+7. La información se conservará durante el tiempo necesario para la finalidad indicada y será accesible solo por el
+   personal autorizado.
+8. Puede desinstalar el agente con el comando "itmas-agent uninstall". Para consultar, actualizar o solicitar la
+   supresión de sus datos, contacte con el área de TI de su organización.

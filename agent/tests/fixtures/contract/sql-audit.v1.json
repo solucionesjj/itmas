@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "submissionId": "6f1c2b9e-4d3a-4f6b-9a8e-2c1d0e5f7a90",
+  "collectedAt": "2026-10-11T12:00:00+00:00",
+  "agentVersion": "1.2.0",
+  "connection": {
+    "alias": "ventas-prod",
+    "engine": "sqlserver",
+    "host": "sql01.example.internal",
+    "port": 1433,
+    "instanceName": null,
+    "tls": "verify"
+  },
+  "instance": {
+    "version": "16.0.4175.1",
+    "edition": "Standard Edition (64-bit)",
+    "authenticationMode": "mixed"
+  },
+  "databases": [
+    { "name": "master", "state": "online", "ownerRef": "a1" },
+    { "name": "Ventas", "state": "online", "ownerRef": "a1" },
+    { "name": "Archivo", "state": "offline", "ownerRef": null }
+  ],
+  "accounts": [
+    {
+      "ref": "a1", "level": "server", "database": null, "name": "sa", "host": null, "type": "sql-login",
+      "enabled": false, "locked": false, "createdAt": "2003-04-08T09:10:35.46+00:00", "modifiedAt": "2026-01-15T10:00:00+00:00",
+      "defaultDatabase": "master", "defaultSchema": null, "loginRef": null, "isOrphaned": false,
+      "password": { "policyEnforced": true, "expirationEnforced": false, "expired": false, "validUntil": null }
+    },
+    {
+      "ref": "a2", "level": "server", "database": null, "name": "app_ventas", "host": null, "type": "sql-login",
+      "enabled": true, "locked": false, "createdAt": "2025-03-01T08:00:00+00:00", "modifiedAt": "2026-09-01T08:00:00+00:00",
+      "defaultDatabase": "Ventas", "defaultSchema": null, "loginRef": null, "isOrphaned": false,
+      "password": { "policyEnforced": true, "expirationEnforced": true, "expired": false, "validUntil": null }
+    },
+    {
+      "ref": "a3", "level": "server", "database": null, "name": "DOMINIO\\dba-equipo", "host": null, "type": "windows-group",
+      "enabled": true, "locked": false, "createdAt": "2024-11-20T15:30:00+00:00", "modifiedAt": "2024-11-20T15:30:00+00:00",
+      "defaultDatabase": "master", "defaultSchema": null, "loginRef": null, "isOrphaned": false,
+      "password": null
+    },
+    {
+      "ref": "a4", "level": "server", "database": null, "name": "sysadmin", "host": null, "type": "server-role",
+      "enabled": true, "locked": false, "createdAt": null, "modifiedAt": null,
+      "defaultDatabase": null, "defaultSchema": null, "loginRef": null, "isOrphaned": false,
+      "password": null
+    },
+    {
+      "ref": "a5", "level": "database", "database": "Ventas", "name": "app_ventas", "host": null, "type": "database-user",
+      "enabled": true, "locked": false, "createdAt": "2025-03-01T08:05:00+00:00", "modifiedAt": "2025-03-01T08:05:00+00:00",
+      "defaultDatabase": null, "defaultSchema": "dbo", "loginRef": "a2", "isOrphaned": false,
+      "password": null
+    },
+    {
+      "ref": "a6", "level": "database", "database": "Ventas", "name": "antiguo_reportes", "host": null, "type": "database-user",
+      "enabled": true, "locked": false, "createdAt": "2021-06-10T12:00:00+00:00", "modifiedAt": "2021-06-10T12:00:00+00:00",
+      "defaultDatabase": null, "defaultSchema": "dbo", "loginRef": null, "isOrphaned": true,
+      "password": null
+    },
+    {
+      "ref": "a7", "level": "database", "database": "Ventas", "name": "db_owner", "host": null, "type": "database-role",
+      "enabled": true, "locked": false, "createdAt": "2003-04-08T09:10:42.31+00:00", "modifiedAt": "2003-04-08T09:10:42.31+00:00",
+      "defaultDatabase": null, "defaultSchema": null, "loginRef": null, "isOrphaned": false,
+      "password": null
+    },
+    {
+      "ref": "a8", "level": "database", "database": "Ventas", "name": "rol_lectura", "host": null, "type": "database-role",
+      "enabled": true, "locked": false, "createdAt": "2025-03-01T08:06:00+00:00", "modifiedAt": "2025-03-01T08:06:00+00:00",
+      "defaultDatabase": null, "defaultSchema": null, "loginRef": null, "isOrphaned": false,
+      "password": null
+    }
+  ],
+  "roleMemberships": [
+    { "memberRef": "a3", "roleRef": "a4" },
+    { "memberRef": "a5", "roleRef": "a8" },
+    { "memberRef": "a6", "roleRef": "a7" }
+  ],
+  "permissions": [
+    {
+      "granteeRef": "a2",
+      "securable": { "class": "server", "database": null, "schema": null, "name": null, "objectType": null, "column": null },
+      "permission": "CONNECT SQL", "state": "grant", "grantorRef": "a1"
+    },
+    {
+      "granteeRef": "a2",
+      "securable": { "class": "server", "database": null, "schema": null, "name": null, "objectType": null, "column": null },
+      "permission": "VIEW SERVER STATE", "state": "grant", "grantorRef": "a1"
+    },
+    {
+      "granteeRef": "a1",
+      "securable": { "class": "database", "database": "Ventas", "schema": null, "name": null, "objectType": null, "column": null },
+      "permission": "OWNERSHIP", "state": "grant", "grantorRef": null
+    },
+    {
+      "granteeRef": "a5",
+      "securable": { "class": "database", "database": "Ventas", "schema": null, "name": null, "objectType": null, "column": null },
+      "permission": "CONNECT", "state": "grant", "grantorRef": "a7"
+    },
+    {
+      "granteeRef": "a5",
+      "securable": { "class": "object", "database": "Ventas", "schema": "dbo", "name": "Facturas", "objectType": "table", "column": null },
+      "permission": "SELECT", "state": "grant", "grantorRef": "a7"
+    },
+    {
+      "granteeRef": "a5",
+      "securable": { "class": "object", "database": "Ventas", "schema": "dbo", "name": "Facturas", "objectType": "table", "column": null },
+      "permission": "DELETE", "state": "grant", "grantorRef": "a7"
+    },
+    {
+      "granteeRef": "a5",
+      "securable": { "class": "object", "database": "Ventas", "schema": "dbo", "name": "Clientes", "objectType": "table", "column": null },
+      "permission": "UPDATE", "state": "grant-with-grant-option", "grantorRef": "a7"
+    },
+    {
+      "granteeRef": "a5",
+      "securable": { "class": "column", "database": "Ventas", "schema": "dbo", "name": "Clientes", "objectType": "table", "column": "Email" },
+      "permission": "SELECT", "state": "deny", "grantorRef": "a7"
+    },
+    {
+      "granteeRef": "a8",
+      "securable": { "class": "schema", "database": "Ventas", "schema": "dbo", "name": null, "objectType": null, "column": null },
+      "permission": "SELECT", "state": "grant", "grantorRef": "a7"
+    },
+    {
+      "granteeRef": "a8",
+      "securable": { "class": "object", "database": "Ventas", "schema": "dbo", "name": "usp_ResumenVentas", "objectType": "procedure", "column": null },
+      "permission": "EXECUTE", "state": "grant", "grantorRef": "a7"
+    }
+  ],
+  "omitted": { "builtinPublicPermissions": 1873 },
+  "unavailable": [
+    { "section": "database:Archivo", "reason": "offline" }
+  ]
+}

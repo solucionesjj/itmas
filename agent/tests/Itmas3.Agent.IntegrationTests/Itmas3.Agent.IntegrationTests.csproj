@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Integration tests of the SQL audit module (SPEC-0005 CA-4, CA-6, CA-7, CA-17) against real engines in containers
+    (Testcontainers). They need Docker, so they are NOT part of the Dockerfile test stage: run them with
+    `cd agent && dotnet test tests/Itmas3.Agent.IntegrationTests`.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Itmas3.Agent.IntegrationTests</RootNamespace>
+    <!-- Same runtime settings as the published agent (Itmas3.Agent.csproj). -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="Switch.Microsoft.Data.SqlClient.UseManagedNetworkingOnWindows" Value="true" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Itmas3.Agent.Collectors\Itmas3.Agent.Collectors.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Testcontainers" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

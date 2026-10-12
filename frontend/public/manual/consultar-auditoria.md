@@ -17,6 +17,8 @@ puede modificar ni borrar.
 - Usuarios: alta automática, activación, desactivación, asignación y retiro de políticas, Root.
 - Políticas y permisos: creación, cambios, activación, eliminación.
 - Equipos: registro, cambios, regeneración del código, eliminación, enrolamiento del agente y enrolamientos rechazados.
+- Auditoría SQL: cada vez que alguien marca o desmarca como válida una cuenta, un rol o un permiso de un motor SQL
+  (tipos de recurso *Cuenta SQL* y *Rol o permiso SQL*), con la instancia, la cuenta y el elemento.
 - También los intentos rechazados por una regla o una salvaguarda, con su motivo.
 
 La auditoría nunca guarda códigos ni credenciales de los equipos.

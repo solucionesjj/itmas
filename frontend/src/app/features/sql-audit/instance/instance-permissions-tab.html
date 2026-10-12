@@ -1,0 +1,92 @@
+<div class="filters">
+  <mat-form-field appearance="outline">
+    <mat-label>Buscar por permiso u objeto</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input matInput maxlength="100" (input)="setFilter(search, $any($event.target).value.trim())" />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Cuenta</mat-label>
+    <input
+      matInput
+      maxlength="100"
+      (input)="setFilter(account, $any($event.target).value.trim())"
+    />
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Validación</mat-label>
+    <mat-select [value]="validationFilter()" (valueChange)="setFilter(validationFilter, $event)">
+      <mat-option value="pending">Pendientes</mat-option>
+      <mat-option value="">Todos los actuales</mat-option>
+      <mat-option value="valid">Válidos</mat-option>
+      <mat-option value="removed">Eliminados del motor</mat-option>
+    </mat-select>
+  </mat-form-field>
+  <mat-form-field appearance="outline">
+    <mat-label>Riesgo</mat-label>
+    <mat-select [value]="risk()" (valueChange)="setFilter(risk, $event)">
+      <mat-option value="">Todos</mat-option>
+      <mat-option value="critical">Crítico</mat-option>
+      <mat-option value="high">Alto</mat-option>
+      <mat-option value="general">General</mat-option>
+      <mat-option value="denied">Denegado</mat-option>
+    </mat-select>
+  </mat-form-field>
+  @if (databases().length > 0) {
+    <mat-form-field appearance="outline">
+      <mat-label>Base de datos</mat-label>
+      <mat-select [value]="database()" (valueChange)="setFilter(database, $event)">
+        <mat-option value="">Todas</mat-option>
+        @for (name of databases(); track name) {
+          <mat-option [value]="name">{{ name }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  }
+  <mat-form-field appearance="outline">
+    <mat-label>Tipo de objeto</mat-label>
+    <mat-select [value]="objectType()" (valueChange)="setFilter(objectType, $event)">
+      <mat-option value="">Todos</mat-option>
+      @for (option of objectTypes(); track option.value) {
+        <mat-option [value]="option.value">{{ option.label }}</mat-option>
+      }
+    </mat-select>
+  </mat-form-field>
+</div>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Cargando permisos" />
+}
+
+@if (failed()) {
+  <div class="error-state" role="alert">
+    <app-sql-status
+      [status]="{ label: 'No se pudieron cargar los permisos.', icon: 'error', tone: 'error' }"
+    />
+    <button mat-stroked-button (click)="retry()">
+      <mat-icon>refresh</mat-icon>
+      Reintentar
+    </button>
+  </div>
+} @else {
+  <app-access-table
+    tableLabel="Permisos de la instancia"
+    [items]="result()?.items ?? []"
+    [columns]="columns"
+    [emptyText]="emptyText()"
+    [canValidate]="canValidate()"
+    [sortable]="true"
+    sortActive="risk"
+    sortDirection="desc"
+    (sortChange)="onSort($event)"
+    (toggled)="toggle($event)"
+  />
+
+  <mat-paginator
+    [length]="result()?.total ?? 0"
+    [pageIndex]="pageIndex()"
+    [pageSize]="pageSize()"
+    [pageSizeOptions]="[10, 20, 50, 100]"
+    (page)="onPage($event)"
+    aria-label="Paginación de permisos"
+  />
+}

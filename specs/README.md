@@ -56,7 +56,7 @@ specs/
 | [SPEC-0002](features/SPEC-0002-os-inventory-agent.md) | Agente de inventario de sistema operativo | Implemented |
 | [SPEC-0003](features/SPEC-0003-device-registry-and-inventory-viewer.md) | Registro de equipos e inventario recolectado | Implemented |
 | [SPEC-0004](features/SPEC-0004-user-manual.md) | Manual de uso del sistema | Implemented |
-| [SPEC-0005](features/SPEC-0005-sql-engine-access-audit.md) | Auditoría de accesos a motores SQL | Approved |
+| [SPEC-0005](features/SPEC-0005-sql-engine-access-audit.md) | Auditoría de accesos a motores SQL | Implemented |
 | [ADR-0001](architecture/adr-0001-clean-architecture.md) | Clean Architecture en 4 proyectos | Accepted |
 | [ADR-0002](architecture/adr-0002-authentication-bff.md) | Autenticación BFF con Microsoft Entra ID | Accepted |
 | [ADR-0003](architecture/adr-0003-authorization-default-deny.md) | Autorización *default deny* basada en permisos | Accepted |

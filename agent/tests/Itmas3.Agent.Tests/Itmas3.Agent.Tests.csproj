@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Unit tests of the agent: parsers with real OS outputs (fixtures/), scheduler, HTTP client, install flow, contract. -->
+  <!-- Unit tests of the agent: parsers with real OS outputs (fixtures/), SQL audit mappers with catalog rows, scheduler, HTTP client, CLI, contracts. No Docker or network. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <RootNamespace>Itmas3.Agent.Tests</RootNamespace>
@@ -18,5 +18,7 @@
     <None Include="fixtures\**\*" CopyToOutputDirectory="PreserveNewest" />
     <!-- Contract v1 example shared with the backend integration tests. -->
     <None Include="..\fixtures\contract\inventory-report.v1.json" Link="fixtures\contract\inventory-report.v1.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- Contract sql-audit v1 example shared with the backend integration tests (SPEC-0005). -->
+    <None Include="..\fixtures\contract\sql-audit.v1.json" Link="fixtures\contract\sql-audit.v1.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

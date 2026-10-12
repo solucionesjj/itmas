@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Text;
 using Itmas3.Agent.Collectors.Model;
+using Itmas3.Agent.Collectors.SqlAudit.Model;
 using Itmas3.Agent.Configuration;
 
 namespace Itmas3.Agent.Api;
@@ -24,6 +25,9 @@ public enum SubmitOutcome
     Accepted,
     CredentialRejected,
     Failed,
+
+    /// <summary>408, 429 or 5xx: worth retrying the same SQL audit snapshot (same submissionId) shortly.</summary>
+    TransientFailure,
 }
 
 public sealed class EnrollmentException(string message) : Exception(message);
@@ -39,6 +43,9 @@ public interface IItmasApiClient
     Task<EnrollmentResponse> EnrollAsync(Uri serverUrl, string enrollmentCode, EnrollmentRequest request, CancellationToken cancellationToken);
 
     Task<(SubmitOutcome Outcome, string Detail)> SubmitAsync(Uri serverUrl, string apiKey, InventoryReport report, CancellationToken cancellationToken);
+
+    /// <summary><c>POST /api/v1/sql-audit-snapshots</c> (SPEC-0005 RF-8, §8.2) with the device API key.</summary>
+    Task<(SubmitOutcome Outcome, string Detail)> SubmitSqlAuditAsync(Uri serverUrl, string apiKey, SqlAuditSnapshot snapshot, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -134,6 +141,27 @@ public sealed class ItmasApiClient(HttpClient httpClient) : IItmasApiClient
             HttpStatusCode.Accepted => (SubmitOutcome.Accepted, "202"),
             HttpStatusCode.Unauthorized => (SubmitOutcome.CredentialRejected, "401"),
             _ => (SubmitOutcome.Failed, ((int)response.StatusCode).ToString(System.Globalization.CultureInfo.InvariantCulture)),
+        };
+    }
+
+    public async Task<(SubmitOutcome Outcome, string Detail)> SubmitSqlAuditAsync(
+        Uri serverUrl, string apiKey, SqlAuditSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        using var message = new HttpRequestMessage(HttpMethod.Post, new Uri(serverUrl, "api/v1/sql-audit-snapshots"))
+        {
+            Content = new StringContent(SqlAuditJson.Serialize(snapshot), Encoding.UTF8, "application/json"),
+        };
+        Authorize(message, "Device", apiKey);
+
+        using var response = await httpClient.SendAsync(message, cancellationToken);
+        var status = (int)response.StatusCode;
+        return response.StatusCode switch
+        {
+            HttpStatusCode.Accepted => (SubmitOutcome.Accepted, "202"),
+            HttpStatusCode.Unauthorized => (SubmitOutcome.CredentialRejected, "401"),
+            HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests => (SubmitOutcome.TransientFailure, status.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            _ when status >= 500 => (SubmitOutcome.TransientFailure, status.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            _ => (SubmitOutcome.Failed, status.ToString(System.Globalization.CultureInfo.InvariantCulture)),
         };
     }
 

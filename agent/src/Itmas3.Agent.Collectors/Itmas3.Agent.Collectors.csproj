@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- Inventory model (contract v1) and per-OS collectors. Parsers are pure functions tested with fixtures. -->
+  <!-- Inventory model (contract v1), per-OS collectors and the SQL audit module (contract sql-audit v1). Parsers and mappers are pure functions tested with fixtures. -->
   <PropertyGroup>
     <RootNamespace>Itmas3.Agent.Collectors</RootNamespace>
   </PropertyGroup>
@@ -7,8 +7,13 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <!-- Windows only (WMI): guarded with OperatingSystem.IsWindows(). -->
     <PackageReference Include="System.Management" />
+    <!-- SQL audit (SPEC-0005, ADR-0014 §7): read-only catalog queries, TLS always on. -->
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="MySqlConnector" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Itmas3.Agent.Tests" />
+    <InternalsVisibleTo Include="Itmas3.Agent.IntegrationTests" />
   </ItemGroup>
 </Project>

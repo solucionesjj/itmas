@@ -7,6 +7,12 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
     <PackageVersion Include="System.Management" Version="10.0.12" />
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
+    <!-- SQL engine drivers of the SQL audit module (SPEC-0005, ADR-0014 §7). -->
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="7.1.1" />
+    <PackageVersion Include="Npgsql" Version="10.0.3" />
+    <PackageVersion Include="MySqlConnector" Version="2.6.2" />
     <PackageVersion Include="xunit.v3" Version="4.0.1" />
+    <!-- Integration tests only (Itmas3.Agent.IntegrationTests): real engines in containers. -->
+    <PackageVersion Include="Testcontainers" Version="4.16.0" />
   </ItemGroup>
 </Project>

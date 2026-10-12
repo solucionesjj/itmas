@@ -154,6 +154,10 @@ export const AUDIT_ACTION_LABELS: Readonly<Record<string, string>> = {
   'device.enrolled': 'Agente enrolado',
   'device.relinked': 'Agente reinstalado',
   'device.enrollment.rejected': 'Enrolamiento rechazado',
+  'sql-audit.account.validated': 'Cuenta SQL validada',
+  'sql-audit.account.unvalidated': 'Cuenta SQL desmarcada',
+  'sql-audit.item.validated': 'Rol o permiso SQL validado',
+  'sql-audit.item.unvalidated': 'Rol o permiso SQL desmarcado',
 };
 
 export const AUDIT_RESULT_LABELS: Readonly<Record<AuditEvent['result'], string>> = {

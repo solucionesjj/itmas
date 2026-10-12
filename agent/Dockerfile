@@ -49,7 +49,8 @@ COPY --from=package /dist/ /
 # ---- E2E: run the Linux build in a supported distribution (docker compose --profile agent) ----
 FROM ubuntu:24.04 AS e2e
 ARG TARGETARCH
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates iptables util-linux \
+# libicu: ICU is required since SQL Server support (SPEC-0005); standard Ubuntu/Debian installations already have it.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates iptables util-linux libicu74 \
     && rm -rf /var/lib/apt/lists/*
 # Binary matching the architecture of the image (amd64 → linux-x64, arm64 → linux-arm64).
 RUN --mount=type=bind,from=publish,source=/out,target=/out \

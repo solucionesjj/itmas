@@ -40,6 +40,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/inventory/inventory.routes'),
       },
       {
+        path: 'sql-audit',
+        loadChildren: () => import('./features/sql-audit/sql-audit.routes'),
+      },
+      {
         path: 'admin',
         loadChildren: () => import('./features/authorization/authorization.routes'),
       },

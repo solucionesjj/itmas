@@ -1,0 +1,88 @@
+{
+  "instance": { "version": "16.0.4175.1", "edition": "Developer Edition (64-bit)", "integratedSecurityOnly": false, "timeZoneOffsetMinutes": -300 },
+  "serverPrincipals": [
+    { "principalId": 1, "name": "sa", "type": "S", "sid": "01", "isDisabled": true, "createDate": "2003-04-08T09:10:35.46", "modifyDate": "2026-01-15T05:00:00", "defaultDatabase": "master", "defaultSchema": null, "authenticationType": null, "isPolicyChecked": true, "isExpirationChecked": false, "isExpired": false, "isLocked": false },
+    { "principalId": 2, "name": "public", "type": "R", "sid": "02", "isDisabled": false, "createDate": "2009-04-13T12:59:06.07", "modifyDate": "2009-04-13T12:59:06.07", "defaultDatabase": null, "defaultSchema": null, "authenticationType": null, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null },
+    { "principalId": 3, "name": "sysadmin", "type": "R", "sid": "03", "isDisabled": false, "createDate": "2009-04-13T12:59:06.07", "modifyDate": "2009-04-13T12:59:06.07", "defaultDatabase": null, "defaultSchema": null, "authenticationType": null, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null },
+    { "principalId": 259, "name": "app_ventas", "type": "S", "sid": "AA01", "isDisabled": false, "createDate": "2025-03-01T03:00:00", "modifyDate": "2026-09-01T03:00:00", "defaultDatabase": "Ventas']; --", "defaultSchema": null, "authenticationType": null, "isPolicyChecked": true, "isExpirationChecked": true, "isExpired": false, "isLocked": false },
+    { "principalId": 260, "name": "DOMINIO\\dba-equipo", "type": "G", "sid": "0105000000000005150000", "isDisabled": false, "createDate": "2024-11-20T10:30:00", "modifyDate": "2024-11-20T10:30:00", "defaultDatabase": "master", "defaultSchema": null, "authenticationType": null, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null },
+    { "principalId": 261, "name": "O'Brien]; DROP LOGIN sa;--", "type": "S", "sid": "AA02", "isDisabled": false, "createDate": "2026-02-01T00:00:00", "modifyDate": "2026-02-01T00:00:00", "defaultDatabase": "master", "defaultSchema": null, "authenticationType": null, "isPolicyChecked": false, "isExpirationChecked": false, "isExpired": false, "isLocked": false },
+    { "principalId": 262, "name": "<script>alert(\"x\")</script>", "type": "S", "sid": "AA03", "isDisabled": false, "createDate": "2026-02-02T00:00:00", "modifyDate": "2026-02-02T00:00:00", "defaultDatabase": "master", "defaultSchema": null, "authenticationType": null, "isPolicyChecked": true, "isExpirationChecked": true, "isExpired": true, "isLocked": true },
+    { "principalId": 263, "name": "ext@example.org", "type": "E", "sid": "AA05", "isDisabled": false, "createDate": "2026-02-03T00:00:00", "modifyDate": "2026-02-03T00:00:00", "defaultDatabase": "master", "defaultSchema": null, "authenticationType": null, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null }
+  ],
+  "serverRoleMembers": [
+    { "roleId": 3, "memberId": 260 },
+    { "roleId": 3, "memberId": 260 },
+    { "roleId": 3, "memberId": 999 }
+  ],
+  "serverPermissions": [
+    { "class": 100, "granteeId": 259, "grantorId": 1, "permission": "CONNECT SQL", "state": "G", "schemaName": null, "objectName": null, "objectType": null, "columnName": null, "isBuiltinPublic": false },
+    { "class": 100, "granteeId": 259, "grantorId": 1, "permission": "VIEW SERVER STATE", "state": "W", "schemaName": null, "objectName": null, "objectType": null, "columnName": null, "isBuiltinPublic": false },
+    { "class": 100, "granteeId": 262, "grantorId": 1, "permission": "VIEW ANY DATABASE", "state": "D", "schemaName": null, "objectName": null, "objectType": null, "columnName": null, "isBuiltinPublic": false },
+    { "class": 100, "granteeId": 262, "grantorId": 1, "permission": "ALTER ANY LOGIN", "state": "R", "schemaName": null, "objectName": null, "objectType": null, "columnName": null, "isBuiltinPublic": false },
+    { "class": 101, "granteeId": 259, "grantorId": 1, "permission": "IMPERSONATE", "state": "G", "schemaName": null, "objectName": "sa", "objectType": "S", "columnName": null, "isBuiltinPublic": false },
+    { "class": 105, "granteeId": 2, "grantorId": 1, "permission": "CONNECT", "state": "G", "schemaName": null, "objectName": "TSQL Default TCP", "objectType": "EP", "columnName": null, "isBuiltinPublic": false },
+    { "class": 108, "granteeId": 259, "grantorId": 1, "permission": "ALTER", "state": "G", "schemaName": null, "objectName": null, "objectType": "AG", "columnName": null, "isBuiltinPublic": false }
+  ],
+  "databases": [
+    { "name": "Archivo", "state": "OFFLINE", "ownerSid": null },
+    { "name": "master", "state": "ONLINE", "ownerSid": "01" },
+    { "name": "Ventas']; --", "state": "ONLINE", "ownerSid": "01" }
+  ],
+  "databaseCatalogs": [
+    {
+      "database": "master",
+      "principals": [
+        { "principalId": 0, "name": "public", "type": "R", "sid": null, "isDisabled": false, "createDate": "2003-04-08T09:10:42.31", "modifyDate": "2003-04-08T09:10:42.31", "defaultDatabase": null, "defaultSchema": null, "authenticationType": 0, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null },
+        { "principalId": 1, "name": "dbo", "type": "S", "sid": "01", "isDisabled": false, "createDate": "2003-04-08T09:10:42.31", "modifyDate": "2003-04-08T09:10:42.31", "defaultDatabase": null, "defaultSchema": "dbo", "authenticationType": 1, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null }
+      ],
+      "roleMembers": [],
+      "permissions": [
+        { "class": 1, "granteeId": 0, "grantorId": 1, "permission": "EXECUTE", "state": "G", "schemaName": "sys", "objectName": "sp_helpdb", "objectType": "P", "columnName": null, "isBuiltinPublic": true },
+        { "class": 1, "granteeId": 0, "grantorId": 1, "permission": "SELECT", "state": "G", "schemaName": "sys", "objectName": "objects", "objectType": "V", "columnName": null, "isBuiltinPublic": true }
+      ],
+      "ownerships": []
+    },
+    {
+      "database": "Ventas']; --",
+      "principals": [
+        { "principalId": 0, "name": "public", "type": "R", "sid": null, "isDisabled": false, "createDate": "2003-04-08T09:10:42.31", "modifyDate": "2003-04-08T09:10:42.31", "defaultDatabase": null, "defaultSchema": null, "authenticationType": 0, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null },
+        { "principalId": 1, "name": "dbo", "type": "S", "sid": "01", "isDisabled": false, "createDate": "2025-03-01T03:00:00", "modifyDate": "2025-03-01T03:00:00", "defaultDatabase": null, "defaultSchema": "dbo", "authenticationType": 1, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null },
+        { "principalId": 2, "name": "guest", "type": "S", "sid": "00", "isDisabled": false, "createDate": "2003-04-08T09:10:42.31", "modifyDate": "2003-04-08T09:10:42.31", "defaultDatabase": null, "defaultSchema": "guest", "authenticationType": 0, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null },
+        { "principalId": 5, "name": "app_ventas", "type": "S", "sid": "AA01", "isDisabled": false, "createDate": "2025-03-01T03:05:00", "modifyDate": "2025-03-01T03:05:00", "defaultDatabase": null, "defaultSchema": "dbo", "authenticationType": 1, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null },
+        { "principalId": 6, "name": "antiguo_reportes", "type": "S", "sid": "BB99", "isDisabled": false, "createDate": "2021-06-10T07:00:00", "modifyDate": "2021-06-10T07:00:00", "defaultDatabase": null, "defaultSchema": "dbo", "authenticationType": 1, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null },
+        { "principalId": 7, "name": "sin\"login", "type": "S", "sid": "BB98", "isDisabled": false, "createDate": "2026-01-01T00:00:00", "modifyDate": "2026-01-01T00:00:00", "defaultDatabase": null, "defaultSchema": "dbo", "authenticationType": 0, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null },
+        { "principalId": 8, "name": "rol;lectura", "type": "R", "sid": "BB97", "isDisabled": false, "createDate": "2025-03-01T03:06:00", "modifyDate": "2025-03-01T03:06:00", "defaultDatabase": null, "defaultSchema": null, "authenticationType": 0, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null },
+        { "principalId": 9, "name": "app_role", "type": "A", "sid": "BB96", "isDisabled": false, "createDate": "2025-03-01T03:07:00", "modifyDate": "2025-03-01T03:07:00", "defaultDatabase": null, "defaultSchema": "dbo", "authenticationType": 0, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null },
+        { "principalId": 16384, "name": "db_owner", "type": "R", "sid": "BB95", "isDisabled": false, "createDate": "2003-04-08T09:10:42.31", "modifyDate": "2003-04-08T09:10:42.31", "defaultDatabase": null, "defaultSchema": null, "authenticationType": 0, "isPolicyChecked": null, "isExpirationChecked": null, "isExpired": null, "isLocked": null }
+      ],
+      "roleMembers": [
+        { "roleId": 16384, "memberId": 6 },
+        { "roleId": 8, "memberId": 5 },
+        { "roleId": 9, "memberId": 5 }
+      ],
+      "permissions": [
+        { "class": 0, "granteeId": 5, "grantorId": 1, "permission": "CONNECT", "state": "G", "schemaName": null, "objectName": null, "objectType": null, "columnName": null, "isBuiltinPublic": false },
+        { "class": 0, "granteeId": 6, "grantorId": 1, "permission": "CONNECT", "state": "G", "schemaName": null, "objectName": null, "objectType": null, "columnName": null, "isBuiltinPublic": false },
+        { "class": 1, "granteeId": 5, "grantorId": 1, "permission": "SELECT", "state": "G", "schemaName": "dbo", "objectName": "Facturas", "objectType": "U", "columnName": null, "isBuiltinPublic": false },
+        { "class": 1, "granteeId": 5, "grantorId": 1, "permission": "DELETE", "state": "G", "schemaName": "dbo", "objectName": "Facturas", "objectType": "U", "columnName": null, "isBuiltinPublic": false },
+        { "class": 1, "granteeId": 5, "grantorId": 1, "permission": "UPDATE", "state": "W", "schemaName": "dbo", "objectName": "Clientes", "objectType": "U", "columnName": null, "isBuiltinPublic": false },
+        { "class": 1, "granteeId": 5, "grantorId": 1, "permission": "SELECT", "state": "D", "schemaName": "dbo", "objectName": "Clientes", "objectType": "U", "columnName": "Email", "isBuiltinPublic": false },
+        { "class": 3, "granteeId": 8, "grantorId": 1, "permission": "SELECT", "state": "G", "schemaName": "ventas;esquema", "objectName": null, "objectType": null, "columnName": null, "isBuiltinPublic": false },
+        { "class": 1, "granteeId": 8, "grantorId": 1, "permission": "EXECUTE", "state": "G", "schemaName": "dbo", "objectName": "usp_Resumen'Ventas", "objectType": "P", "columnName": null, "isBuiltinPublic": false },
+        { "class": 4, "granteeId": 6, "grantorId": 1, "permission": "IMPERSONATE", "state": "G", "schemaName": null, "objectName": "app_ventas", "objectType": "S", "columnName": null, "isBuiltinPublic": false },
+        { "class": 6, "granteeId": 0, "grantorId": 1, "permission": "REFERENCES", "state": "G", "schemaName": "dbo", "objectName": "TipoMoneda", "objectType": "TYPE", "columnName": null, "isBuiltinPublic": false },
+        { "class": 1, "granteeId": 0, "grantorId": 1, "permission": "SELECT", "state": "G", "schemaName": "sys", "objectName": "tables", "objectType": "V", "columnName": null, "isBuiltinPublic": true },
+        { "class": 1, "granteeId": 0, "grantorId": 1, "permission": "SELECT", "state": "D", "schemaName": "sys", "objectName": "sql_logins", "objectType": "V", "columnName": null, "isBuiltinPublic": false },
+        { "class": 29, "granteeId": 5, "grantorId": 1, "permission": "CONTROL", "state": "G", "schemaName": null, "objectName": null, "objectType": null, "columnName": null, "isBuiltinPublic": false }
+      ],
+      "ownerships": [
+        { "kind": "schema", "schemaName": "ventas;esquema", "objectName": null, "objectType": null, "ownerId": 5 },
+        { "kind": "object", "schemaName": "dbo", "objectName": "Tabla<script>", "objectType": "U", "ownerId": 6 }
+      ]
+    }
+  ],
+  "unavailable": [
+    { "section": "database:Archivo", "reason": "offline" }
+  ]
+}

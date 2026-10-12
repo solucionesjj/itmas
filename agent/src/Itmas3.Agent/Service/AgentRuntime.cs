@@ -8,7 +8,8 @@ public static class AgentRuntime
     public const string SystemdUnitName = "itmas-agent";
     public const string LaunchdLabel = "cloud.sacservices.itmas.agent";
     public const string EventLogSource = "ITMas Agent";
-    public const string TermsVersion = "1";
+    /// <summary>Terms shown and required by new installations (SPEC-0005 Anexo A); existing ones keep v1 (P-17b).</summary>
+    public const string TermsVersion = "2";
 
     public static string Version { get; } =
         typeof(AgentRuntime).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";

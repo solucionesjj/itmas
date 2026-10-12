@@ -1,0 +1,154 @@
+<nav class="breadcrumb" aria-label="Ruta">
+  <a routerLink="/sql-audit">Auditoría SQL</a>
+  @if (instance(); as instance) {
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{{ instance.alias }}</span>
+  }
+</nav>
+
+<div class="page-header">
+  <a mat-icon-button routerLink="/sql-audit" aria-label="Volver a las instancias">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <h1 class="page-title">{{ instance()?.alias ?? 'Instancia SQL' }}</h1>
+</div>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Cargando instancia" />
+}
+
+@if (notFound()) {
+  <p class="empty">La instancia no existe o ya no se conserva.</p>
+} @else if (failed()) {
+  <div class="error-state" role="alert">
+    <app-sql-status
+      [status]="{ label: 'No se pudo cargar la instancia.', icon: 'error', tone: 'error' }"
+    />
+    <button mat-stroked-button (click)="retry()">
+      <mat-icon>refresh</mat-icon>
+      Reintentar
+    </button>
+  </div>
+} @else if (instance(); as instance) {
+  @if (notices().length > 0 || instance.device.status === 'deleted') {
+    <div class="notices">
+      @for (notice of notices(); track $index) {
+        <p class="notice" role="note"><app-sql-status [status]="notice" /></p>
+      }
+      @if (instance.device.status === 'deleted') {
+        <p class="notice" role="note">
+          <app-sql-status
+            [status]="{
+              label:
+                'El equipo que auditaba esta instancia fue eliminado: no envía datos nuevos y los existentes se conservan durante la retención.',
+              icon: deletedDeviceStatus.icon,
+              tone: deletedDeviceStatus.tone,
+            }"
+          />
+        </p>
+      }
+    </div>
+  }
+
+  <mat-card appearance="outlined">
+    <mat-card-content>
+      <dl class="facts">
+        <dt>Motor</dt>
+        <dd>
+          {{ engineLabel(instance.engine, instance.version) }}
+          @if (instance.edition) {
+            <span class="secondary">{{ instance.edition }}</span>
+          }
+        </dd>
+        <dt>Destino</dt>
+        <dd>{{ destination(instance) }}</dd>
+        <dt>Protección del canal</dt>
+        <dd>TLS · {{ label('tls', instance.tls) }}</dd>
+        <dt>Modo de autenticación</dt>
+        <dd>{{ label('authenticationMode', instance.authenticationMode) }}</dd>
+        <dt>Equipo</dt>
+        <dd>
+          {{ instance.device.name }}
+          @if (instance.device.status === 'deleted') {
+            <span class="secondary">Equipo eliminado</span>
+          }
+        </dd>
+        <dt>Última recolección</dt>
+        <dd>
+          {{ instance.lastCollectedAt ? (instance.lastCollectedAt | date: 'medium') : 'Sin datos' }}
+        </dd>
+        <dt>Cuentas</dt>
+        <dd>{{ instance.accountCount }}</dd>
+        <dt>Elementos pendientes</dt>
+        <dd>
+          {{ instance.pendingCount }}
+          @if (instance.pendingCriticalCount > 0) {
+            ·
+            <app-sql-status
+              [status]="{
+                label: instance.pendingCriticalCount + ' críticos',
+                icon: 'error',
+                tone: 'error',
+              }"
+            />
+          }
+        </dd>
+        @if (instance.omittedBuiltinPermissions > 0) {
+          <dt>Permisos predeterminados omitidos</dt>
+          <dd>
+            {{ instance.omittedBuiltinPermissions }}
+            <span class="secondary"
+              >Permisos de los objetos del propio motor concedidos a public, que no se
+              auditan.</span
+            >
+          </dd>
+        }
+      </dl>
+    </mat-card-content>
+  </mat-card>
+
+  @if (instance.databases.length > 0) {
+    <mat-expansion-panel class="databases">
+      <mat-expansion-panel-header>
+        <mat-panel-title>Bases de datos ({{ instance.databases.length }})</mat-panel-title>
+      </mat-expansion-panel-header>
+      <ng-template matExpansionPanelContent>
+        <dl class="facts">
+          @for (database of instance.databases; track database.name) {
+            <dt>{{ database.name }}</dt>
+            <dd>
+              {{ label('databaseState', database.state) }}
+              @if (database.owner) {
+                <span class="secondary">Propietario: {{ database.owner }}</span>
+              }
+            </dd>
+          }
+        </dl>
+      </ng-template>
+    </mat-expansion-panel>
+  }
+
+  <mat-tab-group
+    class="tabs"
+    [selectedIndex]="selectedTab()"
+    (selectedIndexChange)="onTabChange($event)"
+    mat-stretch-tabs="false"
+  >
+    <mat-tab label="Cuentas">
+      <ng-template matTabContent>
+        <app-instance-accounts-tab
+          [instance]="instance"
+          (pendingChange)="onPendingChange($event)"
+        />
+      </ng-template>
+    </mat-tab>
+    <mat-tab label="Permisos">
+      <ng-template matTabContent>
+        <app-instance-permissions-tab
+          [instance]="instance"
+          (pendingChange)="onPendingChange($event)"
+        />
+      </ng-template>
+    </mat-tab>
+  </mat-tab-group>
+}

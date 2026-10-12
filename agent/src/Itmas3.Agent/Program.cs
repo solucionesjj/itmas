@@ -4,15 +4,19 @@ using Itmas3.Agent.Collectors;
 using Itmas3.Agent.Collectors.Common;
 using Itmas3.Agent.Collectors.Model;
 using Itmas3.Agent.Collectors.Processes;
+using Itmas3.Agent.Collectors.SqlAudit;
+using Itmas3.Agent.Collectors.SqlAudit.SqlServer;
 using Itmas3.Agent.Configuration;
 using Itmas3.Agent.Platform;
 using Itmas3.Agent.Service;
+using Itmas3.Agent.SqlAudit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-// ITMas inventory agent (SPEC-0002, ADR-0010). Read-only: collects and sends; never accepts commands from the server.
+// ITMas inventory agent (SPEC-0002, ADR-0010) with the SQL audit module (SPEC-0005, ADR-0014). Read-only: collects and
+// sends; never accepts commands from the server. Engine connections are configured only here, on the device.
 var command = args.Length > 0 ? args[0].ToLowerInvariant() : "help";
 var options = args.Skip(1).ToArray();
 using var cancellation = new CancellationTokenSource();
@@ -39,6 +43,24 @@ switch (command)
 
     case "status":
         return await new StatusCommand(console, ServiceManagers.ForCurrentPlatform(processes), store).RunAsync(cancellation.Token);
+
+    case "sql":
+        if (!Elevation.IsElevated())
+        {
+            console.WriteError(OperatingSystem.IsWindows()
+                ? "Ejecute este comando en una consola abierta como administrador."
+                : "Ejecute este comando con sudo.");
+            return 1;
+        }
+
+        return await new SqlCommand(
+                console,
+                new SqlConnectionStore(paths),
+                SqlEngineFactory.Create,
+                SqlServerCertificateFetcher.FetchAsync,
+                Environment.GetEnvironmentVariable,
+                TimeProvider.System)
+            .RunAsync(options, cancellation.Token);
 
     case "install":
     case "uninstall":
@@ -91,9 +113,10 @@ switch (command)
               itmas-agent uninstall    Detiene y elimina el servicio y los archivos del agente.
               itmas-agent status       Estado del servicio y del último envío.
               itmas-agent collect      Muestra el inventario de este equipo sin enviarlo.
+              itmas-agent sql …        Conexiones de la auditoría SQL: add, update, list, test y remove ('itmas-agent sql' para la ayuda).
               itmas-agent version      Versión del agente.
 
-            install y uninstall requieren privilegios de administrador (sudo en Linux y macOS).
+            install, uninstall y sql requieren privilegios de administrador (sudo en Linux y macOS).
             """);
         return command == "help" ? 0 : 2;
 }
@@ -176,6 +199,10 @@ async Task RunServiceAsync(string[] arguments)
     builder.Services.AddSingleton<IPublicNetworkSource, PublicNetworkSource>();
     builder.Services.AddSingleton<InventoryCollector>();
     builder.Services.AddSingleton<InventoryCycle>();
+    builder.Services.AddSingleton<ISqlConnectionStore>(new SqlConnectionStore(paths));
+    builder.Services.AddSingleton<Func<string, ISqlEngine>>(SqlEngineFactory.Create);
+    builder.Services.AddSingleton<ISqlAuditCollector, SqlAuditCollector>();
+    builder.Services.AddSingleton<SqlAuditCycle>();
     builder.Services.AddHostedService<AgentWorker>();
 
     await builder.Build().RunAsync();

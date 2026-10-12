@@ -18,8 +18,10 @@ solo la arquitectura, la seguridad, la infraestructura y las reglas sobre las qu
                            migrator (one-shot, EF Core bundle) ──▶ postgres
                            /downloads/agent/  paquetes del agente (volumen de solo lectura)
 
- Equipos (Windows/Linux/macOS) ── itmas-agent (servicio) ──HTTPS──▶ /api/v1/device-enrollments, /api/v1/inventory-reports
-                                                          └─HTTPS──▶ ipinfo.io (IP pública y ubicación)
+ Equipos (Windows/Linux/macOS) ── itmas-agent (servicio) ──HTTPS──▶ /api/v1/device-enrollments, /api/v1/inventory-reports,
+                                                          │          /api/v1/sql-audit-snapshots
+                                                          ├─HTTPS──▶ ipinfo.io (IP pública y ubicación)
+                                                          └─TLS────▶ motores SQL configurados en el equipo (solo lectura)
 ```
 
 - **Un único origen público**: nginx sirve la SPA y hace de proxy de la API. La API y la base de datos
@@ -34,6 +36,10 @@ solo la arquitectura, la seguridad, la infraestructura y las reglas sobre las qu
 - **Inventario de equipos** ([SPEC-0003](specs/features/SPEC-0003-device-registry-and-inventory-viewer.md)): registro
   de estaciones de trabajo y servidores con su propietario, código de enrolamiento por equipo (ADR-0012), listado
   resumido, historial de registros e informe por secciones del último inventario.
+- **Auditoría SQL** ([SPEC-0005](specs/features/SPEC-0005-sql-engine-access-audit.md)): módulo opcional del agente que
+  lee cada día, en solo lectura y por TLS, las cuentas, roles y permisos de motores SQL Server, PostgreSQL, MySQL y
+  MariaDB configurados en el equipo (ADR-0014, ADR-0015). ITMas los muestra con su nivel de riesgo, su registro de
+  cambios y una casilla "Válido" por cuenta, rol y permiso.
 
 Detalle completo en [ARCHITECTURE.md](ARCHITECTURE.md) y [SECURITY.md](SECURITY.md).
 
@@ -110,6 +116,8 @@ Toda la configuración sensible llega por variables de entorno (`.env` → Docke
 | `AUTHZ_ALLOW_GUEST_USERS` | Permite el acceso a invitados B2B del tenant (`false` por defecto). | No |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | Endpoint OTLP opcional para trazas, métricas y logs. | No |
 | `INVENTORY_HISTORY_RETENTION_DAYS` | Días de histórico de inventarios por equipo (90 por defecto; el último se conserva siempre). | No |
+| `SQL_AUDIT_CHANGE_LOG_RETENTION_DAYS` | Días que se conservan el registro de cambios de la auditoría SQL, los recibos de instantáneas y los elementos eliminados de los motores (365 por defecto). Las validaciones quedan en la auditoría sin límite. | No |
+| `SQL_AUDIT_SNAPSHOTS_PER_HOUR` | Instantáneas de auditoría SQL aceptadas por equipo y hora (120 por defecto: hasta 50 conexiones y sus reintentos). | No |
 | `AGENT_DOWNLOADS_DIR` | Carpeta con los paquetes del agente que nginx sirve en `/downloads/agent/` (`./agent/dist`). | No |
 
 El host y el puerto de PostgreSQL son internos de Docker (`postgres:5432`); la API los recibe como
@@ -158,6 +166,17 @@ El código sirve una sola vez. Para reinstalar el agente, usa **Regenerar códig
 equipo invalida su código y su API key: el agente deja de poder enviar inventario. Los permisos del inventario
 (`devices.read`, `devices.create`, `devices.update`, `devices.delete`, `devices.reports.read`) se conceden con políticas.
 
+### Auditoría SQL (opcional)
+
+Tras instalar el agente, el administrador del equipo puede añadir motores SQL con `itmas-agent sql add` (y gestionarlos
+con `sql list`, `sql test`, `sql update` y `sql remove`). Antes, el DBA crea en cada motor una cuenta de solo lectura
+para el agente y activa TLS. Guías: manual de uso, procesos *Preparar un motor SQL para la auditoría* y *Configurar las
+conexiones SQL del agente*, y [agent/README.md](agent/README.md). Los resultados se ven en **Auditoría SQL →
+Instancias** con los permisos `sql-audit.read` y `sql-audit.accesses.validate` (para validar).
+
+Las instalaciones nuevas aceptan la versión 2 de los términos del agente; la API acepta las versiones 1 y 2, así que los
+equipos ya enrolados no tienen que reinstalarse.
+
 Desde SPEC-0003 ya no existe un código de enrolamiento general: si tu `.env` conserva `INVENTORY_ENROLLMENT_CODE`, puedes
 borrar esa línea (la API ya no la lee). Los equipos enrolados antes siguen funcionando: la migración los incorpora
 al inventario como equipos activos.
@@ -167,7 +186,7 @@ al inventario como equipos activos.
 El manual para las personas usuarias está en **`/manual`** (por ejemplo, `http://localhost:8088/manual`). Es público:
 no hace falta iniciar sesión. Se llega también desde la página de inicio de sesión, desde el menú "Ayuda → Manual de
 uso" y desde el botón de ayuda de la barra superior. Describe los procesos del sistema (alta de usuarios, asignación
-de privilegios, registro de equipos, instalación del agente, consulta del inventario…), con el permiso que necesita
+de privilegios, registro de equipos, instalación del agente, consulta del inventario, auditoría de accesos SQL…), con el permiso que necesita
 cada uno.
 
 Su contenido está en [`frontend/public/manual/`](frontend/public/manual/) y se actualiza en el mismo cambio que cada

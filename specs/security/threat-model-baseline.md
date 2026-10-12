@@ -1,7 +1,8 @@
 # Modelo de amenazas — línea base de la fundación
 
 **Alcance:** navegador ↔ nginx ↔ API ↔ PostgreSQL, y API ↔ Microsoft Entra ID; módulo de autorización (SPEC-0001);
-agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002); registro y consulta del inventario (SPEC-0003); manual de uso público (SPEC-0004).
+agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002); registro y consulta del inventario (SPEC-0003); manual de uso público (SPEC-0004); agente ↔ motores SQL configurados y
+auditoría de accesos SQL (SPEC-0005).
 
 ## Activos
 
@@ -16,6 +17,8 @@ agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002); regi
 | API keys de dispositivos | Equipos (0600 / DPAPI); BD solo SHA-256 | Única por equipo, invalidada al reenrolar o al eliminar el equipo |
 | Manual de uso | `/manual/` (estáticos públicos de la SPA) | Sin contenido confidencial (constitución §10.4); revisión de `security`; HTML saneado y CSP |
 | Paquetes del agente | `/downloads/agent/` (volumen de solo lectura) | HTTPS + `SHA256SUMS` (sin firma de código) |
+| Credenciales de los motores SQL auditados | Equipo del agente (DPAPI de máquina / `0600` de `root`) | Una cuenta de solo lectura por motor; nunca en la API, logs ni argumentos (ADR-0014) |
+| Cuentas, roles y permisos de los motores SQL | `app.sql_accounts`, `app.sql_access_items` | Solo vía API con `sql-audit.read`; sin hashes ni contraseñas; nombres nunca en logs; registro de cambios 1 año |
 | Inventario (nombres de cuenta, IPs, ubicación) y correo del propietario | `app.inventory_reports`, `app.devices` | Acceso solo vía API con `devices.reports.read` / `devices.read`; retención de 90 días |
 
 ## STRIDE
@@ -43,6 +46,10 @@ agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002); regi
 | **I**nformation disclosure | Datos personales del inventario | Lectura con permisos separados (`devices.read`, `devices.reports.read`); nada en logs; el código del equipo solo en la respuesta que lo emite. |
 | | XSS con datos declarados por un equipo | La SPA solo interpola texto (sin `innerHTML`); CSP sin `unsafe-inline` en scripts. |
 | **D**enial of service | Avalancha de inventarios | 12/h por credencial, cuerpo < 1 MB, límites por colección, envío con variación aleatoria de ±30 min. |
+| **I**nformation disclosure | Mapa de cuentas privilegiadas de los motores SQL | Permiso propio `sql-audit.read`; sin hashes ni contraseñas; nombres solo como texto en la SPA y nunca en logs (SPEC-0005 §14.1). |
+| **S**/**T**/**I** | Suplantación del motor o captura de la credencial del agente en conexiones `unverified` | TLS siempre; `verify` por defecto, `pinned` propuesto; `unverified` solo expreso, por conexión y señalado en ITMas; cuenta de solo lectura (ADR-0015). |
+| **E**levation of privilege | Inyección SQL en el agente con nombres devueltos por el motor | Consultas de catálogo de texto fijo, una conexión por base de datos con el *builder*, sin `USE` ni concatenación (§13.6). |
+| **D**enial of service | Instantáneas SQL grandes o en ráfaga procesadas en la petición | 16 MB solo en esa ruta, límites por colección, 120/h por equipo, procesamiento por lotes con métrica de duración y criterio de cola (SPEC-0005 RNF-3). |
 | **E**levation of privilege | Agente con privilegios elevados usado como vector | Solo lectura, sin puertos, sin órdenes remotas, comandos con ruta absoluta sin *shell*, *sandbox* de systemd. |
 | | Usuario autenticado accede a recursos | Default deny + permisos solo vía políticas asignadas explícitamente (SPEC-0001). |
 | | Administrador delegado se auto-otorga permisos | Salvaguardas RN-9 a RN-12, Root no otorgable, intentos auditados (`denied`). |
@@ -65,3 +72,6 @@ agente de inventario ↔ nginx ↔ API, y agente ↔ ipinfo.io (SPEC-0002); regi
 | Nombre del colaborador deducible probando correos | La coincidencia por correo es la trazabilidad pedida (SPEC-0003 RF-4b) | Requiere `devices.create`/`devices.update` y queda auditado |
 | Binarios del agente sin firma de código | Decisión del solicitante (P-11) | `SHA256SUMS`; reevaluar firma si la flota crece |
 | Datos del inventario declarados por el equipo | Inherente a un agente | IP de conexión registrada por el servidor como contraste |
+| Conexiones a motores SQL con certificado sin verificar (`unverified`) | Decisión del solicitante (SPEC-0005 P-26, ADR-0015) | Aviso en ITMas; revisión periódica para pasar a `verify` o `pinned` |
+| En MariaDB, la cuenta mínima del agente puede leer hashes de `mysql.global_priv` | La tabla no admite permisos por columna (ADR-0014) | El agente nunca los consulta; la credencial se protege como sensible |
+| Accesos SQL declarados por el equipo | Inherente a un agente | Instancias ligadas al equipo autenticado; revisión periódica por personas |

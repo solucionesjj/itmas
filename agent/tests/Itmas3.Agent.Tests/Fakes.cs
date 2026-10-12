@@ -4,6 +4,7 @@ using Itmas3.Agent.Collectors;
 using Itmas3.Agent.Collectors.Common;
 using Itmas3.Agent.Collectors.Model;
 using Itmas3.Agent.Collectors.Processes;
+using Itmas3.Agent.Collectors.SqlAudit.Model;
 using Itmas3.Agent.Configuration;
 using Itmas3.Agent.Platform;
 
@@ -153,6 +154,18 @@ internal sealed class RecordingApiClient : IItmasApiClient
     {
         Submitted.Add(report);
         return Task.FromResult((SubmitResult, SubmitResult.ToString()));
+    }
+
+    /// <summary>Outcomes of the next SQL audit submissions, in order; Accepted once empty.</summary>
+    public Queue<SubmitOutcome> SqlOutcomes { get; } = new();
+
+    public List<SqlAuditSnapshot> SqlSubmitted { get; } = [];
+
+    public Task<(SubmitOutcome Outcome, string Detail)> SubmitSqlAuditAsync(Uri serverUrl, string apiKey, SqlAuditSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        SqlSubmitted.Add(snapshot);
+        var outcome = SqlOutcomes.TryDequeue(out var next) ? next : SubmitOutcome.Accepted;
+        return Task.FromResult((outcome, outcome == SubmitOutcome.Accepted ? "202" : "503"));
     }
 }
 

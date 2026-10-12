@@ -60,7 +60,8 @@ public sealed class EndpointAuthorizationConventionTests
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        Assert.Equal(["DeviceEnrollmentsController", "InventoryReportsController"], deviceActions);
+        // SPEC-0002 (enrollment, inventories) and SPEC-0005 (SQL audit snapshots).
+        Assert.Equal(["DeviceEnrollmentsController", "InventoryReportsController", "SqlAuditSnapshotsController"], deviceActions);
     }
 
     private static IEnumerable<MethodInfo> ControllerActions() =>

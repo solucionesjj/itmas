@@ -36,7 +36,7 @@ internal static class ObservabilitySetup
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
-                .AddMeter("System.Runtime", "Npgsql"))
+                .AddMeter("System.Runtime", "Npgsql", Application.SqlAudit.SubmitSnapshot.SqlAuditMetrics.MeterName))
             .WithLogging()
             .UseOtlpExporter();
 

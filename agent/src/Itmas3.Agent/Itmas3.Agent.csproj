@@ -5,7 +5,10 @@
     <RootNamespace>Itmas3.Agent</RootNamespace>
     <AssemblyName>itmas-agent</AssemblyName>
     <UserSecretsId />
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Not invariant: Microsoft.Data.SqlClient refuses to open connections in globalization-invariant mode (it maps
+         collations to code pages through cultures). On Linux this needs the distribution's ICU (libicu), present in the
+         standard Ubuntu and Debian installations (SPEC-0005). -->
+    <InvariantGlobalization>false</InvariantGlobalization>
     <!-- Published self-contained (dotnet publish with a runtime identifier and self-contained), single file, one per RID: scripts/build-agent.sh. -->
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
@@ -23,10 +26,15 @@
     <PackageReference Include="System.Security.Cryptography.ProtectedData" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="..\..\terms\terms-v1.es.txt" LogicalName="terms-v1.es.txt" WithCulture="false" />
+    <EmbeddedResource Include="..\..\terms\terms-v2.es.txt" LogicalName="terms-v2.es.txt" WithCulture="false" />
     <EmbeddedResource Include="..\..\packaging\linux\itmas-agent.service" LogicalName="itmas-agent.service" />
     <EmbeddedResource Include="..\..\packaging\macos\cloud.sacservices.itmas.agent.plist" LogicalName="cloud.sacservices.itmas.agent.plist" />
     <EmbeddedResource Include="..\..\packaging\macos\itmas-agent.newsyslog.conf" LogicalName="itmas-agent.newsyslog.conf" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- SQL Server: managed TLS/TDS networking on every OS, so pinning and validation behave exactly as tested and no native
+         SNI library has to ship next to the single-file executable (SPEC-0005, ADR-0014 §7). -->
+    <RuntimeHostConfigurationOption Include="Switch.Microsoft.Data.SqlClient.UseManagedNetworkingOnWindows" Value="true" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Itmas3.Agent.Tests" />

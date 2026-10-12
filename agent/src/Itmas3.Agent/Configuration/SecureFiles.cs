@@ -8,7 +8,8 @@ namespace Itmas3.Agent.Configuration;
 
 /// <summary>
 /// Files readable only by administrators (ADR-0010 §6): 0700/0600 on Linux and macOS; ACL restricted to SYSTEM and
-/// Administrators on Windows, where the API key is additionally encrypted with DPAPI (machine scope).
+/// Administrators on Windows, where secrets (the API key and the engine passwords of SPEC-0005) are additionally
+/// encrypted with DPAPI (machine scope).
 /// </summary>
 public static class SecureFiles
 {
@@ -35,7 +36,8 @@ public static class SecureFiles
         WriteBytes(path, OperatingSystem.IsWindows() ? ProtectedData.Protect(bytes, DpapiEntropy, DataProtectionScope.LocalMachine) : bytes);
     }
 
-    public static string? ReadSecret(string path)
+    /// <param name="trim">False for engine passwords, which may legitimately start or end with spaces.</param>
+    public static string? ReadSecret(string path, bool trim = true)
     {
         if (!File.Exists(path))
         {
@@ -43,8 +45,12 @@ public static class SecureFiles
         }
 
         var bytes = File.ReadAllBytes(path);
-        return Encoding.UTF8.GetString(OperatingSystem.IsWindows() ? ProtectedData.Unprotect(bytes, DpapiEntropy, DataProtectionScope.LocalMachine) : bytes).Trim();
+        var secret = Encoding.UTF8.GetString(OperatingSystem.IsWindows() ? ProtectedData.Unprotect(bytes, DpapiEntropy, DataProtectionScope.LocalMachine) : bytes);
+        return trim ? secret.Trim() : secret;
     }
+
+    /// <summary>Non-secret data (e.g. a pinned certificate) with the same owner-only protection.</summary>
+    public static void WriteData(string path, byte[] content) => WriteBytes(path, content);
 
     private static void WriteBytes(string path, byte[] content)
     {

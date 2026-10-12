@@ -49,4 +49,10 @@ describe('Shell navigation', () => {
 
     expect(await labels()).toEqual(['Inicio', 'Equipos', 'Manual de uso']);
   });
+
+  it('shows the SQL audit instances to users who can read them, after the inventory', async () => {
+    permissions.set(['sql-audit.read', 'devices.read']);
+
+    expect(await labels()).toEqual(['Inicio', 'Equipos', 'Instancias', 'Manual de uso']);
+  });
 });

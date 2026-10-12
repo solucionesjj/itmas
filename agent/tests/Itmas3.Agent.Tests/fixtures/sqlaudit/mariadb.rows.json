@@ -1,0 +1,26 @@
+{
+  "instance": { "version": "12.3.3-MariaDB-ubu2404", "edition": "mariadb.org binary distribution" },
+  "databases": [ "information_schema", "mysql", "performance_schema", "sys", "ventas'db" ],
+  "accounts": [
+    { "user": "root", "host": "localhost", "globalPrivileges": [], "access": 1099511627775, "isRole": false, "locked": null, "passwordExpired": false, "passwordLastChanged": "2026-10-01T10:00:00", "passwordLifetimeDays": null },
+    { "user": "app", "host": "%", "globalPrivileges": [], "access": 4295229440, "isRole": false, "locked": true, "passwordExpired": false, "passwordLastChanged": "2026-09-01T00:00:00", "passwordLifetimeDays": 30 },
+    { "user": "rol<b>", "host": "", "globalPrivileges": [], "access": 0, "isRole": true, "locked": null, "passwordExpired": null, "passwordLastChanged": null, "passwordLifetimeDays": null },
+    { "user": "caducada", "host": "%", "globalPrivileges": [], "access": 0, "isRole": false, "locked": null, "passwordExpired": true, "passwordLastChanged": null, "passwordLifetimeDays": null }
+  ],
+  "roleEdges": [
+    { "memberUser": "app", "memberHost": "%", "roleUser": "rol<b>", "roleHost": "" },
+    { "memberUser": "root", "memberHost": "localhost", "roleUser": "rol<b>", "roleHost": "" }
+  ],
+  "dynamicGrants": [],
+  "databaseGrants": [
+    { "user": "rol<b>", "host": "", "database": "ventas'db", "privileges": [ "Select_priv", "Insert_priv", "Update_priv", "Delete_priv", "Create_priv", "Drop_priv", "References_priv", "Index_priv", "Alter_priv", "Create_tmp_table_priv", "Lock_tables_priv", "Create_view_priv", "Show_view_priv", "Create_routine_priv", "Alter_routine_priv", "Execute_priv", "Event_priv", "Trigger_priv", "Delete_history_priv", "Show_create_routine_priv" ] }
+  ],
+  "tableGrants": [
+    { "user": "app", "host": "%", "database": "ventas'db", "table": "historial", "grantor": "root@localhost", "privileges": "Select,Delete versioning rows" },
+    { "user": "caducada", "host": "%", "database": "ventas'db", "table": "historial", "grantor": "app@10.1.2.3", "privileges": "Select" }
+  ],
+  "columnGrants": [],
+  "routineGrants": [
+    { "user": "app", "host": "%", "database": "ventas'db", "routine": "pkg", "routineType": "PACKAGE BODY", "grantor": "root@localhost", "privileges": "Execute,Show Create Routine" }
+  ]
+}

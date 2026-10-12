@@ -2,7 +2,7 @@
 id: SPEC-0005
 title: Auditoría de accesos a motores SQL
 type: feature
-status: Approved
+status: Implemented
 owner: jmartinez
 created: 2026-10-10
 approved-by: jmartinez (2026-10-11)
@@ -17,7 +17,7 @@ related: [SPEC-0001, SPEC-0002, SPEC-0003, SPEC-0004, ADR-0009, ADR-0010, ADR-00
 > No quedan preguntas abiertas.
 > Las enmiendas que la hacen posible ya están aplicadas: constitución 1.3.0, §5 y §13.6 ([ADR-0014](../architecture/adr-0014-database-engine-audit-agent.md)),
 > y 2.0.0, certificados no válidos en §13.6 ([ADR-0015](../architecture/adr-0015-database-connections-without-verified-tls.md)).
-> Aprobada el 2026-10-11.
+> Aprobada el 2026-10-11. Implementada el 2026-10-12 (trazabilidad y validaciones pendientes en §18).
 
 ## 1. Objetivo
 
@@ -392,46 +392,59 @@ El catálogo vive en el código del servidor, versionado y probado. No se edita 
 - Lo que no figura en el catálogo es **Alto** (RN-9).
 - Una cuenta deshabilitada conserva su riesgo y muestra "Deshabilitada".
 
+**Concreción en la implementación** (`Itmas3.Domain/SqlAudit/SqlRiskCatalog.cs`, versión 1 del catálogo):
+
+- La **cuenta en sí** es General, salvo `sa` (SQL Server), `root` (MySQL y MariaDB) y las cuentas de tipo rol que figuran
+  en el catálogo (p. ej. el rol `sysadmin` es Crítico). Su riesgo efectivo lo suben sus roles y permisos, que son
+  elementos propios: aplicar RN-9 a la cuenta en sí habría marcado como Alto toda cuenta, sin aportar información.
+- La pertenencia a un rol que no figura en el catálogo es Alto (RN-9); el riesgo heredado (P-24) es el riesgo efectivo
+  de cada rol del que la cuenta es miembro, directa o indirectamente (con ciclos tolerados).
+- `CONNECT SQL` y `VIEW ANY DATABASE` de SQL Server se tratan como `CONNECT` (General): se conceden a todo *login* por
+  defecto y como Alto solo generarían ruido.
+- `GRANT WITH GRANT OPTION` sube a Alto cualquier permiso General, en todos los motores.
+- Al cambiar una regla se sube la versión del catálogo: al arrancar, la API recalcula el riesgo guardado de las
+  instancias evaluadas con una versión anterior (RF-15).
+
 ## 9. Criterios de aceptación
 
-- [ ] **CA-1** Con varias conexiones configuradas (al menos una local y una remota), el agente envía cada día una
+- [x] **CA-1** Con varias conexiones configuradas (al menos una local y una remota), el agente envía cada día una
   instantánea por conexión con las cuentas, roles y permisos de todos los niveles de RF-4.
-- [ ] **CA-2** Un agente sin conexiones no abre conexiones a ningún motor y su comportamiento no cambia.
-- [ ] **CA-3** `sql add` y `sql update` prueban la conexión antes de guardar. La contraseña no se muestra al teclearla,
+- [x] **CA-2** Un agente sin conexiones no abre conexiones a ningún motor y su comportamiento no cambia.
+- [x] **CA-3** `sql add` y `sql update` prueban la conexión antes de guardar. La contraseña no se muestra al teclearla,
   no se acepta como argumento, se guarda protegida por el SO, no aparece en logs ni en `sql list` y no se envía a la API.
-- [ ] **CA-4** En modo `verify`, un motor con un certificado no confiable se rechaza; en `pinned` se acepta solo el
+- [x] **CA-4** En modo `verify`, un motor con un certificado no confiable se rechaza; en `pinned` se acepta solo el
   certificado fijado; `unverified` solo se activa con la confirmación expresa del administrador, nunca de forma
   automática, y la interfaz señala esas instancias con un aviso. Un motor sin TLS se rechaza en todos los modos.
-- [ ] **CA-5** La instantánea no contiene hashes, contraseñas ni datos de tablas de usuario. Omite los permisos
+- [x] **CA-5** La instantánea no contiene hashes, contraseñas ni datos de tablas de usuario. Omite los permisos
   predeterminados de los objetos del motor e informa cuántos omitió (RF-5).
-- [ ] **CA-6** Una conexión inaccesible o una base de datos sin permiso se informan como no disponibles con su motivo;
+- [x] **CA-6** Una conexión inaccesible o una base de datos sin permiso se informan como no disponibles con su motivo;
   el resto se envía, y sus elementos no se marcan como eliminados.
-- [ ] **CA-7** Las pruebas del agente con motores en contenedor (SQL Server 2019, 2022 y 2025, PostgreSQL 18, MySQL 9
+- [x] **CA-7** Las pruebas del agente con motores en contenedor (SQL Server 2019, 2022 y 2025, PostgreSQL 18, MySQL 9
   LTS y MariaDB 12 LTS) obtienen los datos de RF-4 con la cuenta de mínimo privilegio de §10.3.
-- [ ] **CA-8** La API procesa una instantánea válida y responde `202`. Reenviar el mismo `submissionId` no la procesa
+- [x] **CA-8** La API procesa una instantánea válida y responde `202`. Reenviar el mismo `submissionId` no la procesa
   otra vez, y una instantánea más antigua que la última no cambia el estado actual.
-- [ ] **CA-9** Tras dos instantáneas consecutivas, los elementos añadidos aparecen como pendientes, los quitados como
+- [x] **CA-9** Tras dos instantáneas consecutivas, los elementos añadidos aparecen como pendientes, los quitados como
   eliminados y el registro de cambios lo refleja con su fecha.
-- [ ] **CA-10** Cada elemento muestra el nivel de riesgo del catálogo (§8.6). Una cuenta hereda el riesgo de sus roles,
+- [x] **CA-10** Cada elemento muestra el nivel de riesgo del catálogo (§8.6). Una cuenta hereda el riesgo de sus roles,
   y un permiso desconocido es Alto.
-- [ ] **CA-11** Un clic marca como válido una cuenta, un rol o un permiso y otro clic lo desmarca, sin diálogos. El
+- [x] **CA-11** Un clic marca como válido una cuenta, un rol o un permiso y otro clic lo desmarca, sin diálogos. El
   estado persiste al recargar y cada cambio queda auditado con el usuario y la fecha.
-- [ ] **CA-12** Si cambia un atributo de una cuenta validada, pasa a "Cambió desde la validación". Validarla con una
+- [x] **CA-12** Si cambia un atributo de una cuenta validada, pasa a "Cambió desde la validación". Validarla con una
   huella desactualizada devuelve `409`, y validar un elemento eliminado, `422`.
-- [ ] **CA-13** Los listados de instancias, cuentas y permisos muestran los contadores de pendientes, y los filtros por
+- [x] **CA-13** Los listados de instancias, cuentas y permisos muestran los contadores de pendientes, y los filtros por
   riesgo, validación, nivel, base de datos y tipo funcionan.
-- [ ] **CA-14** Cada endpoint de usuario devuelve `401` sin sesión y `403` sin su permiso. Una API key de equipo no
+- [x] **CA-14** Cada endpoint de usuario devuelve `401` sin sesión y `403` sin su permiso. Una API key de equipo no
   accede a los endpoints de usuario, y una sesión de usuario no puede enviar instantáneas.
-- [ ] **CA-15** Una instantánea con propiedades desconocidas, fuera de límites, mayor de 16 MB o mal formada se
+- [x] **CA-15** Una instantánea con propiedades desconocidas, fuera de límites, mayor de 16 MB o mal formada se
   rechaza con `400` o `413` y Problem Details, sin cambiar nada.
-- [ ] **CA-16** Un equipo eliminado recibe `401` al enviar; sus instancias siguen consultables y marcadas.
-- [ ] **CA-17** Un nombre de cuenta, base de datos u objeto con marcado HTML se muestra como texto literal, y un
+- [x] **CA-16** Un equipo eliminado recibe `401` al enviar; sus instancias siguen consultables y marcadas.
+- [x] **CA-17** Un nombre de cuenta, base de datos u objeto con marcado HTML se muestra como texto literal, y un
   nombre con comillas o corchetes no rompe las consultas del agente.
-- [ ] **CA-18** Las pantallas funcionan en tema claro y oscuro, con teclado y en pantalla estrecha, y el riesgo se
+- [x] **CA-18** Las pantallas funcionan en tema claro y oscuro, con teclado y en pantalla estrecha, y el riesgo se
   entiende sin depender del color: cada estado de error, advertencia o éxito lleva su ícono.
-- [ ] **CA-19** Las instalaciones nuevas muestran y exigen los términos v2 (Anexo A); `sql add` no pide términos en
+- [x] **CA-19** Las instalaciones nuevas muestran y exigen los términos v2 (Anexo A); `sql add` no pide términos en
   las instalaciones existentes.
-- [ ] **CA-20** El manual de uso describe los procesos de §17.
+- [x] **CA-20** El manual de uso describe los procesos de §17.
 
 ## 10. Análisis arquitectónico
 
@@ -459,7 +472,7 @@ Solo vistas del catálogo, con texto SQL fijo. ADR-0014 fija las reglas de conex
 En PostgreSQL, MySQL y MariaDB las cuentas son de motor (no hay usuarios por base de datos): los permisos de cada base
 de datos cuelgan de la cuenta de motor, con la base de datos en el objeto asegurable.
 
-### 10.3 Cuenta de mínimo privilegio del agente (a confirmar en la implementación)
+### 10.3 Cuenta de mínimo privilegio del agente
 
 | Motor | Cuenta prevista |
 |---|---|
@@ -469,6 +482,16 @@ de datos cuelgan de la cuenta de motor, con la base de datos en el objeto asegur
 | MariaDB 12 LTS | Usuario con `SELECT` sobre las tablas de §10.2. `mysql.global_priv` no admite excluir la autenticación: riesgo documentado en ADR-0014. |
 
 `sql test` compara los privilegios reales de la cuenta con estos y avisa si sobran.
+
+**Confirmado en la implementación** con motores reales en contenedores (recolección completa y sin aviso de
+privilegios de más; guía para el DBA en el manual, proceso `preparar-motor-sql`):
+
+| Motor | Cuenta validada |
+|---|---|
+| SQL Server | *Login* con `CONNECT ANY DATABASE` y `VIEW ANY DEFINITION`. Validado con Azure SQL Edge (motor 15); **pendiente** en SQL Server 2019, 2022 y 2025 (§18). No se usa `VIEW ANY SECURITY DEFINITION`. |
+| PostgreSQL 18 | Rol con `LOGIN`; basta el `CONNECT` de `PUBLIC`. Una base que lo revoque aparece como `permission-denied`. |
+| MySQL 9.7 LTS | `SHOW DATABASES` global (sin él solo se listan las bases accesibles); `SELECT` sobre `mysql.role_edges`, `global_grants`, `db`, `tables_priv`, `columns_priv`, `procs_priv`; en `mysql.user`, `SELECT` por columnas sin las de autenticación. |
+| MariaDB 12.3 LTS | `SHOW DATABASES` global; `SELECT` sobre `mysql.global_priv` (la vista `mysql.user` no expone `account_locked` ni los privilegios añadidos desde 10.5), `roles_mapping`, `db`, `tables_priv`, `columns_priv`, `procs_priv`. |
 
 ### 10.4 Procesamiento sin cola (decidido) y evolución
 
@@ -588,7 +611,13 @@ Todos bajo `/api/v1`, con Problem Details en los errores. `pageSize` máximo 100
 | PUT | `/sql-access-items/{id}/validation` | `sql-audit.accesses.validate` | — | `200 { status, by, at }` | 401, 403, 404, 422 |
 | DELETE | `/sql-access-items/{id}/validation` | `sql-audit.accesses.validate` | — | `204` (idempotente) | 401, 403, 404 |
 
-### 12.2 Contrato `sql-audit v1` (estricto, borrador)
+Parámetros, formas de respuesta y reglas de filtrado definitivos: [Anexo B §2](#anexo-b--contratos-definitivos).
+`GET /sql-accounts/{id}/changes` admite `page` hasta 100.
+
+### 12.2 Contrato `sql-audit v1` (estricto)
+
+Reglas definitivas en el [Anexo B §1](#anexo-b--contratos-definitivos); ejemplo compartido por el agente y la API en
+`agent/tests/fixtures/contract/sql-audit.v1.json`. Resumen de la estructura:
 
 Estructura plana con referencias internas (`ref`), para que el tamaño crezca de forma lineal:
 
@@ -623,7 +652,7 @@ Estructura plana con referencias internas (`ref`), para que el tamaño crezca de
   las referencias deben existir.
 - La propiedad se envía como el permiso `OWNERSHIP`, y los atributos de rol de PostgreSQL como permisos de clase
   `server`.
-- Límites (borrador, los confirma `security`): cadenas ≤ 256 caracteres y sin caracteres de control; bases de datos
+- Límites (confirmados): cadenas ≤ 256 caracteres y sin caracteres de control; bases de datos
   ≤ 1 000; cuentas ≤ 20 000; pertenencias ≤ 100 000; permisos ≤ 200 000; cuerpo ≤ 16 MB; `collectedAt` no posterior
   a ahora + 5 min.
 - El riesgo **no** viaja en el contrato: lo calcula el servidor (RF-15).
@@ -649,7 +678,7 @@ Cada evento incluye la instancia, la cuenta, el elemento (permiso y objeto asegu
 
 Ninguna es un secreto. Se documentan en `.env.example` y en README (constitución §4.3).
 
-## 13. Cambios de base de datos (preliminar; los concreta `database`)
+## 13. Cambios de base de datos
 
 Esquema `app`, migración `AddSqlAudit`:
 
@@ -666,6 +695,25 @@ Esquema `app`, migración `AddSqlAudit`:
   instancia; los elementos eliminados del motor se conservan durante la misma retención (1 año) y después se purgan.
   Las validaciones quedan en `audit_events`, sin límite (P-14).
 - Volumen orientativo con RNF-5: hasta 200 000 filas de `sql_access_items` por instancia.
+
+**Concreción en la implementación** (migración `AddSqlAudit`, `Persistence/Configurations/SqlAuditConfiguration.cs`):
+
+- Los atributos de la cuenta son columnas (`enabled`, `locked`, `engine_created_at`, `default_database`, `login_name`,
+  `is_orphaned`, `password_*`…) en lugar de `attributes jsonb`: se filtran y comparan sin leer JSON. En `jsonb` quedan
+  solo las bases de datos y las partes no disponibles de la instancia, y los detalles del registro de cambios.
+- `risk_level` e `inherited_risk_level` son `smallint` para ordenar por gravedad. `sql_instances` guarda además
+  `databases jsonb` y `risk_catalog_version` (RF-15). La unicidad de la instancia usa `NULLS NOT DISTINCT`.
+- Índices parciales `WHERE removed_at IS NULL` para los contadores de pendientes y la vista de permisos.
+- `sql_access_items` no tiene token de concurrencia (`xmin`): marcar y desmarcar son idempotentes, y así se insertan
+  por lotes sin leer un valor por fila.
+- **Inserción masiva con `COPY`** (constitución §5.2). Con EF Core, la primera instantánea del volumen de RNF-5 tardaba
+  38-47 s (RNF-2 exige menos de 30). Las filas nuevas de `sql_access_items` se insertan con `COPY … FROM STDIN (FORMAT
+  BINARY)` de Npgsql dentro de la misma transacción. El texto del comando se deriva del modelo de EF Core (nombres de
+  tabla y de columnas entrecomillados) y nunca contiene datos; los valores viajan en el flujo binario tras aplicar los
+  conversores del modelo (`Persistence/BulkInsert.cs`). El resto: EF Core, `ExecuteUpdate` y `ExecuteDelete`.
+- La primera instantánea aplicada de una instancia es su **línea base**: sus elementos quedan pendientes, pero no se
+  anotan como "añadidos" en el registro de cambios (CA-9 se refiere a instantáneas consecutivas).
+- Las fechas que informa el motor se guardan en UTC.
 
 ## 14. Consideraciones de seguridad
 
@@ -746,13 +794,75 @@ conexiones, ADR-0015 (modo `unverified`) y la actualización de SECURITY.md y de
 Sin nombres reales de instancias, cuentas ni servidores (constitución §10.4). Los ejemplos de creación de la cuenta del
 agente usan marcadores evidentes y nunca contraseñas reales.
 
-## 18. Trazabilidad (al implementar)
+## 18. Trazabilidad
 
-- Decisiones y enmiendas: [ADR-0014](../architecture/adr-0014-database-engine-audit-agent.md) (constitución 1.3.0: §5, §13.4, §13.6) y [ADR-0015](../architecture/adr-0015-database-connections-without-verified-tls.md) (2.0.0: §13.6); `agents/device-agent.md`.
-- Commits/PRs: …
-- Archivos principales: …
-- Pruebas: …
-- Manual de uso actualizado: …
+Implementada el 2026-10-12.
+
+| Área | Archivos principales |
+|---|---|
+| Decisiones | [ADR-0014](../architecture/adr-0014-database-engine-audit-agent.md) (constitución 1.3.0: §5, §13.4, §13.6; notas de implementación: ICU en Linux, red administrada de SqlClient, privilegios) y [ADR-0015](../architecture/adr-0015-database-connections-without-verified-tls.md) (2.0.0: §13.6); `agents/device-agent.md` |
+| Dominio | `backend/src/Itmas3.Domain/SqlAudit/` (`SqlInstance`, `SqlAccount`, `SqlAccessItem`, `SqlAccessChange`, `SqlSnapshotReceipt`, `SqlIdentity`, `SqlRiskCatalog`, `SqlRiskPropagation`) |
+| Aplicación | `backend/src/Itmas3.Application/SqlAudit/` (`SubmitSnapshot`, `Validation`, `Maintenance`, `Queries`, puertos, permisos, acciones de auditoría, `SqlAuditCodes`, métrica `SqlAuditMetrics`) |
+| Infraestructura | `backend/src/Itmas3.Infrastructure/SqlAudit/` (repositorios, almacén por lotes, consultas, unidad de trabajo), `Persistence/BulkInsert.cs`, `Persistence/Configurations/SqlAuditConfiguration.cs`, migración `AddSqlAudit` |
+| API | `Itmas3.Api/Controllers/SqlAudit/`, `Contracts/SqlAudit/` (contrato y validador), `SqlAudit/` (opciones, límite por equipo, mantenimiento), `Inventory/InventoryOptions.cs` (términos `1,2`) |
+| Frontend | `frontend/src/app/features/sql-audit/`, `layout/navigation/navigation-items.ts`, `app.routes.ts`; etiquetas de auditoría en `features/authorization/` |
+| nginx | `frontend/nginx/default.conf.template` (`location = /api/v1/sql-audit-snapshots`, 16 MB) |
+| Agente | `agent/src/Itmas3.Agent.Collectors/SqlAudit/` (colectores, consultas fijas y *mappers* por motor, TLS, ensamblado del contrato), `agent/src/Itmas3.Agent/SqlAudit/` (almacén de conexiones, ciclo), `Cli/SqlCommand.cs`, `terms/terms-v2.es.txt`, versión 1.2.0 |
+| Configuración | `SQL_AUDIT_CHANGE_LOG_RETENTION_DAYS`, `SQL_AUDIT_SNAPSHOTS_PER_HOUR` (`.env.example`, `docker-compose.yml`, README) |
+| Documentación | README, ARCHITECTURE, SECURITY, DEVELOPMENT, AGENTS.md, `agent/README.md`, `specs/database/README.md`, `specs/security/threat-model-baseline.md` |
+| Manual de uso | Nuevos: `preparar-motor-sql`, `configurar-conexiones-sql`, `consultar-accesos-sql`, `validar-accesos-sql` (categoría "Auditoría SQL"). Cambian: `instalar-agente` (términos v2, ICU en Linux), `consultar-auditoria` |
+
+| Criterio | Prueba o verificación |
+|---|---|
+| CA-1 | `SqlAuditCycleTests.CA01_*`; integración del agente con PostgreSQL, MySQL y MariaDB (`CA07_*`) |
+| CA-2 | `SqlAuditCycleTests.CA02_without_connections_no_engine_is_ever_contacted` |
+| CA-3 | `SqlCommandTests.CA03_*`, `SqlStoreAndApiTests`, `SqlAuditContractTests.Snapshots_never_contain_password_material`, `SqlAuditCycleTests.Logs_never_contain_*` |
+| CA-4 | `SqlCommandTests.CA04_*`, `SqlTlsTests`; integración `CA04_*` (verify rechaza el autofirmado, pinned solo el fijado, unverified lo acepta, sin TLS rechazado en los tres modos); aviso en la SPA (`instances-page.spec.ts`, `instance-page.spec.ts`); API `Each_device_has_its_own_instances_and_tls_mode_is_reported` |
+| CA-5 | `SqlQueriesTests.Queries_never_select_passwords_hashes_or_user_data`; `*MapperTests.RF05_*` |
+| CA-6 | `*MapperTests.RF07_*`, `SqlAuditCycleTests.CA06_*`; API `SqlAuditTests.CA06_RF13_*` |
+| CA-7 | Integración del agente: PostgreSQL 18, MySQL 9.7 y MariaDB 12.3 correctas con la cuenta mínima; SQL Server con Azure SQL Edge como sustituto. **Pendiente:** SQL Server 2019, 2022 y 2025 |
+| CA-8, CA-9, CA-12 | `SqlAuditTests.CA08_*`, `CA09_*`, `CA12_*`; `SqlAccountTests` |
+| CA-10 | `SqlRiskCatalogTests` (todos los ejemplos de §8.6, herencia, desconocido → Alto, `DENY`); `SqlAuditTests.CA10_*`, `RF15_*` |
+| CA-11, CA-13 | `SqlAuditTests.CA11_*`, `CA13_*`; `instance-accounts-tab.spec.ts`, `instance-permissions-tab.spec.ts`, `account-page.spec.ts`, `sql-validation.spec.ts` |
+| CA-14 | `SqlAuditTests.CA14_*`; `EndpointAuthorizationConventionTests`, `PermissionCatalogConventionTests` |
+| CA-15 | `SqlAuditTests.CA15_*` (16 MB con Kestrel real; el resto de la API sigue en 1 MB), `SqlAuditSnapshotValidatorTests` |
+| CA-16 | `SqlAuditTests.CA16_*` |
+| CA-17 | API `SqlAuditTests.CA17_*`; SPA (pruebas XSS en las tres pantallas y `sql-audit-safety.spec.ts`); agente (nombres con `'`, `"`, `]`, `;` y `<script>` en *fixtures* e integración) |
+| CA-18 | Verificación documentada: temas claro y oscuro, 375 px y teclado revisados en la SPA contra una API simulada; colores solo `--mat-sys-*` con ícono y texto (`sql-audit-labels.spec.ts`) |
+| CA-19 | `SqlStoreAndApiTests.CA19_*`, `InstallCommandTests` |
+| CA-20 | `manual-consistency.spec.ts` y revisión de los procesos de §17 |
+| Rendimiento (RNF-2, RNF-5) | `SqlAuditPerformanceTests`: dos instantáneas de 200 bases, 20 000 cuentas y 200 000 permisos, cada una en menos de 30 s (la prueba completa, con el arranque de PostgreSQL, tarda unos 28 s) |
+| Contrato | `SqlAuditContractTests` (agente) y `SqlAuditTests`/`SqlAuditSnapshotValidatorTests` (API) con `agent/tests/fixtures/contract/sql-audit.v1.json` |
+
+Totales al cerrar: backend 402 (284 unitarias + 118 de integración); frontend 127; agente 373 (316 unitarias + 57 de
+integración, de las que 21 —SQL Server 2019/2022/2025— se omiten sin emulación amd64).
+
+**Ajustes de implementación** (no cambian el comportamiento aprobado):
+- Riesgo (§8.6, concreción), modelo de datos e inserción con `COPY` (§13), contratos definitivos (Anexo B).
+- La pestaña "Permisos" también muestra por defecto los pendientes (P-15); la tabla de permisos del detalle de una
+  cuenta muestra todos los actuales.
+- MySQL y MariaDB: las cuentas anónimas (`''@host`) se envían con nombre vacío, se muestran como "(anónima)" y son de
+  riesgo Alto. Los permisos sobre patrones de base de datos (p. ej. `app\_%`) o bases inexistentes se aceptan aunque la
+  base no esté en `databases`. `GRANT OPTION` es un permiso propio en cada nivel; `ALL PRIVILEGES` se colapsa en los
+  niveles global, de base de datos y de tabla; `tables_priv` se informa siempre como `table`.
+- PostgreSQL: no se envían las entradas de la ACL del propietario sobre su propio objeto (las cubre `OWNERSHIP`); la
+  propiedad se informa siempre en bases de datos y, en esquemas y objetos, solo si no es la predeterminada; los permisos
+  a `PUBLIC` cuelgan de una pseudo-cuenta `PUBLIC` (`pg-role`); `ALL` solo se colapsa en tipos con más de un privilegio;
+  no se recolectan *large objects*; las bases que no admiten conexiones (`template0`) no se recorren. RF-5 omite solo
+  lo concedido por defecto a `PUBLIC`.
+- SQL Server: se excluyen los usuarios internos `sys` e `INFORMATION_SCHEMA`; un usuario de base de datos está
+  habilitado si tiene `CONNECT`; las fechas se pasan a UTC con el desfase del servidor.
+- El agente deja de usar el modo de globalización invariante (lo exige SqlClient): en Linux necesita `libicu` (ADR-0014,
+  notas de implementación).
+- Los logs del agente incluyen el alias de la conexión, nunca nombres de cuentas, bases ni objetos.
+
+**Validación manual pendiente del solicitante:**
+1. Integración del agente con SQL Server 2019, 2022 y 2025: en este Mac falta la emulación amd64 de Docker. Activa
+   *Docker Desktop → Settings → General → Use Rosetta for x86_64/amd64 emulation* y ejecuta
+   `cd agent && dotnet test tests/Itmas3.Agent.IntegrationTests`, o valida con un motor real de cada versión.
+2. Agente en Windows: almacén DPAPI de las credenciales y red administrada de SqlClient.
+3. Validación de cierre (§16) con un motor real de cada tipo y la primera instancia real para revisar el límite de
+   16 MB (P-2b).
 
 ## 19. Decisiones y preguntas abiertas
 
@@ -845,3 +955,249 @@ autorizado para instalar software en este equipo y reconoce que:
 8. Puede desinstalar el agente con el comando "itmas-agent uninstall". Para consultar, actualizar o solicitar la
    supresión de sus datos, contacte con el área de TI de su organización.
 ```
+
+## Anexo B — Contratos definitivos
+
+Concretan §12.1 y §12.2 y son la referencia común del agente, la API y la SPA.
+
+### 1. Instantánea `sql-audit v1` (agente → API)
+
+`POST /api/v1/sql-audit-snapshots` · `Authorization: Device <apiKey>` · `X-CSRF: 1` · `Content-Type: application/json`
+→ `202 { "submissionId": "<uuid>" }`. Errores: 400 (contrato), 401 (API key), 413 (> 16 MB), 429 (límite por equipo).
+JSON en camelCase. **Propiedades desconocidas → 400.** Todos los campos son obligatorios (presentes en el JSON); los
+marcados `|null` admiten `null`.
+
+| Campo | Regla |
+|---|---|
+| `schemaVersion` | `1` |
+| `submissionId` | UUID. Uno por instantánea recolectada; los reintentos HTTP de la misma instantánea reutilizan el mismo. |
+| `collectedAt` | Fecha ISO-8601 con zona; no posterior a ahora + 5 min. |
+| `agentVersion` | SemVer `^\d{1,5}\.\d{1,5}\.\d{1,5}([-+][0-9A-Za-z.-]{1,30})?$` |
+| `connection.alias` | `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` |
+| `connection.engine` | `sqlserver` · `postgresql` · `mysql` · `mariadb` |
+| `connection.host` | Texto seguro ≤ 256 (sin caracteres de control). |
+| `connection.port` | 1–65535 · `null` (p. ej. instancia con nombre de SQL Server resuelta por SQL Browser). |
+| `connection.instanceName` | Texto seguro ≤ 128 · `null`. |
+| `connection.tls` | `verify` · `pinned` · `unverified` |
+| `instance` | `null` **si y solo si** `unavailable` contiene la sección `instance` (no se pudo conectar). En ese caso `databases`, `accounts`, `roleMemberships` y `permissions` van vacíos. |
+| `instance.version` | Texto seguro ≤ 256. |
+| `instance.edition` | Texto seguro ≤ 256 · `null`. |
+| `instance.authenticationMode` | `mixed` · `windows` · `password` · `unknown` |
+| `databases[]` (≤ 1 000) | `{ name, state, ownerRef }`. `name` único. `state`: `online` · `offline` · `restoring` · `recovering` · `suspect` · `emergency` · `unknown`. `ownerRef` · `null`. |
+| `accounts[]` (≤ 20 000) | Ver abajo. `ref` único: `^[A-Za-z0-9_-]{1,16}$`. |
+| `roleMemberships[]` (≤ 100 000) | `{ memberRef, roleRef }`. Ambas referencias existen; `roleRef` apunta a una cuenta de tipo rol (`server-role`, `database-role`, `application-role`, `pg-role`, `mysql-role`) o, en PostgreSQL, a cualquier `pg-role`. Sin duplicados. |
+| `permissions[]` (≤ 200 000) | Ver abajo. |
+| `omitted.builtinPublicPermissions` | Entero ≥ 0 (RF-5). |
+| `unavailable[]` (≤ 1 002) | `{ section, reason }`. `section`: `instance`, `server` o `database:<nombre>` (nombre de una base de `databases`). `reason`: `connection-failed` · `certificate-invalid` · `authentication-failed` · `permission-denied` · `offline` · `timeout` · `error`. Sin secciones repetidas. |
+
+Todas las cadenas: ≤ 256 caracteres (salvo indicación) y sin caracteres de control.
+
+#### Cuenta
+
+```json
+{
+  "ref": "a1", "level": "server|database", "database": "…|null", "name": "…", "host": "…|null",
+  "type": "sql-login|windows-login|windows-group|entra-login|server-role|database-user|database-role|application-role|user-without-login|pg-role|mysql-account|mysql-role|certificate|other",
+  "enabled": true, "locked": false, "createdAt": "…|null", "modifiedAt": "…|null",
+  "defaultDatabase": "…|null", "defaultSchema": "…|null", "loginRef": "a7|null", "isOrphaned": false,
+  "password": { "policyEnforced": true, "expirationEnforced": false, "expired": false, "validUntil": "…|null" } | null
+}
+```
+
+- `level = database` ⇔ `database` no nulo, y ese nombre está en `databases`. Solo SQL Server usa `database`.
+- `host`: solo MySQL y MariaDB (`usuario@host`); `null` en el resto.
+- `name`: no vacío, salvo en una cuenta anónima de MySQL o MariaDB (`type = mysql-account`, `''@host`).
+- `loginRef`: solo en usuarios de base de datos de SQL Server; apunta a una cuenta `server`.
+- `password`: `null` si el tipo de cuenta no tiene contraseña en el motor; cada campo interno admite `null` si el
+  motor no lo informa. `validUntil` = `VALID UNTIL` de PostgreSQL o caducidad de MySQL/MariaDB.
+- La identidad de una cuenta (RN-2) es `level + database + name + host + type`: no puede repetirse en una instantánea.
+
+#### Permiso
+
+```json
+{
+  "granteeRef": "a1",
+  "securable": { "class": "server|database|schema|object|column|default-privileges", "database": "…|null", "schema": "…|null", "name": "…|null", "objectType": "…|null", "column": "…|null" },
+  "permission": "SELECT", "state": "grant|grant-with-grant-option|deny", "grantorRef": "a3|null"
+}
+```
+
+- `permission`: `^[A-Z][A-Z0-9_ ]{0,127}$` (mayúsculas: `SELECT`, `CREATE TABLE`, `ALL PRIVILEGES`, `SYSTEM_USER`…).
+- Propiedad → `OWNERSHIP` con `state = grant` y `grantorRef = null`.
+- Atributos de rol de PostgreSQL (`SUPERUSER`, `CREATEROLE`, `CREATEDB`, `REPLICATION`, `BYPASSRLS`, `LOGIN`) → clase `server`.
+- PostgreSQL: los privilegios de la ACL se envían uno por fila; si el titular tiene **todos** los privilegios
+  aplicables a ese tipo de objeto con el mismo estado y concedente, se envía una sola fila `ALL`.
+- `objectType` (cerrado): `table`, `view`, `materialized-view`, `foreign-table`, `procedure`, `function`, `aggregate`,
+  `sequence`, `type`, `domain`, `synonym`, `schema`, `database`, `language`, `large-object`, `foreign-data-wrapper`,
+  `foreign-server`, `tablespace`, `parameter`, `assembly`, `xml-schema-collection`, `certificate`, `asymmetric-key`,
+  `symmetric-key`, `full-text-catalog`, `service-broker`, `login`, `server-role`, `database-role`, `application-role`,
+  `user`, `endpoint`, `availability-group`, `event`, `other`.
+- Reglas por clase:
+
+  | `class` | `database` | `schema` | `name` | `objectType` | `column` |
+  |---|---|---|---|---|---|
+  | `server` | null | null | opcional (p. ej. un *login* o un *endpoint*) | obligatorio si hay `name` | null |
+  | `database` | obligatorio | null | null | null | null |
+  | `schema` | obligatorio | obligatorio | null | null | null |
+  | `object` | obligatorio | opcional (MySQL no tiene esquemas) | obligatorio | obligatorio | null |
+  | `column` | obligatorio | opcional | obligatorio | obligatorio | obligatorio |
+  | `default-privileges` | obligatorio | opcional | null | obligatorio (tipo al que se aplica) | null |
+
+- `securable.database` no tiene por qué figurar en `databases`: MySQL admite concesiones sobre patrones (`app\_%`) o sobre
+  bases que no existen. Solo las cuentas de nivel base de datos y las secciones `unavailable` exigen una base listada.
+- Funciones y procedimientos de PostgreSQL llevan la firma en `name` (`calcular(integer, text)`) para distinguir
+  sobrecargas.
+- La identidad de un permiso (RN-3) es `titular + class + database + schema + name + objectType + column + permission + state`:
+  no puede repetirse en una instantánea.
+
+#### Pertenencia de cada elemento a una sección (RF-7, RF-13)
+
+- Cuenta `level = server` → sección `server`; `level = database` → `database:<database>`.
+- Pertenencia a rol → la sección de la cuenta rol.
+- Permiso de clase `server` → `server`; resto → `database:<securable.database>`.
+- Si una sección está en `unavailable`, sus elementos no se marcan como eliminados ni se actualizan. `instance`
+  cubre todas las secciones.
+
+### 2. API de consulta y validación (SPA → API)
+
+Todas bajo `/api/v1`, sesión de usuario (cookie BFF) y cabecera `X-CSRF: 1` en escrituras. Errores en Problem Details.
+Paginación: `page` ≥ 1, `pageSize` 1–100 (por defecto 20). Respuesta paginada: `{ items, page, pageSize, total }`.
+Fechas ISO-8601. Orden: parámetro `sort` con el campo y prefijo `-` para descendente.
+
+Tipos comunes (TypeScript):
+
+```ts
+type SqlEngine = 'sqlserver' | 'postgresql' | 'mysql' | 'mariadb';
+type TlsMode = 'verify' | 'pinned' | 'unverified';
+type RiskLevel = 'critical' | 'high' | 'general' | 'denied';   // 'denied' solo en permisos con state 'deny'
+type ValidationStatus = 'pending' | 'valid' | 'changed' | 'removed'; // 'changed' solo en cuentas
+interface Validation { status: ValidationStatus; by: string | null; at: string | null; }
+interface DeviceRef { id: string; name: string; status: 'pending' | 'active' | 'deleted'; }
+interface Unavailable { section: string; reason: string; }   // section: 'instance' | 'server' | 'database:<nombre>'
+interface Securable {
+  class: 'server' | 'database' | 'schema' | 'object' | 'column' | 'default-privileges';
+  database: string | null; schema: string | null; name: string | null; objectType: string | null; column: string | null;
+}
+```
+
+#### `GET /sql-instances?search=&engine=&sort=&page=&pageSize=` — `sql-audit.read`
+
+`search` busca en alias, *host*, nombre de instancia y nombre del equipo. `sort`: `alias` (defecto), `lastCollectedAt`,
+`pending`, `pendingCritical`.
+
+```ts
+interface SqlInstanceListItem {
+  id: string; device: DeviceRef; alias: string; engine: SqlEngine; host: string; port: number | null;
+  instanceName: string | null; version: string | null; tls: TlsMode; lastCollectedAt: string | null;
+  accountCount: number; pendingCount: number; pendingCriticalCount: number; hasUnavailable: boolean;
+}
+```
+
+#### `GET /sql-instances/{id}` — `sql-audit.read`
+
+```ts
+interface SqlInstanceDetail extends SqlInstanceListItem {
+  edition: string | null; authenticationMode: string | null; lastReceivedAt: string | null;
+  databases: { name: string; state: string; owner: string | null }[];
+  unavailable: Unavailable[];
+  omittedBuiltinPermissions: number;
+  accountTypes: string[];   // tipos de cuenta presentes, para el filtro
+  objectTypes: string[];    // tipos de objeto presentes en los permisos, para el filtro
+}
+```
+
+#### `GET /sql-instances/{id}/accounts?level=&database=&type=&risk=&validation=&search=&sort=&page=&pageSize=` — `sql-audit.read`
+
+- `level`: `server` · `database`. `database`: nombre exacto. `type`: tipo de cuenta. `risk`: `critical` · `high` · `general`
+  (riesgo efectivo de la cuenta).
+- `validation`: `pending` (la cuenta o alguno de sus roles o permisos actuales no está validado), `valid`
+  (completamente validada), `changed` (la cuenta cambió desde la validación), `removed` (eliminadas del motor). Sin
+  `validation` → todas las cuentas actuales (no eliminadas). La SPA usa `pending` por defecto (P-15).
+- `search`: nombre de la cuenta (contiene, sin distinguir mayúsculas).
+- `sort`: `name` (defecto), `risk`, `pending`, `firstSeenAt`.
+
+```ts
+interface SqlAccountListItem {
+  id: string; level: 'server' | 'database'; database: string | null; name: string; host: string | null;
+  type: string; enabled: boolean; locked: boolean;
+  risk: Exclude<RiskLevel, 'denied'>;   // efectivo: máximo de la cuenta, sus elementos y lo heredado de sus roles
+  riskInherited: boolean;               // true si el riesgo efectivo viene de los roles de los que es miembro (P-24)
+  roles: string[];                      // nombres de sus roles actuales (resumen)
+  pendingCount: number;                 // elementos actuales no válidos: la cuenta (si no es 'valid') + roles + permisos
+  validation: Validation; fingerprint: string;
+  firstSeenAt: string; removedAt: string | null;
+  stale: boolean;                       // su sección no se pudo leer en la última recolección (RF-13)
+}
+```
+
+#### `GET /sql-instances/{id}/permissions?risk=&validation=&database=&account=&objectType=&search=&sort=&page=&pageSize=` — `sql-audit.read`
+
+Solo permisos (no pertenencias). `risk`: `critical` · `high` · `general` · `denied`. `validation`: `pending` · `valid` ·
+`removed` (sin valor → actuales). `account`: texto contenido en el nombre del titular. `search`: texto contenido en
+el permiso o en la ruta del objeto. `sort`: `risk` (defecto, descendente con `-risk`), `account`, `securable`,
+`permission`, `firstSeenAt`.
+
+```ts
+interface SqlAccessItem {
+  id: string; kind: 'role-membership' | 'permission';
+  account: { id: string; name: string; level: 'server' | 'database'; database: string | null; host: string | null; type: string } | null;
+  securable: Securable | null;             // permisos
+  role: { accountId: string; name: string } | null;   // pertenencias
+  permission: string | null; state: 'grant' | 'grant-with-grant-option' | 'deny' | null; grantor: string | null;
+  risk: RiskLevel; validation: Validation; firstSeenAt: string; removedAt: string | null; stale: boolean;
+}
+```
+
+`account` va relleno en la vista de permisos de la instancia y es `null` en `/sql-accounts/{id}/items`.
+
+#### `GET /sql-accounts/{id}` — `sql-audit.read`
+
+```ts
+interface SqlAccountDetail extends SqlAccountListItem {
+  instance: { id: string; alias: string; engine: SqlEngine; host: string; port: number | null; instanceName: string | null; tls: TlsMode; device: DeviceRef };
+  ownRisk: Exclude<RiskLevel, 'denied'>;          // la cuenta y sus elementos directos
+  inheritedRisk: Exclude<RiskLevel, 'denied'> | null;   // de los roles de los que es miembro (directa o indirectamente)
+  createdAt: string | null; modifiedAt: string | null; defaultDatabase: string | null; defaultSchema: string | null;
+  login: string | null; isOrphaned: boolean;
+  password: { policyEnforced: boolean | null; expirationEnforced: boolean | null; expired: boolean | null; validUntil: string | null } | null;
+  lastSeenAt: string; databases: string[];        // bases de datos presentes en sus permisos, para el filtro
+  objectTypes: string[];
+}
+```
+
+#### `GET /sql-accounts/{id}/items?kind=&risk=&validation=&database=&objectType=&page=&pageSize=` — `sql-audit.read`
+
+`kind`: `role-membership` · `permission`. Resto como en la vista de permisos. Orden: pertenencias primero, luego por
+riesgo descendente y ruta. Devuelve `Paged<SqlAccessItem>` con `account = null`.
+
+#### `GET /sql-accounts/{id}/changes?page=&pageSize=` — `sql-audit.read`
+
+Registro de cambios de la cuenta y de sus elementos, junto con el historial de validaciones, del más reciente al más
+antiguo.
+
+```ts
+interface SqlAccountHistoryEntry {
+  at: string;
+  type: 'added' | 'removed' | 'changed' | 'validated' | 'unvalidated';
+  target: 'account' | 'role-membership' | 'permission';
+  item: { kind: 'role-membership' | 'permission'; securable: Securable | null; role: string | null; permission: string | null; state: string | null } | null;
+  changes: { field: string; before: string | null; after: string | null }[];   // solo en 'changed'
+  by: string | null;   // persona que validó o desvalidó; null en los cambios detectados
+}
+```
+
+`field` en `changes`: `enabled`, `locked`, `type`, `defaultDatabase`, `defaultSchema`, `login`, `isOrphaned`,
+`createdAt`, `password.policyEnforced`, `password.expirationEnforced`, `password.expired`, `password.validUntil`,
+`grantor`.
+
+#### Validación — `sql-audit.accesses.validate`
+
+| Método y ruta | Cuerpo | Respuesta | Errores |
+|---|---|---|---|
+| `PUT /sql-accounts/{id}/validation` | `{ "fingerprint": "<64 hex>" }` (la huella que vio el usuario) | `200 Validation` | 400, 404, 409 (huella desactualizada), 422 (eliminada) |
+| `DELETE /sql-accounts/{id}/validation` | — | `204` (idempotente) | 404 |
+| `PUT /sql-access-items/{id}/validation` | — | `200 Validation` | 404, 422 (eliminado) |
+| `DELETE /sql-access-items/{id}/validation` | — | `204` (idempotente) | 404 |
+
+`409` y `422` llevan Problem Details con `detail` en español. Marcar es idempotente: marcar algo ya válido devuelve
+`200` con la validación existente.

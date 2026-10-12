@@ -18,7 +18,8 @@ Este repositorio evoluciona mediante **Specification-Driven Development**. Antes
 | Pruebas backend | `cd backend && dotnet test` (requiere Docker) |
 | Pruebas frontend | `cd frontend && npm test -- --watch=false` |
 | Build frontend | `cd frontend && npm run build` |
-| Pruebas del agente | `cd agent && dotnet test` |
+| Pruebas del agente (unitarias) | `cd agent && dotnet test tests/Itmas3.Agent.Tests` |
+| Pruebas del agente con motores SQL reales | `cd agent && dotnet test tests/Itmas3.Agent.IntegrationTests` (requiere Docker) |
 | Paquetes del agente | `./scripts/build-agent.sh` |
 | Nueva migración | ver [DEVELOPMENT.md §5](DEVELOPMENT.md#5-migraciones-ef-core) |
 

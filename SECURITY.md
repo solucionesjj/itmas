@@ -37,11 +37,24 @@ CSP (`script-src 'self'`) impide ejecutar scripts aunque se colaran en un archiv
 | Código de enrolamiento | Uno por equipo registrado (SPEC-0003): 100 bits aleatorios en Base32 de Crockford (`XXXXX-XXXXX-XXXXX-XXXXX`). Se muestra una sola vez al crear el equipo o al regenerarlo (`Cache-Control: no-store`; la SPA no lo guarda). En la BD solo está su SHA-256. Es de un solo uso: se consume al enrolar y deja de servir al regenerarlo o al eliminar el equipo. |
 | Enrolamiento | `Authorization: Enrollment <código>` → se busca el equipo por el hash del código. Código desconocido, usado, regenerado o de un equipo eliminado → `401` sin motivo. Hardware ya registrado en otro equipo → `409` auditado (`device.enrollment.rejected`). 10 intentos/min por IP. Los fallos se registran en el log, sin el código. |
 | Credencial del dispositivo | 256 bits aleatorios, entregados una sola vez. En la BD solo se guarda su SHA-256 (único). Reenrolar el equipo con un código regenerado la sustituye e invalida la anterior (`device.relinked`). Eliminar el equipo la invalida (`device.deleted`) y el autenticador solo acepta equipos activos. |
-| Uso | `Authorization: Device <apiKey>` solo en `POST /api/v1/inventory-reports` (política `EnrolledDevice`). Un dispositivo no tiene permisos de usuario ni sesión. |
+| Uso | `Authorization: Device <apiKey>` solo en `POST /api/v1/inventory-reports` y `POST /api/v1/sql-audit-snapshots` (política `EnrolledDevice`). Un dispositivo no tiene permisos de usuario ni sesión. |
 | En el equipo | Windows: DPAPI (máquina) + ACL de `SYSTEM`/Administradores. Linux y macOS: archivos `0600` de `root`. El código de autorización no se guarda. |
 | Entrada no confiable | Contrato estricto: propiedades desconocidas → `400`, límites por colección y longitud, sin caracteres de control, IPs validadas, cuerpo < 1 MB. |
 | Auditoría | `device.created`, `device.updated`, `device.enrollment-code.regenerated`, `device.deleted` (actor: el usuario) y `device.enrolled`, `device.relinked`, `device.enrollment.rejected` (actor: el agente, con IP de origen, *hostname* y versión de los términos) en `app.audit_events`. Nunca contienen códigos, API keys ni sus hashes. |
 | Consulta del inventario | `devices.read` (registro) y `devices.reports.read` (historial e informes, que contienen cuentas locales, IPs y ubicación) por separado. La SPA muestra todo dato del equipo como texto (sin `innerHTML`). |
+
+### Auditoría de motores SQL (SPEC-0005, ADR-0014, ADR-0015)
+
+Los datos recolectados son un **mapa de las cuentas privilegiadas** de los motores de la organización.
+
+| Aspecto | Implementación |
+|---|---|
+| Lectura y validación | Permisos propios: `sql-audit.read` (consultar) y `sql-audit.accesses.validate` (marcar y desmarcar; exige también el de lectura). Cada validación queda en `app.audit_events` (`sql-audit.account.validated`, `sql-audit.account.unvalidated`, `sql-audit.item.validated`, `sql-audit.item.unvalidated`) con la instancia, la cuenta, el elemento y la huella validada. |
+| Recepción | `POST /api/v1/sql-audit-snapshots` con la API key del equipo; la instancia se asocia al equipo autenticado, nunca a datos de la instantánea (RN-1). Contrato estricto (propiedades desconocidas, enumeraciones cerradas, referencias que existen, identidades sin repetir, sin caracteres de control) validado antes de procesar. 120 instantáneas/h por equipo. |
+| Tamaño | 16 MB **solo** en esa ruta: `location` exacta en nginx y `[RequestSizeLimit]` en la acción. El resto de la API sigue en 1 MB. Límites por colección: 1 000 bases de datos, 20 000 cuentas, 100 000 pertenencias y 200 000 permisos. |
+| Datos | Sin hashes, contraseñas, datos de tablas ni texto de procedimientos (el agente no los lee). Nombres de cuentas, bases y objetos tratados como no confiables: nunca en los logs (solo ids), mostrados como texto en la SPA (sin `innerHTML`; una prueba estática lo vigila). Retención del registro de cambios: 1 año. |
+| Agente | Cuenta de solo lectura por motor, credencial protegida como la API key (DPAPI de máquina / `0600` de `root`), nunca en argumentos, logs ni la API. Consultas de catálogo de texto fijo, una conexión por base de datos, tiempo máximo por consulta y por conexión. Siempre TLS; `unverified` solo por elección expresa del administrador del equipo, por conexión, y señalado en ITMas con el aviso *Certificado sin verificar* (riesgo aceptado, ADR-0015). |
+| SQL en el servidor | Sin SQL escrito a mano: EF Core para consultas y `ExecuteUpdate`/`ExecuteDelete`. La inserción masiva usa `COPY ... FROM STDIN (FORMAT BINARY)` de Npgsql con el texto del comando derivado del modelo de EF Core (nombres de tabla y columnas entrecomillados) y los valores en el flujo binario, nunca en el texto (constitución §5.2, justificado en SPEC-0005 §13). |
 
 ## 2. Autorización
 
@@ -114,13 +127,13 @@ Código fuente → Configuración (appsettings, sin secretos) → Variables de e
 
 | Control | Implementación |
 |---|---|
-| Entrada | `[ApiController]` + DataAnnotations → `400` Problem Details. JSON estricto: propiedades desconocidas rechazadas (`UnmappedMemberHandling.Disallow`); mensajes del serializador ocultos. Cuerpo máximo 1 MB. |
+| Entrada | `[ApiController]` + DataAnnotations → `400` Problem Details. JSON estricto: propiedades desconocidas rechazadas (`UnmappedMemberHandling.Disallow`); mensajes del serializador ocultos. Cuerpo máximo 1 MB (16 MB solo en `POST /api/v1/sql-audit-snapshots`). |
 | Inyección | Solo EF Core / consultas parametrizadas. Prohibido concatenar SQL (constitution §5). |
 | CSRF | Cookie `SameSite=Strict` + cabecera `X-CSRF` obligatoria en métodos mutantes de `/api` + validación de `Origin`. |
 | CORS | Cerrado por defecto (mismo origen vía proxy). Solo se abre con `Cors:AllowedOrigins` explícito. |
 | Cabeceras API | `X-Content-Type-Options`, `X-Frame-Options: DENY`, `CSP: default-src 'none'`, `Referrer-Policy: no-referrer`, `Cross-Origin-Resource-Policy`, `Permissions-Policy`, `Cache-Control: no-store`. Sin cabecera `Server`. |
 | Cabeceras SPA (nginx) | CSP estricta (`script-src 'self'`, `frame-ancestors 'none'`, `form-action` limitado a Entra ID), `nosniff`, `DENY`, `COOP`. `server_tokens off`. |
-| Rate limiting | 300 req/min por usuario (o IP si anónimo); 20/min por IP en `/auth/login`. `429` + `Retry-After`. |
+| Rate limiting | 300 req/min por usuario (o IP si anónimo); 20/min por IP en `/auth/login`; por credencial de equipo, 12 inventarios/h y 120 instantáneas SQL/h. `429` + `Retry-After`. |
 | Concurrencia | Políticas con `ETag`/`If-Match` (`412` si cambió, `428` si falta); cambios de autorización serializados en la base de datos. |
 | Host / proxy | `AllowedHosts` restringido; `X-Forwarded-*` solo se aceptan desde la subred del proxy. |
 | Errores | Problem Details uniformes con `traceId`. Nunca stack traces, mensajes internos, datos de infraestructura ni secretos (verificado por pruebas). |
@@ -178,6 +191,9 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
 - [ ] **Revocar un dispositivo comprometido (SPEC-0003).** En **Inventario → Equipos**, *Eliminar* el equipo (permiso
       `devices.delete`): su código y su API key dejan de servir de inmediato y el historial se conserva. Para volver a
       inventariar esa máquina, regístrala como equipo nuevo. Registra la acción en el gestor de incidentes.
+- [ ] **Auditoría SQL (SPEC-0005).** Revisar periódicamente las instancias con el aviso *Certificado sin verificar* y
+      pasarlas a `verify` o `pinned` (ADR-0015). Comprobar con `itmas-agent sql test` que las cuentas del agente siguen
+      con el mínimo privilegio. Revisar quién tiene `sql-audit.read` (expone las cuentas privilegiadas de los motores).
 - [ ] Revisar periódicamente quién tiene `devices.update` (puede regenerar códigos) y `devices.reports.read` (datos personales).
 - [ ] Publicar solo paquetes del agente generados por `scripts/build-agent.sh` y su `SHA256SUMS`. Los binarios no están
       firmados (SPEC-0002 P-11, riesgo aceptado): la integridad depende de HTTPS y de que los usuarios verifiquen la suma.

@@ -1,5 +1,6 @@
 using Itmas3.Domain.Authorization;
 using Itmas3.Domain.Inventory;
+using Itmas3.Domain.SqlAudit;
 using Itmas3.Infrastructure.Persistence.Records;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -38,6 +39,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Device> Devices => Set<Device>();
 
     public DbSet<InventoryReport> InventoryReports => Set<InventoryReport>();
+
+    // SQL access audit (SPEC-0005)
+    public DbSet<SqlInstance> SqlInstances => Set<SqlInstance>();
+
+    public DbSet<SqlSnapshotReceipt> SqlSnapshotReceipts => Set<SqlSnapshotReceipt>();
+
+    public DbSet<SqlAccount> SqlAccounts => Set<SqlAccount>();
+
+    public DbSet<SqlAccessItem> SqlAccessItems => Set<SqlAccessItem>();
+
+    public DbSet<SqlAccessChange> SqlAccessChanges => Set<SqlAccessChange>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

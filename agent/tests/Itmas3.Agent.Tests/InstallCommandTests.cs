@@ -26,7 +26,7 @@ public sealed class InstallCommandTests : IDisposable
         Assert.False(_services.Installed);
         Assert.Equal(0, console.SecretReads);
         Assert.False(Directory.Exists(Path.Combine(_root, "install")));
-        Assert.Contains(console.Output, line => line.Contains("TÉRMINOS Y CONDICIONES", StringComparison.Ordinal));
+        Assert.Contains(console.Output, line => line.Contains("TÉRMINOS Y CONDICIONES", StringComparison.Ordinal) && line.Contains("(versión 2)", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -41,7 +41,7 @@ public sealed class InstallCommandTests : IDisposable
         Assert.Equal(1, console.SecretReads);
         var (code, request) = Assert.Single(api.Enrollments);
         Assert.Equal("code-placeholder-not-a-secret", code);
-        Assert.Equal("1", request.TermsVersion);
+        Assert.Equal("2", request.TermsVersion);
         Assert.Equal("linux-0123456789abcdef", request.HardwareId);
         Assert.Equal("device-api-key-placeholder", _store.ApiKey);
         Assert.Equal("https://itmas.example.test", _store.Configuration!.ServerUrl);

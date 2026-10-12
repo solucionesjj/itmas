@@ -90,6 +90,22 @@ La constitución 1.2.0 no lo permite:
      cinco RID;
    - el aumento de tamaño de los paquetes.
 
+### Notas de implementación (SPEC-0005, 2026-10-12)
+
+- Versiones incluidas: `Microsoft.Data.SqlClient` 7.1.1 (sin `Azure.Identity`), `Npgsql` 10.0.3 y `MySqlConnector`
+  2.6.2. NuGet Audit limpio. Los paquetes crecen unos 2,9 MB por RID (≈ +9 %).
+- **ICU en Linux.** `Microsoft.Data.SqlClient` no funciona en modo de globalización invariante, así que el agente deja de
+  usar `InvariantGlobalization`. En Linux necesita la biblioteca ICU del sistema (`libicu`), presente de serie en Ubuntu
+  y Debian; si falta, .NET no arranca y lo indica. Es una dependencia del SO en tiempo de ejecución (§13.5), aceptada
+  frente a la alternativa de incluir ICU en el paquete (unos +30 MB por RID y extracción de bibliotecas nativas).
+- **Red administrada de SqlClient también en Windows** (`Switch.Microsoft.Data.SqlClient.UseManagedNetworkingOnWindows`):
+  TLS y el certificado fijado se comportan igual en todas las plataformas y no se distribuye la biblioteca nativa SNI.
+- **Mínimo privilegio confirmado** con motores reales (SPEC-0005 §10.3): MySQL y MariaDB necesitan además
+  `SHOW DATABASES` global, y MariaDB `SELECT` sobre toda la tabla `mysql.global_priv` (el agente solo extrae las claves
+  JSON `access`, `is_role`, `account_locked`, `password_last_changed` y `password_lifetime`).
+- En PostgreSQL y MySQL/MariaDB el certificado se valida en el *handshake* TLS con una validación propia del agente,
+  antes de enviar credenciales (no se usan `VerifyCA`/`VerifyFull`, que en MySqlConnector rechazan después de autenticar).
+
 ## Alternativas consideradas
 | Alternativa | A favor | En contra |
 |---|---|---|

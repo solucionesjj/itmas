@@ -16,7 +16,7 @@
     <NuGetAuditLevel>low</NuGetAuditLevel>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <!-- Agent version: reported in every inventory (RF-13) and used to name the published packages. -->
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <!-- The contract only accepts semantic versions: no commit hash suffix. -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>

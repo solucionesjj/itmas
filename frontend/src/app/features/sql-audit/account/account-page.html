@@ -1,0 +1,173 @@
+<nav class="breadcrumb" aria-label="Ruta">
+  <a routerLink="/sql-audit">Auditoría SQL</a>
+  @if (account(); as account) {
+    <span aria-hidden="true">/</span>
+    <a [routerLink]="['/sql-audit/instances', account.instance.id]">{{ account.instance.alias }}</a>
+    <span aria-hidden="true">/</span>
+    <span aria-current="page">{{ name() }}</span>
+  }
+</nav>
+
+<div class="page-header">
+  @if (account(); as account) {
+    <a
+      mat-icon-button
+      [routerLink]="['/sql-audit/instances', account.instance.id]"
+      aria-label="Volver a la instancia"
+    >
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+  } @else {
+    <a mat-icon-button routerLink="/sql-audit" aria-label="Volver a las instancias">
+      <mat-icon>arrow_back</mat-icon>
+    </a>
+  }
+  <h1 class="page-title">{{ name() || 'Cuenta SQL' }}</h1>
+  @if (account(); as account) {
+    <app-validation-checkbox
+      label="Válido"
+      [element]="name()"
+      [status]="status()"
+      [canValidate]="canValidate()"
+      [saving]="validation.isSaving(account.id)"
+      (toggled)="toggle($event)"
+    />
+  }
+</div>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Cargando cuenta" />
+}
+
+@if (notFound()) {
+  <p class="empty">La cuenta no existe o ya no se conserva.</p>
+} @else if (failed()) {
+  <div class="error-state" role="alert">
+    <app-sql-status
+      [status]="{ label: 'No se pudo cargar la cuenta.', icon: 'error', tone: 'error' }"
+    />
+    <button mat-stroked-button (click)="retry()">
+      <mat-icon>refresh</mat-icon>
+      Reintentar
+    </button>
+  </div>
+} @else if (account(); as account) {
+  <div class="markers summary">
+    <app-risk-chip [risk]="account.risk" [inherited]="account.riskInherited" />
+    <app-sql-status [status]="validationStatus(status())" />
+    <span>
+      {{ account.pendingCount }}
+      {{ account.pendingCount === 1 ? 'elemento pendiente' : 'elementos pendientes' }}
+    </span>
+  </div>
+
+  @if (notices().length > 0) {
+    <div class="notices">
+      @for (notice of notices(); track $index) {
+        <p class="notice" role="note"><app-sql-status [status]="notice" /></p>
+      }
+    </div>
+  }
+
+  <mat-card appearance="outlined">
+    <mat-card-content>
+      <dl class="facts">
+        <dt>Instancia</dt>
+        <dd>
+          {{ account.instance.alias }} · {{ label('engine', account.instance.engine) }}
+          <span class="secondary">{{ destination(account.instance) }}</span>
+        </dd>
+        <dt>Equipo</dt>
+        <dd>{{ account.instance.device.name }}</dd>
+        <dt>Nivel</dt>
+        <dd>{{ levelLabel(account.level, account.database) }}</dd>
+        <dt>Tipo</dt>
+        <dd>{{ label('accountType', account.type) }}</dd>
+        <dt>Habilitada</dt>
+        <dd>{{ yesNo(account.enabled) }}</dd>
+        <dt>Bloqueada</dt>
+        <dd>{{ yesNo(account.locked) }}</dd>
+        <dt>Riesgo propio</dt>
+        <dd><app-risk-chip [risk]="account.ownRisk" /></dd>
+        <dt>Riesgo heredado de sus roles</dt>
+        <dd>
+          @if (account.inheritedRisk; as inherited) {
+            <app-risk-chip [risk]="inherited" />
+          } @else {
+            Ninguno
+          }
+        </dd>
+        <dt>Roles</dt>
+        <dd>{{ account.roles.join(', ') || 'Ninguno' }}</dd>
+        @if (account.level === 'database') {
+          <dt>Login asociado</dt>
+          <dd>
+            {{ account.login ?? '—' }}
+            @if (account.isOrphaned) {
+              <span class="secondary">Huérfano: no tiene un login asociado.</span>
+            }
+          </dd>
+          <dt>Esquema por defecto</dt>
+          <dd>{{ account.defaultSchema ?? '—' }}</dd>
+        } @else {
+          <dt>Base de datos por defecto</dt>
+          <dd>{{ account.defaultDatabase ?? '—' }}</dd>
+        }
+        @if (account.password; as password) {
+          <dt>Política de contraseñas</dt>
+          <dd>{{ yesNo(password.policyEnforced) }}</dd>
+          <dt>Caducidad de la contraseña</dt>
+          <dd>{{ yesNo(password.expirationEnforced) }}</dd>
+          <dt>Contraseña vencida</dt>
+          <dd>{{ yesNo(password.expired) }}</dd>
+          <dt>Contraseña válida hasta</dt>
+          <dd>{{ password.validUntil ? (password.validUntil | date: 'medium') : '—' }}</dd>
+        }
+        <dt>Creada en el motor</dt>
+        <dd>{{ account.createdAt ? (account.createdAt | date: 'medium') : 'No disponible' }}</dd>
+        <dt>Modificada en el motor</dt>
+        <dd>
+          {{ account.modifiedAt ? (account.modifiedAt | date: 'medium') : 'No disponible' }}
+        </dd>
+        <dt>Detectada</dt>
+        <dd>{{ account.firstSeenAt | date: 'medium' }}</dd>
+        <dt>Vista por última vez</dt>
+        <dd>{{ account.lastSeenAt | date: 'medium' }}</dd>
+        @if (account.removedAt) {
+          <dt>Eliminada del motor</dt>
+          <dd>{{ account.removedAt | date: 'medium' }}</dd>
+        }
+        @if (account.validation.by) {
+          <dt>Última validación</dt>
+          <dd>
+            {{ account.validation.by }}
+            @if (account.validation.at) {
+              · {{ account.validation.at | date: 'medium' }}
+            }
+          </dd>
+        }
+      </dl>
+    </mat-card-content>
+  </mat-card>
+
+  <h2 class="section-title">Roles</h2>
+  <app-account-items
+    [accountId]="account.id"
+    kind="role-membership"
+    (pendingDelta)="onPendingDelta($event)"
+    (settled)="onSettled($event)"
+  />
+
+  <h2 class="section-title">Permisos</h2>
+  <app-account-items
+    [accountId]="account.id"
+    kind="permission"
+    [databases]="account.databases"
+    [objectTypes]="account.objectTypes"
+    (pendingDelta)="onPendingDelta($event)"
+    (settled)="onSettled($event)"
+  />
+
+  <h2 class="section-title">Registro de cambios y validaciones</h2>
+  <app-account-history [accountId]="account.id" [version]="historyVersion()" />
+}
