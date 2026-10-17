@@ -20,7 +20,7 @@ Usamos el patrón **Backend-for-Frontend**:
 - Tras validar el *id token*, la API emite una cookie de sesión `__Host-itmas3-session`
   (`HttpOnly; Secure; SameSite=Strict`), cifrada con Data Protection (claves persistidas en PostgreSQL).
 - No se guardan tokens (`SaveTokens=false`). Si una spec futura necesita llamar a APIs aguas abajo (p. ej. Graph),
-  se adquirirán en el servidor (token cache de Microsoft.Identity.Web), nunca en el navegador.
+  se adquirirán en el servidor (token cache de Microsoft.Identity.Web), nunca en el navegador. *Ampliado por [ADR-0016](adr-0016-outlook-graph-application-permissions.md): la agenda llama a Graph con permisos de **aplicación** acotados a un buzón, no con tokens de las personas.*
 - La SPA usa `/auth/session`, `/auth/login` (navegación) y `/auth/logout` (form POST). No contiene configuración de Entra ID.
 - El esquema de *challenge* por defecto es la cookie, que responde `401`/`403`; solo `/auth/login` inicia OIDC.
 - Expiración: inactividad deslizante (60 min) + absoluta (8 h); `401` → la SPA redirige a `/login?reason=expired`.
