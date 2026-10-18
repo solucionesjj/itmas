@@ -332,11 +332,24 @@ proceso. La guía para quienes desarrollan va en DEVELOPMENT.md.
 
 | Criterio | Estado | Evidencia |
 |---|---|---|
-| CA-1 a CA-6 | **Pendiente de uso real** | Las skills no se pueden ejecutar desde la sesión que las creó: `.claude/skills/` no existía al abrirla (hace falta `/reload-skills`) y solo las invoca una persona. Se validaron de forma estructural: frontmatter, `name` igual a la carpeta, rutas que citan y *checklists* que leen. Pasos para cerrarlas en §18.3. |
+| CA-1 | **Verificado** (con un límite) | `/sdd-new-spec Prueba de verificación de skills (descartable)`, escrita por la persona en una sesión de Claude Code con el árbol en `4ef5f8f`. Propuso `SPEC-0008`: el mayor ID por nombre de archivo era `SPEC-0007` y no existía ningún archivo ni texto con `SPEC-0008`. Creó `specs/features/SPEC-0008-skills-verification-test.md` desde la plantilla (los mismos 19 encabezados `##`, diff vacío) con `status: Draft`, `approved-by` vacío y `created: 2026-10-17` (igual a `date +%F`), y añadió una fila `Draft` en `specs/README.md` y otra en `specs/features/README.md` (el `git diff` muestra solo esas dos líneas). No inventó requisitos: dejó seis `Q-n` y dos `P-n` en §19 y el resto de secciones con la indicación de la plantilla. **Límite:** el texto de los README solo mencionaba IDs que ya existían, así que el mayor por texto y el mayor por nombre coincidían. Se probó el cálculo por nombre de archivo, no el caso del comando antiguo (un ID en el texto mayor que el último archivo). |
+| CA-2 | **Verificado** para las cuatro skills | Tras ejecutarlas, el único `status: Approved` de `specs/` es el de SPEC-0006, aprobada por una persona en el commit `73222e0`; SPEC-0008 quedó `Draft` con `approved-by` vacío y el `approved-by` de SPEC-0007 sigue siendo el de la persona. El hook no se ejercitó con commits reales en esta verificación (CA-8 lo prueba en repositorios temporales). |
+| CA-3 | **Parcial** | Mitad «Draft»: `/sdd-implement SPEC-0008` localizó la spec, leyó `status: Draft` y `approved-by` vacío, se detuvo en el paso 2 y no modificó nada: `git status --short` y `git diff --stat` fueron idénticos antes y después (`M` en los dos README y `??` en SPEC-0008). Mitad «Approved»: **no ejercitada.** La única spec `Approved` es SPEC-0006 y ejecutarla habría empezado a implementar la agenda de infraestructura. Falta comprobar que una spec `Approved` procede y queda `In Progress` en su frontmatter y en los dos índices. |
+| CA-4 | **Parcial** | Tras `/update-manual SPEC-0007` y `/sdd-implement SPEC-0008` no hay commits nuevos (`git log 4ef5f8f..HEAD` vacío) y la sesión no ejecutó ningún `git push`. Pero las dos skills terminaron en su camino de parada (paso 1 y paso 2), antes de editar nada: no se probó que no hagan commit cuando sí trabajan. |
+| CA-5 | **Verificado** (con un límite) | Primera ejecución, `/sdd-validate SPEC-0007`: leyó la tabla de `AGENTS.md` y ejecutó solo `git status --short`, `git diff --name-only` y `./scripts/test-commit-msg-hook.sh` (54 comprobaciones en verde); no leyó `.env` ni ejecutó `docker compose config`. Informó por criterio de aceptación (CA-1 a CA-11) y por ítem de los *checklists*, marcó como **NO VERIFICADO** lo que no ejecutó (pruebas de backend y frontend, Compose, auditorías, `git check-ignore`) y cerró con «Validación incompleta». El estado coincidía: `In Progress` en los tres sitios. Segunda ejecución, con una divergencia provocada: sobre una spec `Draft` descartable (SPEC-0008, creada con `/sdd-new-spec`) se cambió a mano la fila de `specs/README.md` a `In Progress`, dejando el frontmatter y `specs/features/README.md` en `Draft`. `/sdd-validate SPEC-0008` la marcó como **FALLA** («frontmatter `Draft` frente a fila `In Progress`»), dio por buena la fila de `specs/features/README.md`, no ejecutó ningún comando (ninguna ruta tocada tiene comando en la tabla; lo dijo como **NO VERIFICADO**), marcó **SIN COBERTURA** los criterios que seguían con el texto de la plantilla y **FALLA** el análisis y el plan sin completar, y cerró con «Validación incompleta». **Límite:** la divergencia se provocó a propósito, no es la de SPEC-0005 original, y esta ejecución cargó la copia de las skills del clon principal, sin los arreglos de las observaciones 1 y 2. |
+| CA-6 | **Parcial** | `/update-manual SPEC-0007` leyó §17 («Ninguno»), se detuvo en el paso 1, lo informó y no modificó nada (`git status --short` vacío). **No ejercitada** la mitad que crea o actualiza los `.md` y `index.json`, pasa `manual-consistency.spec.ts` y declara la revisión de contenido no público: ninguna spec tiene hoy procesos en «Manual de uso». |
+| RF-5 (no es un CA) | **Comprobado** | Al intentar ejecutar `/sdd-validate` desde el modelo, la herramienta `Skill` lo rechazó por `disable-model-invocation`. Las cuatro solo se ejecutaron cuando la persona las escribió en el chat. |
 | CA-7 | Verificado | Ficheros señuelo, nunca `.env` ni `secrets/`, con Claude Code 2.1.291. Resultados y límites en `DEVELOPMENT.md` §10.2. |
 | CA-8, CA-9 | Verificado | `./scripts/test-commit-msg-hook.sh`: 54 comprobaciones en verde. |
 | CA-10 | Verificado | `git check-ignore` confirma `.claude/settings.local.json`; escaneo de rutas propias, claves y credenciales en los archivos nuevos, sin hallazgos. |
 | CA-11 | Verificado | Documentación y matriz de agentes actualizadas; el comando de siguiente ID devuelve el último ID real. |
+
+La verificación de CA-1 a CA-6 la hizo una persona en una sesión de Claude Code abierta sobre un *worktree* en `4ef5f8f`. La copia de las skills que cargó Claude Code fue la del clon principal; es idéntica a la del *worktree* (`diff -r` sin diferencias). Observaciones del uso real. Los arreglos 1 a 4 se aplicaron el 2026-10-17, sin commit. Las skills no se volvieron a ejecutar tras el cambio. La revisión de `security` que exige cambiar `.claude/**` se hizo (§18.5) y obligó a corregir la primera versión de los arreglos 1 a 3.
+
+1. **Las skills piden `Glob` y `Grep`, que una sesión puede no tener.** Esta sesión no las exponía y se sustituyeron por `find` y `grep` de solo lectura en Bash. En una sesión así, `allowed-tools: Read, Glob, Grep` no preaprueba nada y esos comandos piden permiso. Arreglo aplicado: cada skill indica que, si `Glob` o `Grep` no existen, se usan solo `git ls-files -co --exclude-standard -- <ruta>` y `git grep -nE --untracked -e <patrón> -- <ruta>`, con ruta acotada y nunca `find` ni `grep -r` (la primera versión usaba `find` y `grep` en Bash; la corrigió la revisión de §18.5); no se amplió `allowed-tools` (hallazgo medio de §18.4) y `DEVELOPMENT.md` §10.1 lo documenta.
+2. **`/sdd-validate` con el árbol limpio no sabe qué ejecutar.** Los pasos 2 y 3 deducen el alcance de `git status` y `git diff`, que para una spec ya confirmada salen vacíos. Se eligió la prueba del hook a partir de las rutas de la sección «Trazabilidad» de la spec. Arreglo aplicado: el paso 2 usa esas rutas como respaldo cuando ambos comandos salen vacíos y lo dice en el informe; con ese respaldo el veredicto máximo es «Validación incompleta: alcance no contrastado con git» (§18.5, hallazgo 3).
+3. **Las skills solo aparecen en sesiones abiertas sobre un commit que las contenga.** Este *worktree* se creó desde `73222e0`, sin `.claude/skills/` ni SPEC-0007; hubo que avanzarlo a `4ef5f8f` (fast-forward local, sin commit). Arreglo aplicado: aviso en `DEVELOPMENT.md` §10.1 y en su tabla de problemas frecuentes; avisa también de que ese *worktree* no tiene las reglas de bloqueo de secretos y de que el `git merge` lo ejecuta una persona, no una skill (§18.5, hallazgo 4).
+4. **El paso 2 de `/sdd-validate` dice algo que `git diff --name-only` no hace.** El texto afirma que ambos comandos incluyen «lo que aún no tiene seguimiento», pero `git diff --name-only` solo lista lo modificado con seguimiento: SPEC-0008, recién creada, apareció en `git status --short` (`??`) y no en `git diff --name-only`. Arreglo aplicado: el paso 2 dice que `git status --short` es el que muestra lo que no tiene seguimiento y que `git diff --name-only` solo lo modificado con seguimiento.
 
 ### 18.2 Desviaciones respecto al texto de la spec
 
@@ -351,13 +364,25 @@ proceso. La guía para quienes desarrollan va en DEVELOPMENT.md.
 - **RF-3 y RF-4, argumento:** el ID de la spec es obligatorio; si falta, la skill lo pide en lugar de deducirlo.
 - **RF-3, Compose:** valida con `docker compose config -q` (sin `-q` imprime los valores de `.env`), que se añade a la
   tabla de comandos de `AGENTS.md`.
+- **RF-3, lectura sin `Glob` ni `Grep`:** las cuatro skills admiten `git ls-files -co --exclude-standard -- <ruta>` y
+  `git grep -nE --untracked -e <patrón> -- <ruta>` como **única excepción de lectura** a «solo comandos de la tabla de
+  `AGENTS.md`» (§14.1, fila T). No sustituyen a los comandos de validación de la tabla. §14.1 no se editó.
 
 ### 18.3 Pendiente para cerrar la spec
 
-1. Verificar CA-1 a CA-6 con uso real, en una sesión de Claude Code abierta después de estos cambios (o tras
-   `/reload-skills`): `/sdd-new-spec` sobre la siguiente idea real; `/sdd-validate SPEC-0007`; `/update-manual SPEC-0007`
-   (debe detenerse: su sección "Manual de uso" es "Ninguno"); `/sdd-implement` sobre una spec en `Draft` (debe negarse).
-2. Hacer commit de los cambios y pasar la spec a `Implemented`.
+1. **Hecho el 2026-10-17 (§18.1):** las cuatro skills se ejecutaron sobre un escenario real. CA-1, CA-2 y CA-5
+   quedan verificados; CA-3, CA-4 y CA-6 quedan **parciales**. §15 pide que cada skill se ejecute y se registre lo que
+   hizo, y que las negativas de CA-3 se ejerciten con una spec `Draft`: eso está cumplido. Las mitades que faltan son
+   los caminos en los que la skill sí trabaja.
+2. Decidir si esas mitades se cierran antes de pasar a `Implemented`. Cierre propuesto, con uso real:
+   - CA-3 y CA-4: `/sdd-implement` sobre la primera spec `Approved` que se vaya a implementar (por ejemplo SPEC-0006),
+     comprobando que pasa a `In Progress` en su frontmatter y en los dos índices y que `git log` no gana commits.
+   - CA-6: `/update-manual` sobre esa misma spec si su sección «Manual de uso» lista procesos, comprobando
+     `manual-consistency.spec.ts` y la declaración de contenido no público.
+3. La revisión de `security` del diff de los cuatro arreglos de §18.1 se hizo (§18.5); sus correcciones no se volvieron
+   a revisar de forma independiente. Falta comprobar con uso real que las skills siguen funcionando tras el cambio y
+   que el respaldo con `git ls-files` y `git grep` funciona en una sesión sin `Glob` ni `Grep`.
+4. Hacer commit de los cambios y pasar la spec a `Implemented`.
 
 ### 18.4 Revisión de `security` (2026-10-17)
 
@@ -384,6 +409,24 @@ Limitaciones declaradas por el revisor: no ejecutó las skills (valoró su texto
 ni subprocesos porque el clasificador del modo automático los bloqueó; no probó Windows ni busybox. Las correcciones
 posteriores a la revisión no se volvieron a revisar de forma independiente: las cubren la prueba automatizada (54
 comprobaciones, ocho mutantes detectados) y las comprobaciones propias descritas arriba.
+
+### 18.5 Revisión de `security` de los arreglos de §18.1 (2026-10-17)
+
+La hizo un agente independiente que recibió el diff sin commit, el modelo de amenazas (§14) y los límites de
+`DEVELOPMENT.md` §10, no las conclusiones de quien lo escribió. Revisó en modo lectura. Resultado: ningún hallazgo
+crítico ni alto, 1 medio, 2 bajos y 1 informativo.
+
+| Hallazgo | Severidad | Resolución |
+|---|---|---|
+| 1. Sustituir `Glob` y `Grep` por `find` y `grep` en Bash esquivaba las reglas de bloqueo: `grep -r` recorre `.env`, `.pem` y `secrets/`, y la cláusula «nunca sobre `.env` ni `secrets/`» cubría 2 de las 11 clases de `settings.json`; `find` admite `-exec`, `-delete` y `-fprint`; «piden el permiso habitual» es falso si la persona ya los tiene permitidos. | Medio | **Corregido:** las skills usan solo `git ls-files -co --exclude-standard` y `git grep -nE --untracked`, con ruta acotada, que respetan `.gitignore`; `DEVELOPMENT.md` §10.1 lo documenta y dice «salvo que ya los tengas permitidos». Comprobado con señuelos en un repositorio temporal: `/usr/bin/grep -r` leyó un `.env`, un `.pem` y un `secrets/` ignorados; `git grep --untracked` y `git ls-files --exclude-standard` no. En esa sesión `grep` era una función de la shell de Claude Code que también los omitió: el comportamiento depende del entorno, por eso no se apoya en él. |
+| 2. «Solo comandos de la tabla» quedaba contradicho por el párrafo nuevo, y «no amplían» era incorrecto. | Bajo | **Corregido:** el párrafo se declara «única excepción» en `/sdd-validate` y `/sdd-implement`; el paso 3 y el «No hagas» de `/sdd-validate` y `DEVELOPMENT.md` §10.1 lo reflejan; §18.2 lo registra. §14.1 no se editó. |
+| 3. Con el respaldo de «Trazabilidad» el alcance lo fija un dato de la spec: una sección incompleta puede dar «Validación completa». | Bajo | **Corregido:** con ese respaldo el veredicto máximo es «Validación incompleta: alcance no contrastado con git». |
+| 4. El aviso de *worktree* decía que faltaban las skills, pero también faltan las reglas de bloqueo; `git merge` quedaba admisible por «los que `DEVELOPMENT.md` documente». | Informativo | **Corregido:** `DEVELOPMENT.md` §10.1 avisa de ambas y dice que el `git merge` lo ejecuta una persona, no una skill. |
+
+Limitaciones declaradas por el revisor: no ejecutó las skills ni simuló una sesión sin `Glob` ni `Grep`; no comprobó si
+las reglas `Read(...)` alcanzan a `grep` y `find` de Bash en esta versión, ni las reglas `allow` de cada persona; no
+sabe si un *worktree* usa su propio `settings.json` o el del clon principal. Las correcciones posteriores a esta revisión
+no se volvieron a revisar de forma independiente.
 
 ## 19. Preguntas abiertas
 

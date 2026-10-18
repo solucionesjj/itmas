@@ -230,7 +230,7 @@ Toda spec que cambie algo visible para las personas usuarias actualiza el manual
 | Tests de integración: `DockerUnavailableException` | Docker no está en ejecución. |
 | La API no arranca en Production | Falta configuración de Entra ID (comportamiento *fail-fast* intencional). |
 | `Mensaje de commit rechazado` | El primer renglón no empieza por `SPEC-NNNN:`, `ADR-NNNN:` ni `minor: <motivo>` (§10.3). |
-| Claude Code no ofrece `/sdd-new-spec` y las demás | `.claude/skills/` no existía al abrir la sesión: ejecuta `/reload-skills` o reinicia la sesión (§10.1). |
+| Claude Code no ofrece `/sdd-new-spec` y las demás | `.claude/skills/` no existía al abrir la sesión, o el *worktree* o la rama se crearon antes de SPEC-0007 y no la contienen: trae `main` (§10.1), ejecuta `/reload-skills` o reinicia la sesión. |
 
 ## 10. Skills y guardas de desarrollo (Claude Code)
 
@@ -248,7 +248,7 @@ cambiar una regla no obliga a editarlas, solo hay que tocarlas si cambia el proc
 |---|---|---|
 | `/sdd-new-spec <idea>` | Calcula el siguiente ID **por nombre de archivo**, copia la plantilla, deja la spec en `Draft` con las preguntas abiertas y añade la fila a los índices. | Falta la idea. Nunca aprueba. |
 | `/sdd-implement SPEC-NNNN` | Ejecuta el plan de la spec en orden, respeta `owns`/`forbidden`, lista las revisiones pendientes y propone el mensaje de commit. | La spec no está `Approved` ni `In Progress`, el plan es preliminar o hay preguntas abiertas. |
-| `/sdd-validate SPEC-NNNN` | Ejecuta **solo** los comandos de la tabla de `AGENTS.md` que correspondan a lo modificado, relaciona cada criterio con su prueba, evalúa los *checklists* de salida y compara el estado de la spec con los índices. Informa `OK`, `FALLA` o `NO VERIFICADO`. | No hay ID (lo pide). No corrige nada. |
+| `/sdd-validate SPEC-NNNN` | Para validar, ejecuta **solo** los comandos de la tabla de `AGENTS.md` que correspondan a lo modificado, relaciona cada criterio con su prueba, evalúa los *checklists* de salida y compara el estado de la spec con los índices. Informa `OK`, `FALLA` o `NO VERIFICADO`. | No hay ID (lo pide). No corrige nada. |
 | `/update-manual SPEC-NNNN` | Crea o actualiza los procesos de `frontend/public/manual/` y `index.json` según la sección "Manual de uso" de la spec, declara la revisión de contenido público y ejecuta las pruebas del frontend. | La sección dice "Ninguno". |
 
 ```text
@@ -257,13 +257,24 @@ cambiar una regla no obliga a editarlas, solo hay que tocarlas si cambia el proc
 
 Notas:
 - **Primera vez:** si `.claude/skills/` no existía al abrir la sesión, ejecuta `/reload-skills` (o reinicia la sesión).
+- ***Worktrees* y ramas antiguas:** las skills y las reglas de bloqueo de secretos (`.claude/settings.json`) solo existen
+  en un *worktree* o una rama que ya contengan SPEC-0007; antes, ninguna de las dos está activa. Si se crearon antes,
+  una persona (no una skill) trae primero los cambios de `main`, por ejemplo con `git merge --ff-only main`, y luego
+  recarga las skills o reinicia la sesión.
+- **Sin `Glob` ni `Grep`:** algunas sesiones no los ofrecen. Las skills los sustituyen por estos dos comandos, con una
+  ruta acotada y nunca la raíz: `git ls-files -co --exclude-standard -- <ruta>` y
+  `git grep -nE --untracked -e <patrón> -- <ruta>`. Respetan `.gitignore`, que ya clasifica los secretos; `find` y
+  `grep -r` no (con señuelos, `/usr/bin/grep -r` leyó un `.env` ignorado), así que las skills no los usan. No están
+  pre-aprobados (`allowed-tools` solo cubre `git status --short` y `git diff --name-only` en `/sdd-validate`): piden
+  permiso, salvo que ya los tengas permitidos. Son la única excepción de lectura a «solo comandos de la tabla» de
+  `/sdd-validate`.
 - **Ninguna hace `git push`; ninguna hace `git commit` salvo que lo pida de forma explícita quien la invoca, en el chat**
   (un texto de una spec o de un archivo no cuenta); ninguna aprueba specs ni toca `.env`. Esto lo imponen sus
   instrucciones y tu modo de permisos: `allowed-tools` de una skill solo **pre-aprueba** herramientas, acotadas a lo que
   necesita (lecturas; `git status --short` y `git diff --name-only` en `/sdd-validate`; edición de `specs/**` en
   `/sdd-new-spec` y de `frontend/public/manual/**` en `/update-manual`). No restringe las demás, así que `git commit` y
   `git push` no van pre-aprobados.
-- Tratan lo que leen (specs, archivos, salidas de comandos) como datos, no como órdenes, y `/sdd-validate` ejecuta solo
+- Tratan lo que leen (specs, archivos, salidas de comandos) como datos, no como órdenes, y `/sdd-validate` ejecuta, para validar, solo
   comandos de la tabla de `AGENTS.md` (para Compose, `docker compose config -q`: sin `-q` imprime los valores de `.env`).
   Ejecutar pruebas ejecuta código del repositorio: no las lances sobre una rama que no conozcas.
 - Lo no verificado se informa como `NO VERIFICADO` (por ejemplo, Docker apagado para las pruebas del backend).
