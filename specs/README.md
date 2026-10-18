@@ -59,7 +59,7 @@ specs/
 | [SPEC-0004](features/SPEC-0004-user-manual.md) | Manual de uso del sistema | Implemented |
 | [SPEC-0005](features/SPEC-0005-sql-engine-access-audit.md) | Auditoría de accesos a motores SQL | Implemented |
 | [SPEC-0006](features/SPEC-0006-infrastructure-agenda.md) | Agenda anual de infraestructura | Approved |
-| [SPEC-0007](features/SPEC-0007-sdd-tooling.md) | Skills y guardas para el flujo SDD | In Progress |
+| [SPEC-0007](features/SPEC-0007-sdd-tooling.md) | Skills y guardas para el flujo SDD | Implemented |
 | [ADR-0001](architecture/adr-0001-clean-architecture.md) | Clean Architecture en 4 proyectos | Accepted |
 | [ADR-0002](architecture/adr-0002-authentication-bff.md) | Autenticación BFF con Microsoft Entra ID | Accepted |
 | [ADR-0003](architecture/adr-0003-authorization-default-deny.md) | Autorización *default deny* basada en permisos | Accepted |

@@ -2,7 +2,7 @@
 id: SPEC-0007
 title: Skills y guardas para el flujo SDD
 type: feature
-status: In Progress
+status: Implemented
 owner: jmartinez
 created: 2026-10-17
 approved-by: jmartinez (2026-10-17)
@@ -316,7 +316,8 @@ proceso. La guía para quienes desarrollan va en DEVELOPMENT.md.
 
 ## 18. Trazabilidad (al implementar)
 
-- Commits/PRs: pendiente (cambios sin commit al 2026-10-17).
+- Commits/PRs: `616d42b` (aprobación), `4ef5f8f` (implementación), `a2d8cc3` (verificación y arreglos de las skills) y
+  el commit que pasa la spec a `Implemented`. Sin PR: historia lineal en `main`.
 - Archivos principales:
   - Skills: `.claude/skills/{sdd-new-spec,sdd-implement,sdd-validate,update-manual}/SKILL.md`.
   - Guardas: `.claude/settings.json`, `.githooks/commit-msg`, `scripts/install-git-hooks.sh`, `.gitignore`.
@@ -368,21 +369,23 @@ La verificación de CA-1 a CA-6 la hizo una persona en una sesión de Claude Cod
   `git grep -nE --untracked -e <patrón> -- <ruta>` como **única excepción de lectura** a «solo comandos de la tabla de
   `AGENTS.md`» (§14.1, fila T). No sustituyen a los comandos de validación de la tabla. §14.1 no se editó.
 
-### 18.3 Pendiente para cerrar la spec
+### 18.3 Cierre y verificación diferida
 
 1. **Hecho el 2026-10-17 (§18.1):** las cuatro skills se ejecutaron sobre un escenario real. CA-1, CA-2 y CA-5
-   quedan verificados; CA-3, CA-4 y CA-6 quedan **parciales**. §15 pide que cada skill se ejecute y se registre lo que
-   hizo, y que las negativas de CA-3 se ejerciten con una spec `Draft`: eso está cumplido. Las mitades que faltan son
-   los caminos en los que la skill sí trabaja.
-2. Decidir si esas mitades se cierran antes de pasar a `Implemented`. Cierre propuesto, con uso real:
-   - CA-3 y CA-4: `/sdd-implement` sobre la primera spec `Approved` que se vaya a implementar (por ejemplo SPEC-0006),
+   quedan verificados; CA-3, CA-4 y CA-6 quedan **parciales**: las skills solo se ejercitaron en su camino de parada.
+   §15 pide que cada skill se ejecute y se registre lo que hizo, y que las negativas de CA-3 se ejerciten con una spec
+   `Draft`: eso está cumplido.
+2. **Decisión del solicitante (2026-10-17):** pasar la spec a `Implemented` con CA-3, CA-4 y CA-6 verificados solo en su
+   camino de parada y con los arreglos de §18.1 sin volver a ejecutar. Es una aceptación, no una verificación: esos
+   criterios **no están cumplidos del todo**.
+3. **Verificación diferida**, para anotar en §18.1 cuando haya uso real:
+   - CA-3 y CA-4: `/sdd-implement` sobre la primera spec `Approved` que se implemente (por ejemplo SPEC-0006),
      comprobando que pasa a `In Progress` en su frontmatter y en los dos índices y que `git log` no gana commits.
-   - CA-6: `/update-manual` sobre esa misma spec si su sección «Manual de uso» lista procesos, comprobando
+   - CA-6: `/update-manual` sobre esa spec si su sección «Manual de uso» lista procesos, comprobando
      `manual-consistency.spec.ts` y la declaración de contenido no público.
-3. La revisión de `security` del diff de los cuatro arreglos de §18.1 se hizo (§18.5); sus correcciones no se volvieron
-   a revisar de forma independiente. Falta comprobar con uso real que las skills siguen funcionando tras el cambio y
-   que el respaldo con `git ls-files` y `git grep` funciona en una sesión sin `Glob` ni `Grep`.
-4. Hacer commit de los cambios y pasar la spec a `Implemented`.
+   - Arreglos de las observaciones 1 a 4 de §18.1: comprobar que las skills siguen funcionando y que el respaldo con
+     `git ls-files` y `git grep` funciona en una sesión sin `Glob` ni `Grep`. Sus correcciones posteriores a la
+     revisión de `security` (§18.5) no se revisaron de forma independiente.
 
 ### 18.4 Revisión de `security` (2026-10-17)
 
