@@ -38,6 +38,7 @@ Cada archivo `agents/<nombre>.md` empieza con un bloque YAML legible por máquin
 | `agent/**` | device-agent | security (privilegios, credenciales), backend (contrato) |
 | `backend/tests/**`, `frontend/src/**/*.spec.ts` | testing | agente del código probado |
 | `**/Dockerfile`, `docker-compose*.yml`, `.env.example`, `scripts/**` | architecture | security |
+| `.claude/**`, `.githooks/**` (skills, permisos y hooks de desarrollo) | architecture | security (ejecutan código y definen permisos); testing (prueba del hook) |
 | `constitution.md`, `specs/architecture/**` | architecture | security (+ aprobación humana para enmiendas) |
 | `specs/security/**`, `SECURITY.md` | security | architecture |
 | `README.md`, `ARCHITECTURE.md`, `DEVELOPMENT.md`, `agents/**` | architecture | agente del área afectada |

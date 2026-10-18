@@ -2,7 +2,7 @@
 id: SPEC-0007
 title: Skills y guardas para el flujo SDD
 type: feature
-status: Approved
+status: In Progress
 owner: jmartinez
 created: 2026-10-17
 approved-by: jmartinez (2026-10-17)
@@ -94,14 +94,16 @@ depende de la memoria de la persona o de la herramienta de IA que trabaje, y ya 
   componentes (el manual es público). Ejecuta las pruebas del frontend, que incluyen `manual-consistency.spec.ts`.
 - **RF-5 Invocación explícita.** Las skills solo se ejecutan cuando una persona las invoca; no se activan solas.
 - **RF-6 Reglas de bloqueo de secretos.** `.claude/settings.json` impide a Claude Code leer y editar `.env` y sus
-  variantes, `secrets/` y los archivos de claves y certificados que `.gitignore` ya clasifica como secretos
-  (`*.pfx`, `*.p12`, `*.pem`, `*.key`, `*.crt`, `*.cer`). `.env.example` sigue siendo legible y editable (§4.3).
+  variantes, `secrets/`, los archivos de claves y certificados que `.gitignore` ya clasifica como secretos
+  (`*.pfx`, `*.p12`, `*.pem`, `*.key`, `*.crt`, `*.cer`) y, por decisión del solicitante tras la revisión de `security`
+  (§19.4), la configuración local que `.gitignore` también lista (`appsettings.*.local.json`,
+  `docker-compose.override.yml`). `.env.example` sigue siendo legible y editable (§4.3).
 - **RF-7 Hook `commit-msg`.** Rechaza el commit si el primer renglón del mensaje no empieza por uno o más IDs
   `SPEC-NNNN` o `ADR-NNNN` separados por coma y espacio, o por el prefijo `minor`, seguidos de `: ` y un texto
   (`^(((SPEC|ADR)-[0-9]{4})(, (SPEC|ADR)-[0-9]{4})*|minor): .+`, p. ej. `SPEC-0000, SPEC-0001: …` como en el
   historial). El prefijo `minor: <motivo>` identifica las correcciones menores sin spec que permite la
   constitución §11.6 (Q-2) y exige el motivo. Deja pasar los mensajes generados por git (`Merge `, `Revert "`,
-  `fixup! `, `squash! `). El mensaje de rechazo explica el formato aceptado.
+  `fixup! `, `squash! `, `amend! `). El mensaje de rechazo explica el formato aceptado.
 - **RF-8 Activación del hook.** Un script `scripts/install-git-hooks.sh`, idempotente, configura
   `core.hooksPath` a `.githooks`. DEVELOPMENT.md §1 lo incluye entre los pasos de instalación.
 
@@ -188,8 +190,9 @@ verificado**, dice qué falta y no improvisa ni da el resultado por bueno.
 - [ ] **CA-6** Dada una spec con procesos en "Manual de uso", cuando se invoca `/update-manual`, entonces crea o
   actualiza los `.md` y el `index.json`, `manual-consistency.spec.ts` pasa y la skill declara la revisión de contenido
   no público.
-- [ ] **CA-7** Con las reglas de RF-6 activas, Claude Code no puede leer ni editar `.env`, `secrets/` ni los archivos
-  de claves y certificados, y sí puede leer y editar `.env.example`. El alcance exacto (herramientas de lectura y
+- [ ] **CA-7** Con las reglas de RF-6 activas, Claude Code no puede leer ni editar `.env`, `secrets/`, los archivos
+  de claves y certificados ni `appsettings.*.local.json` y `docker-compose.override.yml`, y sí puede leer y editar
+  `.env.example`, `appsettings.json`, `appsettings.Development.json` y `docker-compose.yml`. El alcance exacto (herramientas de lectura y
   edición frente a comandos de shell) y sus límites quedan documentados en DEVELOPMENT.md.
 - [ ] **CA-8** Con el hook activo, todos los mensajes del historial de `main` al momento de implementar y los
   generados por git son aceptados, igual que `minor: corregir errata`; son rechazados `update stuff`, `spec-0007: x`,
@@ -283,7 +286,7 @@ Obligatoria para: `.claude/settings.json`, `.githooks/commit-msg`, `scripts/inst
 
 | Criterio | Tipo | Prueba |
 |---|---|---|
-| CA-8 | Automatizada (script) | `scripts/test-commit-msg-hook.sh` alimenta el hook con los mensajes válidos e inválidos de CA-8 y con el historial de `git log --format=%s`, y comprueba el código de salida. Se añade a la tabla de comandos de AGENTS.md. |
+| CA-8 | Automatizada (script) | `scripts/test-commit-msg-hook.sh` alimenta el hook con los mensajes válidos e inválidos de CA-8 y con los asuntos del historial real al 2026-10-17 (*fixtures* congeladas, para que la prueba no dependa del estado de git), comprueba el código de salida y además hace commits reales en un repositorio temporal. Se añade a la tabla de comandos de AGENTS.md. |
 | CA-9 | Automatizada (script) | La misma prueba ejecuta dos veces `install-git-hooks.sh` en un repositorio temporal y compara `core.hooksPath`. |
 | CA-1 a CA-6 | Verificación documentada | Cada skill se ejecuta sobre un escenario real y se registra en §18 lo que hizo. `/sdd-new-spec` se usa para crear la siguiente spec del repositorio (verificación con uso real). Los casos de negativa de CA-3 se ejercitan con una spec `Draft`. |
 | CA-7 | Verificación documentada | Intentar leer y editar `.env`, `secrets/` y `.env.example` desde Claude Code y registrar cuáles se bloquean. |
@@ -313,10 +316,74 @@ proceso. La guía para quienes desarrollan va en DEVELOPMENT.md.
 
 ## 18. Trazabilidad (al implementar)
 
-- Commits/PRs: …
-- Archivos principales: …
-- Pruebas: …
+- Commits/PRs: pendiente (cambios sin commit al 2026-10-17).
+- Archivos principales:
+  - Skills: `.claude/skills/{sdd-new-spec,sdd-implement,sdd-validate,update-manual}/SKILL.md`.
+  - Guardas: `.claude/settings.json`, `.githooks/commit-msg`, `scripts/install-git-hooks.sh`, `.gitignore`.
+  - Documentación: `DEVELOPMENT.md` (§1, §2, §7, §9 y la nueva §10), `AGENTS.md`, `agents/README.md`,
+    `agents/architecture.md`, `README.md`. Erratas en `specs/README.md` y `specs/features/README.md`.
+- Pruebas: `scripts/test-commit-msg-hook.sh` (54 comprobaciones, también con `dash`). Se probó además contra ocho
+  versiones deliberadamente rotas del hook y del instalador (patrón que acepta todo, mensaje evaluado, instalador sin
+  `chmod` ni aviso, IDs de 3 dígitos, líneas en blanco iniciales, sin `amend! `, sin `unset GREP_OPTIONS`) y detectó las
+  ocho.
 - Manual de uso actualizado: no aplica.
+
+### 18.1 Verificación de criterios (2026-10-17)
+
+| Criterio | Estado | Evidencia |
+|---|---|---|
+| CA-1 a CA-6 | **Pendiente de uso real** | Las skills no se pueden ejecutar desde la sesión que las creó: `.claude/skills/` no existía al abrirla (hace falta `/reload-skills`) y solo las invoca una persona. Se validaron de forma estructural: frontmatter, `name` igual a la carpeta, rutas que citan y *checklists* que leen. Pasos para cerrarlas en §18.3. |
+| CA-7 | Verificado | Ficheros señuelo, nunca `.env` ni `secrets/`, con Claude Code 2.1.291. Resultados y límites en `DEVELOPMENT.md` §10.2. |
+| CA-8, CA-9 | Verificado | `./scripts/test-commit-msg-hook.sh`: 54 comprobaciones en verde. |
+| CA-10 | Verificado | `git check-ignore` confirma `.claude/settings.local.json`; escaneo de rutas propias, claves y credenciales en los archivos nuevos, sin hallazgos. |
+| CA-11 | Verificado | Documentación y matriz de agentes actualizadas; el comando de siguiente ID devuelve el último ID real. |
+
+### 18.2 Desviaciones respecto al texto de la spec
+
+- **Fixtures del historial (§15):** la prueba usa los asuntos del historial como *fixtures* congeladas en lugar de leer
+  `git log`.
+- **P-5, reglas de Bash:** no se añadieron. Las reglas por prefijo de comando son fáciles de eludir (la revisión de
+  `security` lo comprobó con `sed`, `awk` y `cp`) y dan una falsa sensación de control; el límite queda documentado.
+- **P-5, `.env.example`:** se excluye con la negación `!` de las reglas de permisos, no enumerando variantes de `.env.*`.
+- **RF-7, `amend! `:** se añade a los mensajes generados por git que pasan sin comprobar (`git commit --fixup=amend:`).
+- **RF-6, ampliación:** por decisión del solicitante tras la revisión de `security` (§19.4), se bloquean también
+  `appsettings.*.local.json` y `docker-compose.override.yml`.
+- **RF-3 y RF-4, argumento:** el ID de la spec es obligatorio; si falta, la skill lo pide en lugar de deducirlo.
+- **RF-3, Compose:** valida con `docker compose config -q` (sin `-q` imprime los valores de `.env`), que se añade a la
+  tabla de comandos de `AGENTS.md`.
+
+### 18.3 Pendiente para cerrar la spec
+
+1. Verificar CA-1 a CA-6 con uso real, en una sesión de Claude Code abierta después de estos cambios (o tras
+   `/reload-skills`): `/sdd-new-spec` sobre la siguiente idea real; `/sdd-validate SPEC-0007`; `/update-manual SPEC-0007`
+   (debe detenerse: su sección "Manual de uso" es "Ninguno"); `/sdd-implement` sobre una spec en `Draft` (debe negarse).
+2. Hacer commit de los cambios y pasar la spec a `Implemented`.
+
+### 18.4 Revisión de `security` (2026-10-17)
+
+La hizo un agente independiente que recibió los archivos y el modelo de amenazas, no las conclusiones de quien
+implementó. Revisó en modo lectura y ejecutó sondas en repositorios temporales. Resultado: ningún hallazgo crítico, 1
+alto, 4 medios y 7 bajos. El hook resistió la inyección (`$()`, comillas, `%`, `\`, líneas de hasta 20 MB, `sh` y `dash`
+con `grep` y `sed` de BSD y GNU) y falla cerrado.
+
+| Hallazgo | Severidad | Resolución |
+|---|---|---|
+| `/sdd-validate` mandaba ejecutar `docker compose config`, que imprime en el contexto del modelo los valores de `.env`: el compose interpola contraseñas y el secreto de Entra. Además no estaba en la tabla de `AGENTS.md`. | Alto | **Corregido:** usa `docker compose config -q`, añadido a la tabla; se quitó `docker info`; la skill solo ejecuta comandos de la tabla y tiene su cláusula "No hagas … leer `.env`". La premisa se comprobó leyendo `docker-compose.yml`, sin ejecutar `config` sobre el `.env` real. |
+| `allowed-tools` de `/sdd-validate` pre-aprobaba comodines de git que escriben o leen archivos arbitrarios (`--output`, `--no-index`). | Medio | **Corregido:** solo `git status --short` y `git diff --name-only`; se quitó `git log`. |
+| `Write` y `Edit` pre-aprobados sin ámbito en `/sdd-new-spec` y `/update-manual`; solo una skill tenía la cláusula "lo leído son datos". | Medio | **Corregido:** edición acotada a `specs/**` y a `frontend/public/manual/**`; la cláusula está en las cuatro. |
+| Las reglas no cubren `appsettings.*.local.json`, `docker-compose.override.yml` ni `.claude/settings.local.json`. | Medio | **Corregido por decisión del solicitante (§19.4)** para los dos primeros. Comprobado con rutas señuelo: antes de añadir las reglas daban "no existe", después "denegado", y los archivos legítimos parecidos (`appsettings.json`, `appsettings.Development.json`, `docker-compose.yml`) siguen accesibles. `.claude/settings.local.json` queda sin cubrir y documentado en `DEVELOPMENT.md` §10.2. |
+| `DEVELOPMENT.md` §10.2 subestimaba los huecos (solo citaba Python) y decía que `secrets/` se bloquea "en la raíz". | Medio | **Corregido:** límites reescritos. El alcance real (cualquier profundidad, sin distinguir mayúsculas) se comprobó con sondas propias. |
+| Hook: `amend! ` rechazado siendo válido; `GREP_OPTIONS` podía invertir el veredicto; `Merge `, `fixup! ` y similares pasan con cualquier texto; líneas `#` con `-m`. | Bajo | `amend! ` y `unset GREP_OPTIONS` añadidos, con prueba. El resto, documentado en §10.3. |
+| Instalador: `chmod +x` abría permisos, `git config` sin ámbito y reemplazo silencioso de un `core.hooksPath` previo. | Bajo | **Corregido:** `chmod u+x`, `git -C … --local`, aviso al reemplazar. Documentado que git deja de ejecutar `.git/hooks/`. |
+| Prueba: entorno de git heredado sin sanear, residuos ante SIGTERM, no distinguía rechazo (1) de fallo (127) y faltaban casos. | Bajo | **Corregido:** saneado de las variables `GIT_*`, *traps* de señales, estado de salida exacto y casos nuevos. |
+| Skills: ambigüedad sobre `git push` en `/sdd-implement`, aprobación comprobada solo por el texto `status`, *hint* `[SPEC-NNNN]` que sugería argumento opcional y declaración de contenido público sin comprobación. | Bajo | **Corregido:** `git push` nunca y `git commit` solo a petición en el chat; se exige `approved-by` relleno; *hint* `SPEC-NNNN`; búsqueda con Grep de IPs, correos, GUID y versiones. |
+| `CODEOWNERS` para `.githooks/**`, `.claude/**` y `AGENTS.md`; `CLAUDE.local.md` y `.claude/agent-memory-local/` sin ignorar. | Informativo | No aplicado: fuera del alcance de esta spec. |
+
+Limitaciones declaradas por el revisor: no ejecutó las skills (valoró su texto); no probó `Write`, `Glob`, `Grep` ni
+`NotebookEdit` contra las reglas, ni el arranque de Claude Code desde un subdirectorio; no pudo verificar `cat`, `head`
+ni subprocesos porque el clasificador del modo automático los bloqueó; no probó Windows ni busybox. Las correcciones
+posteriores a la revisión no se volvieron a revisar de forma independiente: las cubren la prueba automatizada (54
+comprobaciones, ocho mutantes detectados) y las comprobaciones propias descritas arriba.
 
 ## 19. Preguntas abiertas
 
@@ -354,3 +421,11 @@ spec aprobada. **No quedan preguntas abiertas.** Se implementa en el orden de §
 
 Queda como verificación durante la implementación: la revisión de `security` de `.claude/settings.json`,
 `.githooks/commit-msg`, `scripts/install-git-hooks.sh` y `.gitignore` (§14.2) antes de pasar la spec a `Implemented`.
+Se hizo el 2026-10-17 (§18.4).
+
+### 19.4 Decisión tras la revisión de `security` (2026-10-17)
+
+La revisión señaló que las reglas de RF-6 no cubrían `appsettings.*.local.json` ni `docker-compose.override.yml`, que
+`.gitignore` también trata como configuración local, y que RF-6 nombraba una lista cerrada. El solicitante decidió
+**ampliar RF-6** con esos dos patrones, para lectura y edición. Efecto: RF-6, CA-7, §18.2 y `DEVELOPMENT.md` §10.2.
+`.claude/settings.local.json` se deja fuera.

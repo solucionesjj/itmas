@@ -40,7 +40,8 @@ specs/
 | Especificación (feature, BD, seguridad) | `SPEC-NNNN` (secuencia única global) | `<carpeta>/SPEC-NNNN-<slug>.md` | `feature-spec.md`, `database-change.md`, `security-review.md` |
 | Decisión arquitectónica | `ADR-NNNN` | `architecture/adr-NNNN-<slug>.md` | `adr.md` |
 
-- Toma el siguiente número libre (`grep -rho "SPEC-[0-9]\{4\}" specs | sort | tail -1`).
+- Toma el siguiente número libre a partir de los **nombres de archivo**, no del texto, que también menciona IDs de
+  ejemplo (`ls specs/*/SPEC-*.md | grep -o 'SPEC-[0-9]\{4\}' | sort | tail -1`; la skill `/sdd-new-spec` lo hace).
 - Commits y PRs referencian el ID: `SPEC-0007: add invoice approval endpoint`.
 
 ## Estados
@@ -58,7 +59,7 @@ specs/
 | [SPEC-0004](features/SPEC-0004-user-manual.md) | Manual de uso del sistema | Implemented |
 | [SPEC-0005](features/SPEC-0005-sql-engine-access-audit.md) | Auditoría de accesos a motores SQL | Implemented |
 | [SPEC-0006](features/SPEC-0006-infrastructure-agenda.md) | Agenda anual de infraestructura | Approved |
-| [SPEC-0007](features/SPEC-0007-sdd-tooling.md) | Skills y guardas para el flujo SDD | Approved |
+| [SPEC-0007](features/SPEC-0007-sdd-tooling.md) | Skills y guardas para el flujo SDD | In Progress |
 | [ADR-0001](architecture/adr-0001-clean-architecture.md) | Clean Architecture en 4 proyectos | Accepted |
 | [ADR-0002](architecture/adr-0002-authentication-bff.md) | Autenticación BFF con Microsoft Entra ID | Accepted |
 | [ADR-0003](architecture/adr-0003-authorization-default-deny.md) | Autorización *default deny* basada en permisos | Accepted |

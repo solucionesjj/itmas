@@ -202,7 +202,7 @@ Cómo editarlo: [DEVELOPMENT.md §8.1](DEVELOPMENT.md#81-mantener-el-manual-de-u
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Componentes, capas, comunicación y decisiones. |
 | [SECURITY.md](SECURITY.md) | Autenticación, autorización, secretos, protección de la API. |
 | [agent/README.md](agent/README.md) | Instalación, comandos y funcionamiento del agente de inventario. |
-| [DEVELOPMENT.md](DEVELOPMENT.md) | Desarrollo local, migraciones, pruebas, estructura. |
+| [DEVELOPMENT.md](DEVELOPMENT.md) | Desarrollo local, migraciones, pruebas, estructura, skills y hooks de desarrollo. |
 | [specs/](specs/README.md) | Proceso SDD, plantillas, ADRs y especificaciones. |
 | [agents/](agents/README.md) | Agentes especializados: responsabilidades y límites. |
 | [AGENTS.md](AGENTS.md) | Punto de entrada para herramientas de IA. |

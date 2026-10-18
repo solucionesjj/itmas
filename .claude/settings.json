@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(!.env.example)",
+      "Read(./secrets/**)",
+      "Read(*.pfx)",
+      "Read(*.p12)",
+      "Read(*.pem)",
+      "Read(*.key)",
+      "Read(*.crt)",
+      "Read(*.cer)",
+      "Read(**/appsettings.*.local.json)",
+      "Read(docker-compose.override.yml)",
+      "Edit(.env)",
+      "Edit(.env.*)",
+      "Edit(!.env.example)",
+      "Edit(./secrets/**)",
+      "Edit(*.pfx)",
+      "Edit(*.p12)",
+      "Edit(*.pem)",
+      "Edit(*.key)",
+      "Edit(*.crt)",
+      "Edit(*.cer)",
+      "Edit(**/appsettings.*.local.json)",
+      "Edit(docker-compose.override.yml)"
+    ]
+  }
+}

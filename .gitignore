@@ -11,6 +11,7 @@
 secrets/
 **/appsettings.*.local.json
 docker-compose.override.yml
+.claude/settings.local.json
 
 # ---- .NET ----
 **/bin/

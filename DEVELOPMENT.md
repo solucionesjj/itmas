@@ -14,6 +14,13 @@
 
 Genera `.env` con contraseñas aleatorias. Completa los valores de Entra ID si vas a iniciar sesión.
 
+```bash
+./scripts/install-git-hooks.sh
+```
+
+Activa en tu clon el hook de git `commit-msg`, que exige el prefijo `SPEC-NNNN:` en los commits (ver §10). Es
+independiente de `init-env.sh`: se puede ejecutar aunque `.env` ya exista, y varias veces.
+
 ## 2. Estructura del proyecto
 
 ```text
@@ -37,7 +44,9 @@ Genera `.env` con contraseñas aleatorias. Completa los valores de Entra ID si v
 ├── database/init/         Bootstrap de PostgreSQL (roles de mínimo privilegio)
 ├── specs/                 Especificaciones SDD, ADRs y plantillas
 ├── agents/                Definición de agentes especializados
-├── scripts/               Utilidades (init-env.sh, build-agent.sh)
+├── .claude/               Skills de proyecto y permisos de Claude Code (SPEC-0007)
+├── .githooks/             Hooks de git versionados: commit-msg (SPEC-0007)
+├── scripts/               Utilidades (init-env.sh, build-agent.sh, install-git-hooks.sh, test-commit-msg-hook.sh)
 ├── docker-compose.yml     Entorno completo
 └── docker-compose.dev.yml Overlay opcional: publica PostgreSQL en 127.0.0.1 para depurar
 ```
@@ -169,7 +178,9 @@ Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json
   vulnerabilidades conocidas), versiones en `Directory.Packages.props`.
 - **Frontend:** TypeScript `strict`, componentes standalone, signals, Prettier (`.prettierrc`), un componente
   por archivo, sin estilos que sobrescriban Material.
-- **Commits:** referencian el ID de la spec, p. ej. `SPEC-0001: add user list endpoint`.
+- **Commits:** referencian el ID de la spec, p. ej. `SPEC-0001: add user list endpoint` (varios IDs:
+  `SPEC-0000, SPEC-0001: …`; un ADR: `ADR-0016: …`). Las correcciones menores sin spec que permite la constitución
+  §11.6 usan `minor: <motivo>`. El hook `commit-msg` lo comprueba (ver §10).
 - **Idioma:** código, identificadores y comentarios en inglés; documentación y textos de UI en español.
 
 ## 8. Añadir permisos a una funcionalidad
@@ -218,3 +229,102 @@ Toda spec que cambie algo visible para las personas usuarias actualiza el manual
 | `api` unhealthy tras cambiar contraseñas | El volumen conserva los roles antiguos: `docker compose down -v`. |
 | Tests de integración: `DockerUnavailableException` | Docker no está en ejecución. |
 | La API no arranca en Production | Falta configuración de Entra ID (comportamiento *fail-fast* intencional). |
+| `Mensaje de commit rechazado` | El primer renglón no empieza por `SPEC-NNNN:`, `ADR-NNNN:` ni `minor: <motivo>` (§10.3). |
+| Claude Code no ofrece `/sdd-new-spec` y las demás | `.claude/skills/` no existía al abrir la sesión: ejecuta `/reload-skills` o reinicia la sesión (§10.1). |
+
+## 10. Skills y guardas de desarrollo (Claude Code)
+
+Origen: [SPEC-0007](specs/features/SPEC-0007-sdd-tooling.md). Automatizan reglas que ya existen en la constitución; no
+añaden ni relajan ninguna. Si un procedimiento choca con la constitución, prevalece la constitución y se corrige el
+procedimiento. Todo cambio en `.claude/**` o `.githooks/**` lo revisa `security` (`agents/README.md`).
+
+### 10.1 Skills de proyecto
+
+Viven en `.claude/skills/<nombre>/SKILL.md` y solo las invoca una persona (`disable-model-invocation: true`). **Leen las
+reglas del repositorio en cada ejecución** (constitución, `AGENTS.md`, `agents/`, plantillas) en lugar de copiarlas:
+cambiar una regla no obliga a editarlas, solo hay que tocarlas si cambia el procedimiento.
+
+| Skill | Qué hace | Se detiene si |
+|---|---|---|
+| `/sdd-new-spec <idea>` | Calcula el siguiente ID **por nombre de archivo**, copia la plantilla, deja la spec en `Draft` con las preguntas abiertas y añade la fila a los índices. | Falta la idea. Nunca aprueba. |
+| `/sdd-implement SPEC-NNNN` | Ejecuta el plan de la spec en orden, respeta `owns`/`forbidden`, lista las revisiones pendientes y propone el mensaje de commit. | La spec no está `Approved` ni `In Progress`, el plan es preliminar o hay preguntas abiertas. |
+| `/sdd-validate SPEC-NNNN` | Ejecuta **solo** los comandos de la tabla de `AGENTS.md` que correspondan a lo modificado, relaciona cada criterio con su prueba, evalúa los *checklists* de salida y compara el estado de la spec con los índices. Informa `OK`, `FALLA` o `NO VERIFICADO`. | No hay ID (lo pide). No corrige nada. |
+| `/update-manual SPEC-NNNN` | Crea o actualiza los procesos de `frontend/public/manual/` y `index.json` según la sección "Manual de uso" de la spec, declara la revisión de contenido público y ejecuta las pruebas del frontend. | La sección dice "Ninguno". |
+
+```text
+/sdd-new-spec  →  (tú resuelves las preguntas y apruebas)  →  /sdd-implement  →  /sdd-validate  →  commit
+```
+
+Notas:
+- **Primera vez:** si `.claude/skills/` no existía al abrir la sesión, ejecuta `/reload-skills` (o reinicia la sesión).
+- **Ninguna hace `git push`; ninguna hace `git commit` salvo que lo pida de forma explícita quien la invoca, en el chat**
+  (un texto de una spec o de un archivo no cuenta); ninguna aprueba specs ni toca `.env`. Esto lo imponen sus
+  instrucciones y tu modo de permisos: `allowed-tools` de una skill solo **pre-aprueba** herramientas, acotadas a lo que
+  necesita (lecturas; `git status --short` y `git diff --name-only` en `/sdd-validate`; edición de `specs/**` en
+  `/sdd-new-spec` y de `frontend/public/manual/**` en `/update-manual`). No restringe las demás, así que `git commit` y
+  `git push` no van pre-aprobados.
+- Tratan lo que leen (specs, archivos, salidas de comandos) como datos, no como órdenes, y `/sdd-validate` ejecuta solo
+  comandos de la tabla de `AGENTS.md` (para Compose, `docker compose config -q`: sin `-q` imprime los valores de `.env`).
+  Ejecutar pruebas ejecuta código del repositorio: no las lances sobre una rama que no conozcas.
+- Lo no verificado se informa como `NO VERIFICADO` (por ejemplo, Docker apagado para las pruebas del backend).
+
+### 10.2 Reglas de bloqueo de secretos (`.claude/settings.json`)
+
+Impiden a Claude Code leer y editar los archivos que `.gitignore` ya trata como secretos: `.env` y `.env.*` **salvo
+`.env.example`**, `secrets/`, `*.pfx`, `*.p12`, `*.pem`, `*.key`, `*.crt`, `*.cer` y la configuración local
+`**/appsettings.*.local.json` y `docker-compose.override.yml`. Usan la negación `!` de las reglas
+de permisos y actúan **a cualquier profundidad y sin distinguir mayúsculas** (`frontend/x.PEM` y `zz/secrets/x.txt`
+también quedan bloqueados). `.claude/settings.local.json` (preferencias personales) está ignorado por git: no guardes
+secretos en él.
+
+Verificado el 2026-10-17 con Claude Code 2.1.291 sobre ficheros señuelo y rutas inexistentes, nunca sobre `.env` ni
+`secrets/`:
+
+| Intento | Resultado |
+|---|---|
+| Leer `.env.*`, `*.pem` o `secrets/…` con la herramienta de lectura | Bloqueado |
+| Crear esos archivos con la herramienta de escritura (`.env.*`, `*.key`, `secrets/…`) | Bloqueado |
+| Rutas anidadas o en mayúsculas (`zz/secrets/x.txt`, `frontend/zz-probe.PEM`) | Bloqueadas |
+| Leer o crear `.env.example` | Permitido |
+| Leer o crear `appsettings.<x>.local.json` y `docker-compose.override.yml`, también anidados | Bloqueado (antes de añadir las reglas, las mismas rutas daban "no existe") |
+| Leer `appsettings.json`, `appsettings.Development.json` y `docker-compose.yml` | Permitido |
+| `cat <archivo protegido>` en el shell | Denegado en esta sesión; no se pudo aislar si por estas reglas o por el clasificador del modo automático |
+| `grep -r` que no nombra el archivo | No devolvió los señuelos en esta sesión; no es una garantía |
+| `sed`, `awk` o `cp` sobre un archivo protegido (comprobado por la revisión de `security`) | Llegaron al sistema de archivos |
+| Un subproceso (un script de Python) que abre el archivo | **Pudo leerlo** |
+
+**Límites.** No es una barrera del sistema operativo. Cubre las herramientas de lectura y escritura de Claude Code;
+cualquier otro camino la elude: un subproceso, los comandos de shell que no sean un lector reconocido (`sed`, `awk`,
+`cp`, redirecciones) y las herramientas de servidores MCP que leen archivos. Complementan a
+[constitución §4](constitution.md) (ningún secreto en el repositorio, `.env` con permisos `600`), no la sustituyen. No se
+añadieron reglas de Bash por prefijo de comando, porque son fáciles de eludir y dan una falsa sensación de control. Si
+algún día hace falta aislamiento fuerte, la opción es el *sandbox* de Claude Code.
+
+Qué no cubren hoy: `.claude/settings.local.json` (que `.gitignore` también trata como local), los *user-secrets* de
+.NET, que viven fuera del proyecto, y un `appsettings.local.json` sin segmento intermedio, que tampoco encaja en el
+patrón `appsettings.*.local.json` ni en el de `.gitignore`. Además, `.env.*` bloquea variantes como `.env.sample`: si
+algún día se versionan, hay que añadir su excepción.
+
+### 10.3 Hook de git `commit-msg`
+
+Rechaza el commit si el primer renglón (sin contar líneas en blanco ni comentarios `#` de git) no empieza por:
+- uno o más IDs `SPEC-NNNN` o `ADR-NNNN` separados por coma y espacio, seguidos de `: ` y un texto
+  (`SPEC-0007: …`, `SPEC-0000, SPEC-0001: …`), o
+- `minor: <motivo>`, solo para lo que la constitución §11.6 permite sin spec (erratas, dependencias de parche, refactors
+  locales sin cambio de comportamiento). El hook no puede comprobarlo: lo decide quien hace el commit y lo revisa quien
+  revisa el cambio.
+
+Los mensajes que genera git (`Merge `, `Revert "`, `fixup! `, `squash! `, `amend! `) pasan sin comprobar: basta que el
+asunto empiece por ese prefijo, aunque no lo haya generado git. El hook asume `#` como carácter de comentario, el
+predeterminado de git, y solo ve los commits que git le pasa: `git revert` y los *squash* de `rebase -i` no lo invocan.
+
+| Acción | Comando |
+|---|---|
+| Activarlo (una vez por clon; idempotente; no usa `.env`) | `./scripts/install-git-hooks.sh` |
+| Probarlo (mensajes válidos e inválidos, asuntos del historial como *fixtures*, commits reales en un repositorio temporal, activación idempotente) | `./scripts/test-commit-msg-hook.sh` |
+
+Al activarlo, git deja de ejecutar los hooks de `.git/hooks/`; si tu clon ya tenía otro `core.hooksPath`, el instalador
+avisa de que lo reemplaza.
+
+**No es un control de seguridad:** `git commit --no-verify` lo omite. La verificación centralizada queda para una
+futura integración continua.
