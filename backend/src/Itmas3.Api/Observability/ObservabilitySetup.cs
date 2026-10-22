@@ -31,12 +31,19 @@ internal static class ObservabilitySetup
             .ConfigureResource(resource => resource.AddService(builder.Configuration["OTEL_SERVICE_NAME"] ?? "itmas3-api"))
             .WithTracing(tracing => tracing
                 .AddAspNetCoreInstrumentation(options => options.Filter = context => !context.Request.Path.StartsWithSegments("/health"))
-                .AddHttpClientInstrumentation()
+                // The path of a call to Graph carries the address of the mailbox: its spans are not exported (SPEC-0006 RNF-8).
+                // The operations with Outlook are counted by itmas.agenda.outlook.operations and the duration by the HTTP metrics.
+                .AddHttpClientInstrumentation(options =>
+                    options.FilterHttpRequestMessage = request => !string.Equals(request.RequestUri?.Host, "graph.microsoft.com", StringComparison.OrdinalIgnoreCase))
                 .AddSource("Npgsql"))
             .WithMetrics(metrics => metrics
                 .AddAspNetCoreInstrumentation()
                 .AddHttpClientInstrumentation()
-                .AddMeter("System.Runtime", "Npgsql", Application.SqlAudit.SubmitSnapshot.SqlAuditMetrics.MeterName))
+                .AddMeter(
+                    "System.Runtime",
+                    "Npgsql",
+                    Application.SqlAudit.SubmitSnapshot.SqlAuditMetrics.MeterName,
+                    Application.Agenda.Outlook.AgendaMetrics.MeterName))
             .WithLogging()
             .UseOtlpExporter();
 

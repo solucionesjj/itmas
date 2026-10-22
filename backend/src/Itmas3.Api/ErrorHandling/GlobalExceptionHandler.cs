@@ -33,6 +33,7 @@ internal sealed partial class GlobalExceptionHandler(
             ForbiddenException forbidden => Create(StatusCodes.Status403Forbidden, "Operación no permitida.", forbidden.Message),
             ConflictException conflict => Create(StatusCodes.Status409Conflict, "Conflicto con el estado actual.", conflict.Message),
             PreconditionFailedException precondition => Create(StatusCodes.Status412PreconditionFailed, "El recurso cambió.", precondition.Message),
+            TooManyRequestsException tooMany => Create(StatusCodes.Status429TooManyRequests, "Demasiadas solicitudes.", tooMany.Message),
             BadHttpRequestException badRequest => Create(badRequest.StatusCode, "Solicitud inválida.", null),
             _ => Create(StatusCodes.Status500InternalServerError, "Se produjo un error inesperado.", null),
         };
@@ -47,6 +48,11 @@ internal sealed partial class GlobalExceptionHandler(
         }
 
         httpContext.Response.StatusCode = problem.Status ?? StatusCodes.Status500InternalServerError;
+        if (exception is TooManyRequestsException { RetryAfter: { } retryAfter })
+        {
+            httpContext.Response.Headers.RetryAfter =
+                Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {

@@ -1,0 +1,380 @@
+<div class="page-header">
+  <h1 class="page-title">Agenda de infraestructura</h1>
+  <a *appIfPermission="'agenda.create'" mat-flat-button routerLink="/agenda/events/new">
+    <mat-icon>add</mat-icon>
+    Nueva actividad
+  </a>
+  <a *appIfPermission="'agenda.create'" mat-stroked-button routerLink="/agenda/series/new">
+    <mat-icon>event_repeat</mat-icon>
+    Nueva serie
+  </a>
+  <a *appIfPermission="'agenda.types.manage'" mat-button routerLink="/agenda/types">
+    <mat-icon>category</mat-icon>
+    Tipos de actividad
+  </a>
+  <button
+    *appIfPermission="'agenda.read'"
+    mat-stroked-button
+    type="button"
+    [disabled]="exporting()"
+    [attr.aria-busy]="exporting()"
+    [attr.aria-label]="exportLabel()"
+    [matTooltip]="exportHint()"
+    (click)="exportCalendar()"
+  >
+    <mat-icon>download</mat-icon>
+    {{ exporting() ? 'Exportando…' : 'Exportar .ics' }}
+  </button>
+</div>
+<p class="supporting-text">
+  Plan anual de las actividades del área: mantenimiento y parches, auditorías, hardening, pruebas de
+  vulnerabilidad, cambios de claves y más. Cada actividad tiene responsable, fecha, estado y su
+  evidencia de ejecución.
+</p>
+
+@if (list() && !outlookEnabled()) {
+  <p class="notice" role="status">
+    <mat-icon aria-hidden="true">info</mat-icon>
+    <span>Outlook no configurado: programar solo cambia el estado de las actividades.</span>
+  </p>
+}
+
+<div class="toolbar">
+  <mat-button-toggle-group
+    aria-label="Vista de la agenda"
+    [value]="state().view"
+    (change)="setView($event.value)"
+  >
+    @for (view of views; track view) {
+      <mat-button-toggle [value]="view">{{ viewLabels[view] }}</mat-button-toggle>
+    }
+  </mat-button-toggle-group>
+  <div class="period">
+    <button
+      mat-icon-button
+      type="button"
+      [matTooltip]="previousLabel()"
+      [attr.aria-label]="previousLabel()"
+      (click)="shift(-1)"
+    >
+      <mat-icon>chevron_left</mat-icon>
+    </button>
+    <button mat-stroked-button type="button" (click)="today()">Hoy</button>
+    <button
+      mat-icon-button
+      type="button"
+      [matTooltip]="nextLabel()"
+      [attr.aria-label]="nextLabel()"
+      (click)="shift(1)"
+    >
+      <mat-icon>chevron_right</mat-icon>
+    </button>
+    <h2 class="period-title" aria-live="polite">{{ periodTitle() }}</h2>
+    @if (list(); as current) {
+      <span class="zone">Horas de {{ current.timeZone }}</span>
+    }
+  </div>
+</div>
+
+@if (!calendarView()) {
+  <app-year-summary
+    [summary]="summary()"
+    [year]="state().year"
+    [month]="state().month"
+    [types]="types()"
+    (yearChange)="setYear($event)"
+    (monthChange)="setMonth($event)"
+  />
+}
+
+<app-agenda-filters
+  [filters]="state().filters"
+  [types]="types()"
+  [people]="people()"
+  (filtersChange)="setFilters($event)"
+/>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Cargando actividades" />
+}
+
+@if (failed()) {
+  <div class="error-state" role="alert">
+    <span class="supporting-text">No se pudo cargar la agenda.</span>
+    <button mat-stroked-button type="button" (click)="retry()">
+      <mat-icon>refresh</mat-icon>
+      Reintentar
+    </button>
+  </div>
+} @else {
+  @if (list()?.truncated) {
+    <p class="notice" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>Hay más actividades de las que se pueden mostrar. Acota con filtros.</span>
+    </p>
+  }
+
+  @if (calendarView(); as view) {
+    @defer (on immediate) {
+      <app-agenda-calendar
+        [view]="view"
+        [date]="anchor()"
+        [events]="events()"
+        [timeZone]="timeZone()"
+        [narrow]="narrow()"
+        [canCreate]="offerCreate()"
+        (eventOpen)="openById($event)"
+        (positionChange)="goTo($event)"
+        (slotChoose)="plan($event)"
+      />
+    } @placeholder {
+      <p class="supporting-text" role="status">Cargando el calendario…</p>
+    } @error {
+      <p class="supporting-text" role="alert">No se pudo cargar el calendario.</p>
+    }
+    @if (!loading() && events().length === 0) {
+      <p class="supporting-text" role="status">
+        {{ calendarEmptyMessage() }}
+        @if (filtersOn()) {
+          <button mat-stroked-button type="button" (click)="clearFilters()">Limpiar filtros</button>
+        }
+      </p>
+    }
+  } @else {
+    @if (canPublish()) {
+      <div class="batch">
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="selectedCount() === 0 || tooManySelected()"
+          (click)="scheduleSelected()"
+        >
+          <mat-icon>event_available</mat-icon>
+          Programar seleccionadas ({{ selectedCount() }})
+        </button>
+        @if (tooManySelected()) {
+          <span class="supporting-text" role="alert">
+            Selecciona hasta {{ batchLimit }} actividades a la vez.
+          </span>
+        }
+        @if (outlookEnabled()) {
+          <button mat-stroked-button type="button" (click)="syncAll()">
+            <mat-icon>sync</mat-icon>
+            Sincronizar pendientes con Outlook
+          </button>
+        }
+      </div>
+    }
+
+    <div class="table-container">
+      <table mat-table [dataSource]="rows()" aria-label="Actividades del año">
+        <ng-container matColumnDef="month">
+          <td mat-cell *matCellDef="let row" [attr.colspan]="columns.length" class="month-cell">
+            <h3 class="month-title">
+              {{ row.label }} <span class="month-count">· {{ row.count }}</span>
+            </h3>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="select">
+          <th mat-header-cell *matHeaderCellDef class="select-cell">
+            @if (canPublish()) {
+              <mat-checkbox
+                aria-label="Seleccionar todos los borradores"
+                [checked]="allSelected()"
+                [indeterminate]="selectedCount() > 0 && !allSelected()"
+                (change)="toggleAll()"
+              />
+            } @else {
+              <span class="cdk-visually-hidden">Selección</span>
+            }
+          </th>
+          <td mat-cell *matCellDef="let row" class="select-cell">
+            @if (canPublish() && row.event.status === 'draft') {
+              <mat-checkbox
+                [attr.aria-label]="'Seleccionar ' + row.event.title"
+                [checked]="isSelected(row.event)"
+                (change)="toggle(row.event)"
+              />
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="when">
+          <th mat-header-cell *matHeaderCellDef>Fecha y hora</th>
+          <td mat-cell *matCellDef="let row" class="when-cell">{{ whenOf(row.event) }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="type">
+          <th mat-header-cell *matHeaderCellDef>Tipo</th>
+          <td mat-cell *matCellDef="let row">
+            <mat-chip-set aria-label="Tipo de actividad">
+              <mat-chip class="type-chip" [disableRipple]="true" [matTooltip]="row.event.type.name">
+                {{ row.event.type.name }}
+              </mat-chip>
+            </mat-chip-set>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="title">
+          <th mat-header-cell *matHeaderCellDef>Actividad</th>
+          <td mat-cell *matCellDef="let row" class="title-cell">
+            <a
+              class="event-link"
+              [routerLink]="['/agenda/events', row.event.id]"
+              [attr.aria-label]="ariaOf(row.event)"
+              >{{ row.event.title }}</a
+            >
+            @if (row.event.impact !== 'none') {
+              <span class="secondary">Impacto: {{ impactOf(row.event.impact) }}</span>
+            }
+            @if (row.event.hasWarnings) {
+              <span
+                class="warning"
+                role="img"
+                aria-label="Tiene advertencias de solapamiento"
+                matTooltip="Se solapa con otras actividades. Ábrela para ver con cuáles."
+              >
+                <mat-icon aria-hidden="true">warning</mat-icon>
+                <span>Advertencias</span>
+              </span>
+            }
+            @if (row.event.tags.length > 0) {
+              <mat-chip-set aria-label="Etiquetas">
+                @for (tag of row.event.tags.slice(0, 3); track tag) {
+                  <mat-chip>
+                    <button
+                      matChipAction
+                      type="button"
+                      [attr.aria-label]="'Filtrar por la etiqueta ' + tag"
+                      (click)="filterByTag(tag)"
+                    >
+                      {{ tag }}
+                    </button>
+                  </mat-chip>
+                }
+                @if (row.event.tags.length > 3) {
+                  <mat-chip [disableRipple]="true">+{{ row.event.tags.length - 3 }}</mat-chip>
+                }
+              </mat-chip-set>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="responsible">
+          <th mat-header-cell *matHeaderCellDef>Responsable</th>
+          <td mat-cell *matCellDef="let row">
+            @if (row.event.responsible.isActive) {
+              {{ row.event.responsible.name }}
+            } @else {
+              Responsable inactivo
+              <span class="secondary">{{ row.event.responsible.name }}</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Estado</th>
+          <td mat-cell *matCellDef="let row">
+            <app-event-status [status]="row.event.status" [overdue]="row.event.isOverdue" />
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="outlook">
+          <th mat-header-cell *matHeaderCellDef>Outlook</th>
+          <td mat-cell *matCellDef="let row">
+            @if (row.event.status === 'draft') {
+              <span class="secondary">—</span>
+            } @else {
+              <app-outlook-status [status]="row.event.outlook.status" />
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef>
+            <span class="cdk-visually-hidden">Acciones</span>
+          </th>
+          <td mat-cell *matCellDef="let row" class="actions-cell">
+            <button
+              mat-icon-button
+              type="button"
+              [matMenuTriggerFor]="menu"
+              [attr.aria-label]="'Acciones de ' + row.event.title"
+            >
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu">
+              <button mat-menu-item type="button" (click)="open(row.event)">
+                <mat-icon>visibility</mat-icon>
+                <span>Ver</span>
+              </button>
+              @if (canEdit(row.event)) {
+                <a mat-menu-item [routerLink]="['/agenda/events', row.event.id, 'edit']">
+                  <mat-icon>edit</mat-icon>
+                  <span>Editar</span>
+                </a>
+              }
+              @if (canPublish() && row.event.status === 'draft') {
+                <button mat-menu-item type="button" (click)="schedule(row.event)">
+                  <mat-icon>event_available</mat-icon>
+                  <span>Programar</span>
+                </button>
+              }
+              @if (canPublish() && row.event.status === 'scheduled') {
+                <button mat-menu-item type="button" (click)="cancel(row.event)">
+                  <mat-icon>event_busy</mat-icon>
+                  <span>Cancelar</span>
+                </button>
+              }
+              @if (canComplete(row.event)) {
+                <button
+                  mat-menu-item
+                  type="button"
+                  [disabled]="!hasStarted(row.event)"
+                  (click)="complete(row.event)"
+                >
+                  <mat-icon>task_alt</mat-icon>
+                  <span>Registrar ejecución</span>
+                </button>
+              }
+              @if (canSync(row.event)) {
+                <button mat-menu-item type="button" (click)="sync(row.event)">
+                  <mat-icon>sync</mat-icon>
+                  <span>Sincronizar de nuevo</span>
+                </button>
+              }
+              @if (auth.hasPermission('agenda.update') && row.event.status === 'draft') {
+                <button mat-menu-item type="button" (click)="deleteDraft(row.event)">
+                  <mat-icon>delete</mat-icon>
+                  <span>Eliminar borrador</span>
+                </button>
+              }
+            </mat-menu>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: monthColumns; when: isMonth"
+          class="month-row"
+        ></tr>
+        <tr mat-row *matRowDef="let row; columns: columns; when: isEvent"></tr>
+        <tr class="mat-mdc-no-data-row" *matNoDataRow>
+          <td class="empty" [attr.colspan]="columns.length">
+            {{ emptyMessage() }}
+            @if (!loading() && filtersOn()) {
+              <button mat-stroked-button type="button" (click)="clearFilters()">
+                Limpiar filtros
+              </button>
+            } @else if (!loading() && offerCreate()) {
+              <a mat-stroked-button routerLink="/agenda/events/new">Nueva actividad</a>
+              <a mat-stroked-button routerLink="/agenda/series/new">Nueva serie</a>
+            }
+          </td>
+        </tr>
+      </table>
+    </div>
+  }
+}

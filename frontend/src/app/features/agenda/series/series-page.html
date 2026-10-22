@@ -1,0 +1,220 @@
+<div class="page-header">
+  <a mat-icon-button routerLink="/agenda" aria-label="Volver">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <h1 class="page-title">Nueva serie</h1>
+</div>
+<p class="supporting-text">
+  Crea varias actividades con los mismos datos y una regla de repetición. Se crean en borrador:
+  revisa las fechas en la vista previa y, cuando estén bien, créalas. Después las programas para
+  avisar al equipo.
+</p>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Cargando" />
+}
+
+@if (loadFailed()) {
+  <div class="error-state" role="alert">
+    <span class="supporting-text">No se pudieron cargar los tipos de actividad.</span>
+    <button mat-stroked-button type="button" (click)="loadTypes()">
+      <mat-icon>refresh</mat-icon>
+      Reintentar
+    </button>
+  </div>
+} @else if (!loading()) {
+  <h2 class="section-title">Primera actividad</h2>
+  <app-event-fields
+    [form]="eventForm"
+    [types]="activeTypes()"
+    [suggestMe]="true"
+    (submitted)="runPreview()"
+  />
+
+  <h2 class="section-title">Repetición</h2>
+  <form [formGroup]="rule" class="rule" (ngSubmit)="runPreview()">
+    <div class="rule-row">
+      <mat-form-field appearance="outline" class="narrow">
+        <mat-label>Repetir cada</mat-label>
+        <input
+          matInput
+          type="number"
+          min="1"
+          max="99"
+          step="1"
+          formControlName="interval"
+          required
+        />
+        @if (rule.controls.interval.invalid) {
+          <mat-error>Indica un número entero de 1 a 99.</mat-error>
+        }
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Unidad</mat-label>
+        <mat-select formControlName="unit">
+          @for (unit of units; track unit) {
+            <mat-option [value]="unit">
+              {{ unitText(unit, rule.controls.interval.value ?? 1) }}
+            </mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    @if (isMonthly()) {
+      <fieldset class="choice">
+        <legend>Qué día se repite</legend>
+        <mat-radio-group formControlName="anchorKind" aria-label="Qué día se repite">
+          <div class="choice-row">
+            <mat-radio-button value="day-of-month">Un día del mes</mat-radio-button>
+            <mat-form-field appearance="outline" class="narrow">
+              <mat-label>Día</mat-label>
+              <input
+                matInput
+                type="number"
+                min="1"
+                max="31"
+                step="1"
+                formControlName="dayOfMonth"
+                [attr.aria-label]="'Día del mes'"
+              />
+              @if (rule.controls.dayOfMonth.invalid) {
+                <mat-error>De 1 a 31.</mat-error>
+              }
+            </mat-form-field>
+          </div>
+          <div class="choice-row">
+            <mat-radio-button value="nth-weekday">El n-ésimo día de la semana</mat-radio-button>
+            <mat-form-field appearance="outline">
+              <mat-label>Número</mat-label>
+              <mat-select formControlName="nth">
+                @for (nth of nths; track nth) {
+                  <mat-option [value]="nth">{{ ordinalText(nth) }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Día de la semana</mat-label>
+              <mat-select formControlName="weekday">
+                @for (weekday of weekdays; track weekday) {
+                  <mat-option [value]="weekday">{{ weekdayText(weekday) }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </mat-radio-group>
+        <p class="hint">
+          Sin día, se usa el de la primera actividad. Si el día elegido no existe en un mes (30 o
+          31), la actividad cae el último día del mes.
+        </p>
+      </fieldset>
+    }
+
+    <fieldset class="choice">
+      <legend>Hasta cuándo</legend>
+      <mat-radio-group formControlName="limitKind" aria-label="Hasta cuándo se repite">
+        <div class="choice-row">
+          <mat-radio-button value="count">Número de actividades</mat-radio-button>
+          <mat-form-field appearance="outline" class="narrow">
+            <mat-label>Actividades</mat-label>
+            <input
+              matInput
+              type="number"
+              min="1"
+              [attr.max]="maxOccurrences"
+              step="1"
+              formControlName="count"
+              aria-label="Número de actividades"
+            />
+            <mat-hint>Máximo {{ maxOccurrences }}.</mat-hint>
+            @if (rule.controls.count.invalid) {
+              <mat-error>Indica un número entero de 1 a {{ maxOccurrences }}.</mat-error>
+            }
+          </mat-form-field>
+        </div>
+        <div class="choice-row">
+          <mat-radio-button value="date">Hasta una fecha</mat-radio-button>
+          <mat-form-field appearance="outline">
+            <mat-label>Fecha final</mat-label>
+            <input matInput [matDatepicker]="endsPicker" formControlName="endsOn" />
+            <mat-datepicker-toggle matIconSuffix [for]="endsPicker" />
+            <mat-datepicker #endsPicker />
+            @if (rule.controls.endsOn.invalid) {
+              <mat-error>Indica la fecha final.</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      </mat-radio-group>
+    </fieldset>
+  </form>
+
+  @if (error(); as message) {
+    <p class="error" role="alert">{{ message }}</p>
+  }
+
+  <div class="actions">
+    <button mat-stroked-button type="button" [disabled]="working()" (click)="runPreview()">
+      <mat-icon>preview</mat-icon>
+      Vista previa
+    </button>
+    <button
+      mat-flat-button
+      type="button"
+      [disabled]="working() || !previewIsCurrent()"
+      (click)="create()"
+    >
+      Crear serie
+    </button>
+    <a mat-button routerLink="/agenda">Cancelar</a>
+  </div>
+  @if (working()) {
+    <mat-progress-bar mode="indeterminate" aria-label="Procesando" />
+  }
+
+  @if (preview(); as occurrences) {
+    <section aria-labelledby="preview-title" class="preview">
+      <h2 id="preview-title" class="section-title">Vista previa</h2>
+      @if (!previewIsCurrent()) {
+        <p class="notice" role="status">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <span
+            >Cambiaste los datos: vuelve a pedir la vista previa para poder crear la serie.</span
+          >
+        </p>
+      }
+      <p class="supporting-text" role="status">
+        Se crearán {{ occurrences.length }}
+        {{ occurrences.length === 1 ? 'actividad' : 'actividades' }} en borrador.
+        @if (warningCount() > 0) {
+          {{ warningCount() }}
+          {{ warningCount() === 1 ? 'tiene advertencias' : 'tienen advertencias' }}: no impiden
+          crearlas.
+        }
+      </p>
+      <div class="table-container">
+        <table mat-table [dataSource]="occurrences" aria-label="Fechas de la serie">
+          <ng-container matColumnDef="number">
+            <th mat-header-cell *matHeaderCellDef>N.º</th>
+            <td mat-cell *matCellDef="let occurrence; let index = index">{{ index + 1 }}</td>
+          </ng-container>
+          <ng-container matColumnDef="when">
+            <th mat-header-cell *matHeaderCellDef>Fecha y hora</th>
+            <td mat-cell *matCellDef="let occurrence" class="nowrap">{{ whenOf(occurrence) }}</td>
+          </ng-container>
+          <ng-container matColumnDef="warnings">
+            <th mat-header-cell *matHeaderCellDef>Advertencias</th>
+            <td mat-cell *matCellDef="let occurrence">
+              @if (occurrence.warnings.length > 0) {
+                <app-warning-list [warnings]="occurrence.warnings" />
+              } @else {
+                <span class="secondary">—</span>
+              }
+            </td>
+          </ng-container>
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns"></tr>
+        </table>
+      </div>
+    </section>
+  }
+}

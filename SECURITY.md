@@ -56,6 +56,26 @@ Los datos recolectados son un **mapa de las cuentas privilegiadas** de los motor
 | Agente | Cuenta de solo lectura por motor, credencial protegida como la API key (DPAPI de máquina / `0600` de `root`), nunca en argumentos, logs ni la API. Consultas de catálogo de texto fijo, una conexión por base de datos, tiempo máximo por consulta y por conexión. Siempre TLS; `unverified` solo por elección expresa del administrador del equipo, por conexión, y señalado en ITMas con el aviso *Certificado sin verificar* (riesgo aceptado, ADR-0015). |
 | SQL en el servidor | Sin SQL escrito a mano: EF Core para consultas y `ExecuteUpdate`/`ExecuteDelete`. La inserción masiva usa `COPY ... FROM STDIN (FORMAT BINARY)` de Npgsql con el texto del comando derivado del modelo de EF Core (nombres de tabla y columnas entrecomillados) y los valores en el flujo binario, nunca en el texto (constitución §5.2, justificado en SPEC-0005 §13). |
 
+### Agenda de infraestructura y Outlook (SPEC-0006, ADR-0016)
+
+La agenda guarda *cuándo* y *quién* de las actividades de seguridad e infraestructura (pruebas de penetración, rotaciones,
+congelamientos): su calendario es, en sí mismo, información sobre la postura de seguridad. **No debe contener valores de claves ni
+hallazgos**; la ayuda del formulario y del manual lo dicen, y no se puede impedir técnicamente.
+
+| Aspecto | Implementación |
+|---|---|
+| Permisos | Seis, separados por acción: `agenda.read`, `agenda.create`, `agenda.update`, `agenda.publish` (programar, cancelar y sincronizar con Outlook), `agenda.complete` y `agenda.types.manage`. Cada endpoint declara el suyo y la matriz de `401`/`403` está probada. Todo lo que avisa a otras personas exige `agenda.publish`: también **modificar un evento Programado o una serie con ocurrencias Programadas**, que se comprueba en el caso de uso, en la misma transacción que lee el estado (`403` si falta; enmienda del 2026-10-21). Las operaciones de escritura llevan `ETag`/`If-Match`. |
+| Publicación | Con `AGENDA_OUTLOOK_ENABLED=false` (por defecto) la API no hace ninguna llamada externa. Con `true`, publicar es una petición del servidor a un **solo buzón** con una **aplicación de Entra ID propia** y un solo permiso de calendario concedido por *RBAC for Applications*, no por consentimiento global (ADR-0016; runbook en [DEVELOPMENT.md §11](DEVELOPMENT.md#11-agenda-de-infraestructura-outlook-y-el-tenant-spec-0006-adr-0016)). |
+| Credencial | `AGENDA_OUTLOOK_CLIENT_SECRET`: variable de entorno solo del contenedor `api`; nunca en el repositorio, en logs ni en la línea de comandos. El código de la v1 solo admite **secreto** (riesgo aceptado hasta producción): pasar a certificado exige un cambio de código, previsto en SPEC-0008. Mientras tanto, secreto de caducidad corta cuyo vencimiento se anota en la propia agenda. El token de aplicación vive en la memoria de MSAL; un `401` hace que el siguiente intento pida otro. |
+| Destinos | Solo `login.microsoftonline.com` y `graph.microsoft.com`, con rutas fijas y el buzón escapado como un solo segmento; ninguna URL procede de la entrada. El cliente HTTP no sigue redirecciones, no usa cookies, tiene un tiempo máximo de 10 s y respeta `Retry-After` (un `429` detiene el lote). |
+| Contenido enviado | Texto plano (el marcado se entrega literal), solo los campos del evento y un enlace a ITMas; las etiquetas no viajan. Invitados: el responsable (solo si su dirección es de un dominio permitido: una cuenta invitada o externa no se invita) y los participantes (30 como máximo, solo de los dominios permitidos `AGENDA_ALLOWED_ATTENDEE_DOMAINS`), y, opcional, la lista del equipo. |
+| Errores y logs | Solo se guarda y muestra un código de un conjunto cerrado (`graph_*`, `not_configured`). El cuerpo de las respuestas de Graph no se registra ni se devuelve. Los logs llevan operación, id, código y el `request-id` de Graph (si es un GUID); nunca títulos, correos, buzón, cuerpos, motivos, tokens ni el secreto. Los *spans* HTTP de Graph no se exportan, porque la ruta lleva el buzón. |
+| Abuso | Un máximo global por hora de operaciones que avisan: `schedule`, `cancel`, `outlook-sync` y modificar lo Programado (`AGENDA_PUBLISH_REQUESTS_PER_HOUR`, 60 por defecto; `429` con `Retry-After` al excederlo). Se gasta **después** de la sesión, la cabecera anti-CSRF y los permisos, así que una petición rechazada no lo toca (antes, 60 peticiones anónimas bloqueaban a todos). Lotes de hasta 50, series de hasta 60 ocurrencias, rango de consulta de 366 días y 1 000 resultados. Un fallo de Outlook nunca impide guardar, programar ni cancelar. **Riesgos aceptados** (SPEC-0006 §19.8): el límite cuenta peticiones, no destinatarios (50 eventos × ~32 invitados por petición pueden superar el límite de envío del buzón en Exchange Online), y vive en la memoria de cada proceso (se reinicia con la API y se multiplica con varias réplicas). |
+| Entrada | Contrato estricto (propiedades desconocidas → `400`); enlaces de evidencia solo `http`/`https`, sin credenciales y hasta 10; etiquetas de 1 a 30 caracteres sin controles. La SPA muestra todo como texto (sin `innerHTML` ni `bypassSecurityTrust*`) y los enlaces llevan `rel="noopener noreferrer"`. |
+| Exportación `.ics` | `GET /api/v1/agenda-events/export.ics` con `agenda.read`: solo eventos Programados, rango y cantidad acotados, escape y plegado RFC 5545 (probados contra la inyección de propiedades), sin personas (ni responsable ni correos), `Cache-Control: no-store`, `nosniff` y adjunto. La descarga la hace el navegador con un `Blob` del mismo origen. |
+| Auditoría | Un evento de `app.audit_events` por operación (`agenda.*`), incluidos los resultados de Outlook, sin secretos ni respuestas de Graph. Editar una serie guarda el antes de cada ocurrencia cambiada. |
+| Riesgos aceptados | Además de los de **Abuso** y **Credencial** (SPEC-0006 §19.8): el acotamiento a un buzón depende del tenant y **no está verificado**, así que Outlook **no se activa en producción sin cumplir SPEC-0008** (CA-24); la cadena de suministro de FullCalendar (ADR-0017); lo enviado a Microsoft 365 queda fuera del control de `agenda.read` y cancelar no lo borra; secretos o enlaces con *tokens* escritos por error en el texto o la evidencia, que quedan también en la auditoría; y el abuso de personas con permisos dentro de los dominios permitidos. |
+
 ## 2. Autorización
 
 Modelo basado en políticas, inspirado en AWS IAM: **Usuario → Políticas → Permisos → Recurso/Acción**, sin roles
@@ -133,7 +153,7 @@ Código fuente → Configuración (appsettings, sin secretos) → Variables de e
 | CORS | Cerrado por defecto (mismo origen vía proxy). Solo se abre con `Cors:AllowedOrigins` explícito. |
 | Cabeceras API | `X-Content-Type-Options`, `X-Frame-Options: DENY`, `CSP: default-src 'none'`, `Referrer-Policy: no-referrer`, `Cross-Origin-Resource-Policy`, `Permissions-Policy`, `Cache-Control: no-store`. Sin cabecera `Server`. |
 | Cabeceras SPA (nginx) | CSP estricta (`script-src 'self'`, `frame-ancestors 'none'`, `form-action` limitado a Entra ID), `nosniff`, `DENY`, `COOP`. `server_tokens off`. |
-| Rate limiting | 300 req/min por usuario (o IP si anónimo); 20/min por IP en `/auth/login`; por credencial de equipo, 12 inventarios/h y 120 instantáneas SQL/h. `429` + `Retry-After`. |
+| Rate limiting | 300 req/min por usuario (o IP si anónimo); 20/min por IP en `/auth/login`; por credencial de equipo, 12 inventarios/h y 120 instantáneas SQL/h; 60 operaciones/h, globales en el proceso y contadas después de autorizar, a programar, cancelar, sincronizar y modificar lo programado de la agenda. `429` + `Retry-After`. |
 | Concurrencia | Políticas con `ETag`/`If-Match` (`412` si cambió, `428` si falta); cambios de autorización serializados en la base de datos. |
 | Host / proxy | `AllowedHosts` restringido; `X-Forwarded-*` solo se aceptan desde la subred del proxy. |
 | Errores | Problem Details uniformes con `traceId`. Nunca stack traces, mensajes internos, datos de infraestructura ni secretos (verificado por pruebas). |
@@ -194,6 +214,14 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
 - [ ] **Auditoría SQL (SPEC-0005).** Revisar periódicamente las instancias con el aviso *Certificado sin verificar* y
       pasarlas a `verify` o `pinned` (ADR-0015). Comprobar con `itmas-agent sql test` que las cuentas del agente siguen
       con el mínimo privilegio. Revisar quién tiene `sql-audit.read` (expone las cuentas privilegiadas de los motores).
+- [ ] **Agenda y Outlook (SPEC-0006, ADR-0016).** Antes de poner `AGENDA_OUTLOOK_ENABLED=true`: cumplir **SPEC-0008** (CA-24 con el tenant real), hacer los prerrequisitos del tenant y
+      verificar el alcance (DEVELOPMENT.md §11.2: `Test-ServicePrincipalAuthorization` dentro del ámbito solo para el buzón de la agenda),
+      confirmar que **no** hay consentimiento global de `Calendars.ReadWrite` en Entra ID y decidir la credencial: certificado, o secreto de
+      caducidad corta aceptado de forma explícita (`security`). Repetir la verificación del alcance de forma periódica. Revisar quién tiene
+      `agenda.publish` (envía invitaciones, actualizaciones y cancelaciones desde el buzón corporativo) y `agenda.types.manage`. Configurar `AGENDA_PUBLIC_URL` y los dominios
+      permitidos. Anotar el vencimiento de la credencial en la agenda. Comprobar en Entra ID (Aplicaciones empresariales → Permisos) que **no**
+      hay ninguna concesión de `Calendars.ReadWrite` para la aplicación, y limitar sus propietarios y quién puede añadirle credenciales: quien
+      pueda hacerlo hereda el acceso al buzón de la agenda.
 - [ ] Revisar periódicamente quién tiene `devices.update` (puede regenerar códigos) y `devices.reports.read` (datos personales).
 - [ ] Publicar solo paquetes del agente generados por `scripts/build-agent.sh` y su `SHA256SUMS`. Los binarios no están
       firmados (SPEC-0002 P-11, riesgo aceptado): la integridad depende de HTTPS y de que los usuarios verifiquen la suma.

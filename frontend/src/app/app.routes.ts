@@ -44,6 +44,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/sql-audit/sql-audit.routes'),
       },
       {
+        path: 'agenda',
+        loadChildren: () => import('./features/agenda/agenda.routes'),
+      },
+      {
         path: 'admin',
         loadChildren: () => import('./features/authorization/authorization.routes'),
       },

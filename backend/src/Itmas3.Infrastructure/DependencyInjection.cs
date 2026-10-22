@@ -1,9 +1,12 @@
+using Itmas3.Application.Agenda.Abstractions;
+using Itmas3.Application.Agenda.Queries;
 using Itmas3.Application.Authorization.Abstractions;
 using Itmas3.Application.Authorization.Queries;
 using Itmas3.Application.Inventory.Abstractions;
 using Itmas3.Application.Inventory.Queries;
 using Itmas3.Application.SqlAudit.Abstractions;
 using Itmas3.Application.SqlAudit.Queries;
+using Itmas3.Infrastructure.Agenda;
 using Itmas3.Infrastructure.Authorization;
 using Itmas3.Infrastructure.HealthChecks;
 using Itmas3.Infrastructure.Inventory;
@@ -64,6 +67,15 @@ public static class DependencyInjection
         services.AddScoped<ISqlAccessChangeRepository, SqlAccessChangeRepository>();
         services.AddScoped<ISqlAuditUnitOfWork, SqlAuditUnitOfWork>();
         services.AddScoped<ISqlAuditQueries, SqlAuditQueries>();
+
+        // Infrastructure agenda (SPEC-0006). AgendaSettings and IOutlookCalendarGateway are registered by the API module.
+        services.AddScoped<IEventTypeRepository, EventTypeRepository>();
+        services.AddScoped<IAgendaEventRepository, AgendaEventRepository>();
+        services.AddScoped<IEventSeriesRepository, EventSeriesRepository>();
+        services.AddScoped<IAgendaTagRepository, AgendaTagRepository>();
+        services.AddScoped<IAgendaDirectory, AgendaDirectory>();
+        services.AddScoped<IAgendaUnitOfWork, AgendaUnitOfWork>();
+        services.AddScoped<IAgendaQueries, AgendaQueries>();
 
         return services;
     }

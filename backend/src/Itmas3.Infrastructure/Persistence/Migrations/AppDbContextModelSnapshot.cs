@@ -23,6 +23,346 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Itmas3.Domain.Agenda.AgendaEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cancel_reason");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<Guid?>("CompletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("completed_by");
+
+                    b.Property<string>("CompletionNotes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("completion_notes");
+
+                    b.Property<string>("CompletionResult")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("completion_result");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime>("EndsAtLocal")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("ends_at_local");
+
+                    b.Property<DateTimeOffset>("EndsAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ends_at_utc");
+
+                    b.Property<string>("EvidenceLinks")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("evidence_links");
+
+                    b.Property<DateTimeOffset?>("ExecutedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("executed_at");
+
+                    b.Property<string>("Impact")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("impact");
+
+                    b.Property<bool>("IsAllDay")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_all_day");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("location");
+
+                    b.Property<bool>("NotifyTeam")
+                        .HasColumnType("boolean")
+                        .HasColumnName("notify_team");
+
+                    b.Property<string>("OutlookErrorCode")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("outlook_error_code");
+
+                    b.Property<string>("OutlookEventId")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("outlook_event_id");
+
+                    b.Property<string>("OutlookStatus")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("outlook_status");
+
+                    b.Property<DateTimeOffset?>("OutlookStatusAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("outlook_status_at");
+
+                    b.Property<int?>("OutlookSyncedRevision")
+                        .HasColumnType("integer")
+                        .HasColumnName("outlook_synced_revision");
+
+                    b.Property<string>("OutlookWebLink")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("outlook_web_link");
+
+                    b.Property<string>("Participants")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("participants");
+
+                    b.Property<int>("ReminderMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("reminder_minutes");
+
+                    b.Property<Guid>("ResponsibleUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("responsible_user_id");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<string>("Scope")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("scope");
+
+                    b.Property<Guid?>("SeriesId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("series_id");
+
+                    b.Property<DateTime>("StartsAtLocal")
+                        .HasColumnType("timestamp without time zone")
+                        .HasColumnName("starts_at_local");
+
+                    b.Property<DateTimeOffset>("StartsAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at_utc");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("time_zone");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("title");
+
+                    b.Property<Guid>("TypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("type_id");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid?>("UpdatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_agenda_events");
+
+                    b.HasIndex("OutlookEventId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_agenda_events_outlook_event_id")
+                        .HasFilter("outlook_event_id IS NOT NULL");
+
+                    b.HasIndex("SeriesId")
+                        .HasDatabaseName("ix_agenda_events_series_id");
+
+                    b.HasIndex("StartsAtUtc")
+                        .HasDatabaseName("ix_agenda_events_starts_at_utc");
+
+                    b.HasIndex("TypeId")
+                        .HasDatabaseName("ix_agenda_events_type_id");
+
+                    b.HasIndex("ResponsibleUserId", "StartsAtUtc")
+                        .HasDatabaseName("ix_agenda_events_responsible_user_id_starts_at_utc");
+
+                    b.HasIndex("Status", "EndsAtUtc")
+                        .HasDatabaseName("ix_agenda_events_status_ends_at_utc");
+
+                    b.ToTable("agenda_events", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_agenda_events_cancel_reason", "status <> 'cancelled' OR cancel_reason IS NOT NULL");
+
+                            t.HasCheckConstraint("ck_agenda_events_completion", "(status = 'completed') = (completion_result IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_agenda_events_completion_result", "completion_result IS NULL OR completion_result IN ('succeeded', 'partial', 'failed', 'not-performed')");
+
+                            t.HasCheckConstraint("ck_agenda_events_end_after_start", "ends_at_utc > starts_at_utc AND ends_at_local > starts_at_local");
+
+                            t.HasCheckConstraint("ck_agenda_events_impact", "impact IN ('none', 'degradation', 'outage')");
+
+                            t.HasCheckConstraint("ck_agenda_events_outlook_status", "outlook_status IN ('not-published', 'pending', 'published', 'error')");
+
+                            t.HasCheckConstraint("ck_agenda_events_reminder", "reminder_minutes BETWEEN 0 AND 40320");
+
+                            t.HasCheckConstraint("ck_agenda_events_status", "status IN ('draft', 'scheduled', 'completed', 'cancelled')");
+                        });
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.Agenda.AgendaTag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("name");
+
+                    b.HasKey("Id")
+                        .HasName("pk_agenda_tags");
+
+                    b.ToTable("agenda_tags", "app");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.Agenda.EventSeries", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Pattern")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("pattern");
+
+                    b.Property<Guid>("TypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("type_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_agenda_series");
+
+                    b.HasIndex("TypeId")
+                        .HasDatabaseName("ix_agenda_series_type_id");
+
+                    b.ToTable("agenda_series", "app");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.Agenda.EventType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("DefaultDurationMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("default_duration_minutes");
+
+                    b.Property<int>("DefaultReminderMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("default_reminder_minutes");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsFreeze")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_freeze");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("name");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("integer")
+                        .HasColumnName("revision");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_agenda_event_types");
+
+                    b.ToTable("agenda_event_types", "app", t =>
+                        {
+                            t.HasCheckConstraint("ck_agenda_event_types_duration", "default_duration_minutes BETWEEN 1 AND 86400");
+
+                            t.HasCheckConstraint("ck_agenda_event_types_reminder", "default_reminder_minutes BETWEEN 0 AND 40320");
+                        });
+                });
+
             modelBuilder.Entity("Itmas3.Domain.Authorization.PermissionDefinition", b =>
                 {
                     b.Property<string>("Id")
@@ -1063,6 +1403,58 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                     b.ToTable("data_protection_keys", "app");
                 });
 
+            modelBuilder.Entity("agenda_event_tags", b =>
+                {
+                    b.Property<Guid>("event_id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<Guid>("tag_id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tag_id");
+
+                    b.HasKey("event_id", "tag_id")
+                        .HasName("pk_agenda_event_tags");
+
+                    b.HasIndex("tag_id", "event_id")
+                        .HasDatabaseName("ix_agenda_event_tags_tag_id_event_id");
+
+                    b.ToTable("agenda_event_tags", "app");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.Agenda.AgendaEvent", b =>
+                {
+                    b.HasOne("Itmas3.Domain.Authorization.User", null)
+                        .WithMany()
+                        .HasForeignKey("ResponsibleUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agenda_events_users_responsible_user_id");
+
+                    b.HasOne("Itmas3.Domain.Agenda.EventSeries", null)
+                        .WithMany()
+                        .HasForeignKey("SeriesId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_agenda_events_agenda_series_series_id");
+
+                    b.HasOne("Itmas3.Domain.Agenda.EventType", null)
+                        .WithMany()
+                        .HasForeignKey("TypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agenda_events_agenda_event_types_type_id");
+                });
+
+            modelBuilder.Entity("Itmas3.Domain.Agenda.EventSeries", b =>
+                {
+                    b.HasOne("Itmas3.Domain.Agenda.EventType", null)
+                        .WithMany()
+                        .HasForeignKey("TypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agenda_series_agenda_event_types_type_id");
+                });
+
             modelBuilder.Entity("Itmas3.Domain.Authorization.Policy", b =>
                 {
                     b.OwnsMany("Itmas3.Domain.Authorization.PolicyStatement", "Statements", b1 =>
@@ -1298,6 +1690,23 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_sql_snapshot_receipts_sql_instances_instance_id");
+                });
+
+            modelBuilder.Entity("agenda_event_tags", b =>
+                {
+                    b.HasOne("Itmas3.Domain.Agenda.AgendaEvent", null)
+                        .WithMany()
+                        .HasForeignKey("event_id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_agenda_event_tags_agenda_events_event_id");
+
+                    b.HasOne("Itmas3.Domain.Agenda.AgendaTag", null)
+                        .WithMany()
+                        .HasForeignKey("tag_id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_agenda_event_tags_agenda_tags_tag_id");
                 });
 #pragma warning restore 612, 618
         }

@@ -23,6 +23,9 @@ public sealed class ApiFactory(PostgreSqlFixture database) : WebApplicationFacto
 {
     public const string TenantId = "11111111-1111-1111-1111-111111111111";
 
+    /// <summary>The domain the agenda accepts for attendees in tests (and the one of the users created by <see cref="CreateUserAsync"/>).</summary>
+    public const string AgendaAttendeeDomain = "example.com";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -43,6 +46,11 @@ public sealed class ApiFactory(PostgreSqlFixture database) : WebApplicationFacto
         // Generous limit: tests issue many requests from the same client.
         builder.UseSetting("RateLimiting:PermitLimitPerMinute", "10000");
         builder.UseSetting("RateLimiting:DeviceEnrollmentPermitLimitPerMinute", "1000");
+
+        // Infrastructure agenda (SPEC-0006): the allowed attendee domain of the tests, and a limit that never gets in the way.
+        // Outlook stays off: no test calls Microsoft (constitution §9.4).
+        builder.UseSetting("Agenda:AllowedAttendeeDomains", AgendaAttendeeDomain);
+        builder.UseSetting("Agenda:PublishPermitLimitPerHour", "100000");
 
         builder.ConfigureTestServices(services =>
         {

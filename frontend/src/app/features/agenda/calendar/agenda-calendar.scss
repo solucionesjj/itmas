@@ -1,0 +1,82 @@
+// The Material 3 theme for FullCalendar (SPEC-0006 §10.4, ADR-0017). Only mapping: the variables of the classic theme of
+// FullCalendar take the roles of Material, so the light and the dark scheme keep working with no colour of our own (constitution §6.3).
+.agenda-calendar {
+  --fc-classic-primary: var(--mat-sys-primary);
+  --fc-classic-primary-foreground: var(--mat-sys-on-primary);
+  --fc-classic-event: var(--mat-sys-primary-container);
+  --fc-classic-event-contrast: var(--mat-sys-on-primary-container);
+  --fc-classic-highlight: color-mix(in srgb, var(--mat-sys-primary) 14%, transparent);
+  --fc-classic-today: color-mix(in srgb, var(--mat-sys-primary) 8%, transparent);
+  --fc-classic-now: var(--mat-sys-error);
+  --fc-classic-background: var(--mat-sys-surface);
+  --fc-classic-faint: color-mix(in srgb, var(--mat-sys-on-surface) 4%, transparent);
+  --fc-classic-muted: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent);
+  --fc-classic-strong: color-mix(in srgb, var(--mat-sys-on-surface) 14%, transparent);
+  --fc-classic-foreground: var(--mat-sys-on-surface);
+  --fc-classic-faint-foreground: var(--mat-sys-outline);
+  --fc-classic-muted-foreground: var(--mat-sys-on-surface-variant);
+  --fc-classic-border: var(--mat-sys-outline-variant);
+  --fc-classic-strong-border: var(--mat-sys-outline);
+  --fc-classic-button: var(--mat-sys-primary);
+  --fc-classic-button-border: var(--mat-sys-primary);
+  --fc-classic-button-strong: var(--mat-sys-primary);
+  --fc-classic-button-strong-border: var(--mat-sys-primary);
+  --fc-classic-button-outline: var(--mat-sys-outline);
+  --fc-classic-button-foreground: var(--mat-sys-on-primary);
+  --fc-classic-ring-color: var(--mat-sys-primary);
+
+  display: block;
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface);
+
+  .agenda-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin: 0 0 8px;
+    padding: 0;
+    list-style: none;
+    font: var(--mat-sys-label-medium);
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .agenda-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .agenda-legend-item mat-icon,
+  .agenda-event-content mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  .agenda-event-content {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    padding-inline: 2px;
+    font: var(--mat-sys-label-small);
+  }
+
+  .agenda-event-time {
+    flex: none;
+    font-weight: 500;
+  }
+
+  .agenda-event-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // A cancelled activity is struck through: another signal besides the colour and the icon.
+  .agenda-event--cancelled .agenda-event-title {
+    text-decoration: line-through;
+  }
+}

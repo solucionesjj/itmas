@@ -39,6 +39,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION}-alpine AS api
 WORKDIR /app
 ENV ASPNETCORE_HTTP_PORTS=8080 \
     DOTNET_CLI_TELEMETRY_OPTOUT=1
+# IANA time zone database: the agenda works in the time zone of the organization (SPEC-0006 RNF-4, P-28) and the API refuses
+# to start if it cannot resolve it. The Alpine base image of ASP.NET Core does not ship it; this is data, not a tool.
+RUN apk add --no-cache tzdata
 COPY --from=build /out/api/ ./
 USER $APP_UID
 EXPOSE 8080

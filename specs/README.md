@@ -58,8 +58,9 @@ specs/
 | [SPEC-0003](features/SPEC-0003-device-registry-and-inventory-viewer.md) | Registro de equipos e inventario recolectado | Implemented |
 | [SPEC-0004](features/SPEC-0004-user-manual.md) | Manual de uso del sistema | Implemented |
 | [SPEC-0005](features/SPEC-0005-sql-engine-access-audit.md) | Auditoría de accesos a motores SQL | Implemented |
-| [SPEC-0006](features/SPEC-0006-infrastructure-agenda.md) | Agenda anual de infraestructura | Approved |
+| [SPEC-0006](features/SPEC-0006-infrastructure-agenda.md) | Agenda anual de infraestructura | Implemented |
 | [SPEC-0007](features/SPEC-0007-sdd-tooling.md) | Skills y guardas para el flujo SDD | Implemented |
+| [SPEC-0008](features/SPEC-0008-outlook-activation.md) | Activación de Outlook para la agenda de infraestructura | Draft |
 | [ADR-0001](architecture/adr-0001-clean-architecture.md) | Clean Architecture en 4 proyectos | Accepted |
 | [ADR-0002](architecture/adr-0002-authentication-bff.md) | Autenticación BFF con Microsoft Entra ID | Accepted |
 | [ADR-0003](architecture/adr-0003-authorization-default-deny.md) | Autorización *default deny* basada en permisos | Accepted |
@@ -75,4 +76,5 @@ specs/
 | [ADR-0013](architecture/adr-0013-user-manual.md) | Manual de uso actualizado con cada funcionalidad (enmienda 1.2.0) | Accepted |
 | [ADR-0014](architecture/adr-0014-database-engine-audit-agent.md) | Auditoría de motores de bases de datos desde el agente (enmienda 1.3.0) | Accepted |
 | [ADR-0015](architecture/adr-0015-database-connections-without-verified-tls.md) | Conexiones a motores con certificados no válidos (enmienda 2.0.0) | Accepted |
-| [ADR-0016](architecture/adr-0016-outlook-graph-application-permissions.md) | Integración con Outlook mediante Microsoft Graph con permisos de aplicación acotados | Proposed |
+| [ADR-0016](architecture/adr-0016-outlook-graph-application-permissions.md) | Integración con Outlook mediante Microsoft Graph con permisos de aplicación acotados | Accepted |
+| [ADR-0017](architecture/adr-0017-fullcalendar-calendar-views.md) | FullCalendar para las vistas de calendario de la agenda, sujeto al tema Material | Accepted |

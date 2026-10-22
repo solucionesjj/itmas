@@ -1,0 +1,31 @@
+<section class="agenda-calendar" [attr.aria-label]="ariaLabel()">
+  <ul class="agenda-legend" aria-label="Estados de las actividades">
+    @for (status of legend; track status.label) {
+      <li class="agenda-legend-item">
+        <mat-icon aria-hidden="true">{{ status.icon }}</mat-icon>
+        <span>{{ status.label }}</span>
+      </li>
+    }
+    <li class="agenda-legend-item">
+      <mat-icon aria-hidden="true">{{ overdue.icon }}</mat-icon>
+      <span>{{ overdue.label }}</span>
+    </li>
+  </ul>
+  <full-calendar [options]="options()" [events]="calendarEvents()">
+    <ng-template #eventContent let-arg>
+      <span class="agenda-event-content" [attr.title]="arg.event.extendedProps.label">
+        <mat-icon aria-hidden="true">{{ arg.event.extendedProps.statusIcon }}</mat-icon>
+        @if (arg.timeText) {
+          <span class="agenda-event-time">{{ arg.timeText }}</span>
+        }
+        <span class="agenda-event-title">{{ arg.event.title }}</span>
+        <span class="cdk-visually-hidden"
+          >, {{ arg.event.extendedProps.typeName }}, {{ arg.event.extendedProps.statusLabel }}</span
+        >
+      </span>
+    </ng-template>
+    <ng-template #nowIndicatorLineContent>
+      <span class="cdk-visually-hidden">Hora actual</span>
+    </ng-template>
+  </full-calendar>
+</section>

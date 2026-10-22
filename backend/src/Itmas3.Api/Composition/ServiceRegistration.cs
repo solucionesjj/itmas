@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Itmas3.Api.Agenda;
 using Itmas3.Api.Authentication;
 using Itmas3.Api.Authorization;
 using Itmas3.Api.ErrorHandling;
@@ -18,6 +19,7 @@ internal static class ServiceRegistration
         services.AddAuthorizationModule(configuration);
         services.AddInventoryModule(configuration);
         services.AddSqlAuditModule(configuration);
+        services.AddAgendaModule(configuration);
         services.AddApiSecurity(configuration);
 
         services.AddControllers()

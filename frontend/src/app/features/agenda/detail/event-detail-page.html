@@ -1,0 +1,314 @@
+<div class="page-header">
+  <a mat-icon-button routerLink="/agenda" aria-label="Volver a la agenda">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <h1 class="page-title">{{ event()?.title ?? 'Actividad' }}</h1>
+</div>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Cargando la actividad" />
+}
+
+@if (failure(); as failed) {
+  <div class="error-state" role="alert">
+    <span class="supporting-text">
+      {{
+        failed === 'not-found'
+          ? 'La actividad no existe o ya no está disponible.'
+          : 'No se pudo cargar la actividad.'
+      }}
+    </span>
+    @if (failed === 'error') {
+      <button mat-stroked-button type="button" (click)="reload()">
+        <mat-icon>refresh</mat-icon>
+        Reintentar
+      </button>
+    }
+    <a mat-stroked-button routerLink="/agenda">Volver a la agenda</a>
+  </div>
+}
+
+@if (event(); as ev) {
+  <div class="summary-line">
+    <app-event-status [status]="ev.status" [overdue]="ev.isOverdue" />
+    <span class="supporting-text">{{ whenOf(ev) }} · zona {{ ev.timeZone }}</span>
+  </div>
+
+  <div class="actions">
+    @if (canEdit()) {
+      <a mat-stroked-button [routerLink]="['/agenda/events', ev.id, 'edit']">
+        <mat-icon>edit</mat-icon>
+        Editar
+      </a>
+    }
+    @if (canEditSeries()) {
+      <a
+        mat-stroked-button
+        [routerLink]="['/agenda/events', ev.id, 'edit']"
+        [queryParams]="{ scope: 'series' }"
+      >
+        <mat-icon>event_repeat</mat-icon>
+        Editar la serie
+      </a>
+    }
+    @if (canSchedule()) {
+      <button mat-flat-button type="button" (click)="schedule(ev)">
+        <mat-icon>event_available</mat-icon>
+        Programar
+      </button>
+    }
+    @if (canComplete()) {
+      <span
+        [matTooltip]="hasStarted() ? '' : 'Solo se puede registrar desde el inicio programado.'"
+      >
+        <button mat-flat-button type="button" [disabled]="!hasStarted()" (click)="complete(ev)">
+          <mat-icon>task_alt</mat-icon>
+          Registrar ejecución
+        </button>
+      </span>
+    }
+    @if (canEditCompletion()) {
+      <button mat-stroked-button type="button" (click)="complete(ev)">
+        <mat-icon>edit_note</mat-icon>
+        Editar notas y evidencia
+      </button>
+    }
+    @if (canCancel()) {
+      <button mat-stroked-button type="button" (click)="cancel(ev)">
+        <mat-icon>event_busy</mat-icon>
+        Cancelar actividad
+      </button>
+    }
+    @if (canSync()) {
+      <button mat-stroked-button type="button" (click)="sync(ev)">
+        <mat-icon>sync</mat-icon>
+        Sincronizar de nuevo
+      </button>
+    }
+    @if (canDelete()) {
+      <button mat-button type="button" (click)="deleteDraft(ev)">
+        <mat-icon>delete</mat-icon>
+        Eliminar borrador
+      </button>
+    }
+  </div>
+
+  <app-warning-list [warnings]="ev.warnings" />
+
+  <div class="cards">
+    <mat-card appearance="outlined">
+      <mat-card-header><mat-card-title>Datos</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <dl class="facts">
+          <dt>Tipo</dt>
+          <dd>
+            {{ ev.type.name }}
+            @if (ev.type.isFreeze) {
+              <span class="secondary">Periodo de congelamiento</span>
+            }
+          </dd>
+          <dt>Cuándo</dt>
+          <dd>{{ whenOf(ev) }}</dd>
+          <dt>Responsable</dt>
+          <dd>
+            @if (ev.responsible.isActive) {
+              {{ ev.responsible.name }}
+            } @else {
+              Responsable inactivo
+              <span class="secondary">{{ ev.responsible.name }}</span>
+            }
+          </dd>
+          <dt>Participantes</dt>
+          <dd>
+            @if (ev.participants.length > 0) {
+              <ul class="plain">
+                @for (participant of ev.participants; track participant) {
+                  <li>{{ participant }}</li>
+                }
+              </ul>
+            } @else {
+              Sin participantes
+            }
+          </dd>
+          <dt>Avisar al equipo</dt>
+          <dd>{{ ev.notifyTeam ? 'Sí' : 'No' }}</dd>
+          <dt>Impacto</dt>
+          <dd>{{ impactText(ev.impact) }}</dd>
+          <dt>Alcance</dt>
+          <dd>{{ ev.scope || 'Sin indicar' }}</dd>
+          <dt>Lugar</dt>
+          <dd>{{ ev.location || 'Sin indicar' }}</dd>
+          <dt>Recordatorio</dt>
+          <dd>{{ reminderText(ev.reminderMinutes) }}</dd>
+          @if (ev.series; as series) {
+            <dt>Serie</dt>
+            <dd>{{ ruleText(series) }}</dd>
+          }
+          @if (ev.status === 'cancelled') {
+            <dt>Motivo de la cancelación</dt>
+            <dd class="pre">{{ ev.cancelReason }}</dd>
+          }
+        </dl>
+        @if (ev.description) {
+          <h3 class="subtitle">Descripción</h3>
+          <p class="pre">{{ ev.description }}</p>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-header><mat-card-title>Etiquetas</mat-card-title></mat-card-header>
+      <mat-card-content>
+        @if (editingTags()) {
+          <app-tags-field [tags]="draftTags()" (tagsChange)="changeTags($event)" />
+          @if (savingTags()) {
+            <mat-progress-bar mode="indeterminate" aria-label="Guardando las etiquetas" />
+          }
+          @if (tagsError(); as message) {
+            <p class="error" role="alert">{{ message }}</p>
+          }
+          <p class="supporting-text">Los cambios se guardan al instante.</p>
+          <button mat-stroked-button type="button" (click)="doneEditingTags()">
+            <mat-icon>check</mat-icon>
+            Listo
+          </button>
+        } @else {
+          @if (ev.tags.length > 0) {
+            <mat-chip-set aria-label="Etiquetas de la actividad">
+              @for (tag of ev.tags; track tag) {
+                <mat-chip>
+                  <button
+                    matChipAction
+                    type="button"
+                    [attr.aria-label]="'Filtrar por la etiqueta ' + tag"
+                    (click)="filterByTag(tag)"
+                  >
+                    {{ tag }}
+                  </button>
+                </mat-chip>
+              }
+            </mat-chip-set>
+          } @else {
+            <p class="supporting-text">Sin etiquetas</p>
+          }
+          @if (canEditTags()) {
+            <button mat-stroked-button type="button" (click)="editTags()">
+              <mat-icon>{{ ev.tags.length > 0 ? 'edit' : 'add' }}</mat-icon>
+              {{ ev.tags.length > 0 ? 'Editar etiquetas' : 'Añadir etiquetas' }}
+            </button>
+          }
+        }
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined">
+      <mat-card-header><mat-card-title>Outlook</mat-card-title></mat-card-header>
+      <mat-card-content>
+        @if (!ev.outlookEnabled) {
+          <p class="notice-inline">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <span>Outlook no configurado: programar solo cambia el estado de la actividad.</span>
+          </p>
+        }
+        <dl class="facts">
+          <dt>Estado</dt>
+          <dd><app-outlook-status [status]="ev.outlook.status" /></dd>
+          @if (ev.outlook.statusAt) {
+            <dt>Actualizado</dt>
+            <dd>{{ instant(ev.outlook.statusAt) }}</dd>
+          }
+          @if (ev.outlook.status === 'error') {
+            <dt>Error</dt>
+            <dd>
+              No se pudo publicar en Outlook.
+              <span class="secondary">{{ outlookError(ev.outlook.errorCode) }}</span>
+              @if (ev.outlook.errorCode) {
+                <span class="secondary code">{{ ev.outlook.errorCode }}</span>
+              }
+            </dd>
+          }
+        </dl>
+        @if (ev.outlook.webLink && safeHref(ev.outlook.webLink); as href) {
+          <a
+            mat-stroked-button
+            [href]="href"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Abrir en Outlook (se abre en otra pestaña)"
+          >
+            <mat-icon>open_in_new</mat-icon>
+            Abrir en Outlook
+          </a>
+        }
+      </mat-card-content>
+    </mat-card>
+
+    @if (ev.completion; as completion) {
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-card-title>Ejecución</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <dl class="facts">
+            <dt>Resultado</dt>
+            <dd>{{ resultText(completion.result) }}</dd>
+            <dt>Fecha y hora reales</dt>
+            <dd>{{ instant(completion.executedAt) }}</dd>
+            <dt>Registrada</dt>
+            <dd>
+              {{ instant(completion.completedAt) }}
+              @if (completion.completedBy) {
+                por {{ completion.completedBy }}
+              }
+            </dd>
+            <dt>Notas</dt>
+            <dd class="pre">{{ completion.notes || 'Sin notas' }}</dd>
+            <dt>Evidencia</dt>
+            <dd>
+              @if (completion.evidenceLinks.length > 0) {
+                <ul class="plain">
+                  @for (link of completion.evidenceLinks; track link.url) {
+                    <li>
+                      @if (safeHref(link.url); as href) {
+                        <a [href]="href" target="_blank" rel="noopener noreferrer">{{
+                          link.label
+                        }}</a>
+                      } @else {
+                        {{ link.label }}
+                      }
+                      <span class="secondary">{{ link.url }}</span>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                Sin enlaces de evidencia
+              }
+            </dd>
+          </dl>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <mat-card appearance="outlined">
+      <mat-card-header><mat-card-title>Registro</mat-card-title></mat-card-header>
+      <mat-card-content>
+        <dl class="facts">
+          <dt>Creada</dt>
+          <dd>
+            {{ instant(ev.createdAt) }}
+            @if (ev.createdBy) {
+              por {{ ev.createdBy }}
+            }
+          </dd>
+          @if (ev.updatedAt) {
+            <dt>Modificada</dt>
+            <dd>
+              {{ instant(ev.updatedAt) }}
+              @if (ev.updatedBy) {
+                por {{ ev.updatedBy }}
+              }
+            </dd>
+          }
+        </dl>
+      </mat-card-content>
+    </mat-card>
+  </div>
+}

@@ -1,0 +1,105 @@
+<div class="page-header">
+  <a mat-icon-button [routerLink]="backLink()" aria-label="Volver">
+    <mat-icon>arrow_back</mat-icon>
+  </a>
+  <h1 class="page-title">{{ heading() }}</h1>
+</div>
+
+@if (loading()) {
+  <mat-progress-bar mode="indeterminate" aria-label="Cargando" />
+}
+
+@if (loadFailed()) {
+  <div class="error-state" role="alert">
+    <span class="supporting-text">
+      {{
+        isEditing()
+          ? 'No se pudo cargar la actividad.'
+          : 'No se pudieron cargar los tipos de actividad.'
+      }}
+    </span>
+    <button mat-stroked-button type="button" (click)="reload()">
+      <mat-icon>refresh</mat-icon>
+      Reintentar
+    </button>
+  </div>
+} @else if (!loading()) {
+  @if (closed()) {
+    <p class="notice" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>
+        Una actividad {{ event()?.status === 'completed' ? 'completada' : 'cancelada' }} no se puede
+        modificar.
+        @if (event()?.status === 'completed') {
+          Las notas y la evidencia se editan desde su detalle.
+        }
+      </span>
+    </p>
+    <a mat-stroked-button [routerLink]="backLink()">Volver al detalle</a>
+  } @else if (needsPublish()) {
+    <p class="notice" role="status">
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      <span>
+        Esta actividad está programada. Para modificarla necesitas también el permiso para programar
+        y cancelar actividades.
+      </span>
+    </p>
+    <a mat-stroked-button [routerLink]="backLink()">Volver al detalle</a>
+  } @else {
+    @if (seriesMode()) {
+      <p class="notice" role="status">
+        <mat-icon aria-hidden="true">event_repeat</mat-icon>
+        <span>
+          Editas los campos comunes de la serie. El cambio llega a las ocurrencias que aún no han
+          empezado; las fechas y las demás ocurrencias no se tocan.
+        </span>
+      </p>
+    } @else if (isEditing()) {
+      @if (event()?.status === 'scheduled' && event()?.outlookEnabled) {
+        <p class="notice" role="status">
+          <mat-icon aria-hidden="true">mark_email_unread</mat-icon>
+          <span>
+            Esta actividad está programada: los cambios se reflejarán en Outlook y los invitados
+            recibirán la actualización.
+          </span>
+        </p>
+      }
+      @if (canEditSeries()) {
+        <p class="supporting-text">
+          Esta actividad forma parte de una serie.
+          <a [routerLink]="['/agenda/events', id(), 'edit']" [queryParams]="{ scope: 'series' }">
+            Editar los campos comunes de la serie
+          </a>
+        </p>
+      }
+    }
+
+    <app-event-fields
+      [form]="form"
+      [types]="selectableTypes()"
+      [commonOnly]="seriesMode()"
+      [suggestMe]="!isEditing()"
+      (submitted)="save()"
+    />
+
+    @if (error(); as message) {
+      <p class="error" role="alert">{{ message }}</p>
+    }
+
+    <div class="actions">
+      <button mat-flat-button type="button" [disabled]="saving()" (click)="save()">
+        {{ saveLabel() }}
+      </button>
+      <a mat-button [routerLink]="backLink()">Cancelar</a>
+      @if (conflict()) {
+        <button mat-stroked-button type="button" (click)="reload()">
+          <mat-icon>refresh</mat-icon>
+          Recargar datos
+        </button>
+      }
+    </div>
+    @if (saving()) {
+      <mat-progress-bar mode="indeterminate" aria-label="Guardando" />
+    }
+  }
+}

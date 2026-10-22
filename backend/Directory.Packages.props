@@ -25,6 +25,9 @@
     <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.12" />
+    <!-- MSAL for the application token of the Outlook adapter (SPEC-0006 task 10, ADR-0016). Same version that
+         Microsoft.Identity.Web (Api) already resolves; no Microsoft Graph SDK. -->
+    <PackageVersion Include="Microsoft.Identity.Client" Version="4.90.1" />
   </ItemGroup>
   <ItemGroup Label="Api">
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.12" />

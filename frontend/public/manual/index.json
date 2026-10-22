@@ -4,6 +4,7 @@
     { "id": "usuarios-y-privilegios", "title": "Usuarios y privilegios" },
     { "id": "inventario", "title": "Inventario de equipos" },
     { "id": "auditoria-sql", "title": "Auditoría SQL" },
+    { "id": "agenda", "title": "Agenda de infraestructura" },
     { "id": "auditoria", "title": "Auditoría" }
   ],
   "processes": [
@@ -103,8 +104,8 @@
       "summary": "Ver todos los permisos del sistema, en qué políticas están y editar su nombre visible o su descripción.",
       "category": "usuarios-y-privilegios",
       "permissions": ["permissions.read", "permissions.update"],
-      "specs": ["SPEC-0001"],
-      "updated": "2026-10-10",
+      "specs": ["SPEC-0001", "SPEC-0006"],
+      "updated": "2026-10-21",
       "routes": ["/admin/permissions"]
     },
     {
@@ -198,13 +199,73 @@
       "routes": ["/sql-audit"]
     },
     {
+      "id": "consultar-agenda",
+      "title": "Consultar la agenda del año",
+      "summary": "Ver las actividades en la lista del año y en los calendarios de año, mes y semana, su estado, sus advertencias y el detalle de cada una, y exportar las programadas a un archivo .ics.",
+      "category": "agenda",
+      "permissions": ["agenda.read"],
+      "specs": ["SPEC-0006"],
+      "updated": "2026-10-21",
+      "routes": ["/agenda", "/agenda/events/:id"]
+    },
+    {
+      "id": "etiquetar-y-filtrar",
+      "title": "Etiquetar actividades y filtrar la agenda",
+      "summary": "Poner etiquetas a las actividades y combinar filtros, que valen para todas las vistas, para ubicar la información con rapidez.",
+      "category": "agenda",
+      "permissions": ["agenda.read", "agenda.update"],
+      "specs": ["SPEC-0006"],
+      "updated": "2026-10-18",
+      "routes": ["/agenda", "/agenda/events/:id"]
+    },
+    {
+      "id": "planificar-actividad",
+      "title": "Planificar actividades y series",
+      "summary": "Crear actividades y series que se repiten (también desde un día u hora vacíos del calendario), revisar sus fechas antes de crearlas, modificarlas y entender las advertencias.",
+      "category": "agenda",
+      "permissions": ["agenda.create", "agenda.update"],
+      "specs": ["SPEC-0006"],
+      "updated": "2026-10-21",
+      "routes": ["/agenda/events/new", "/agenda/series/new", "/agenda/events/:id/edit"]
+    },
+    {
+      "id": "programar-y-cancelar",
+      "title": "Programar y cancelar actividades",
+      "summary": "Confirmar los borradores de la agenda, de uno en uno o por lotes, cancelar con motivo las programadas y saber qué recibe Outlook y cómo reintentar si falla.",
+      "category": "agenda",
+      "permissions": ["agenda.publish"],
+      "specs": ["SPEC-0006"],
+      "updated": "2026-10-21",
+      "routes": ["/agenda"]
+    },
+    {
+      "id": "registrar-ejecucion",
+      "title": "Registrar la ejecución de una actividad",
+      "summary": "Cerrar una actividad con su resultado, notas y enlaces de evidencia, y corregir después las notas y los enlaces.",
+      "category": "agenda",
+      "permissions": ["agenda.complete"],
+      "specs": ["SPEC-0006"],
+      "updated": "2026-10-21",
+      "routes": ["/agenda/events/:id"]
+    },
+    {
+      "id": "gestionar-tipos-de-actividad",
+      "title": "Gestionar los tipos de actividad",
+      "summary": "Mantener el catálogo de tipos: duración y recordatorio por defecto, periodos de congelamiento, y activar o desactivar tipos.",
+      "category": "agenda",
+      "permissions": ["agenda.types.manage"],
+      "specs": ["SPEC-0006"],
+      "updated": "2026-10-18",
+      "routes": ["/agenda/types"]
+    },
+    {
       "id": "consultar-auditoria",
       "title": "Consultar la auditoría",
-      "summary": "Ver quién hizo cada cambio de usuarios, políticas, permisos y equipos, y cada validación de accesos SQL, cuándo y con qué resultado.",
+      "summary": "Ver quién hizo cada cambio de usuarios, políticas, permisos, equipos y agenda, y cada validación de accesos SQL, cuándo y con qué resultado.",
       "category": "auditoria",
       "permissions": ["audit.read"],
-      "specs": ["SPEC-0001", "SPEC-0003", "SPEC-0005"],
-      "updated": "2026-10-12",
+      "specs": ["SPEC-0001", "SPEC-0003", "SPEC-0005", "SPEC-0006"],
+      "updated": "2026-10-18",
       "routes": ["/admin/audit"]
     }
   ]

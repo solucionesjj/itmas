@@ -10,6 +10,8 @@ en [`specs/architecture/`](specs/architecture/); las reglas que no pueden romper
                                    ┌──────────────────────────── red "edge" (bridge) ─────────────────────────────┐
  Navegador ── 127.0.0.1:8080 ──▶   │  frontend (nginx unprivileged)                 api (ASP.NET Core 10)         │ ──▶ Microsoft Entra ID
                                    │   /                → SPA estática               /auth/*   BFF (sesión)        │     (OIDC, salida HTTPS)
+                                   │                                                                              │ ──▶ Microsoft Graph (opcional,
+                                   │                                                                              │     agenda en Outlook, HTTPS)
                                    │   /api, /auth,                                  /api/*    API REST            │
                                    │   /signin-oidc, ... → proxy ─────────────────▶  /health*  (solo red interna)  │
                                    └───────────────────────────────────────────────────────┬──────────────────────┘
@@ -22,7 +24,7 @@ en [`specs/architecture/`](specs/architecture/); las reglas que no pueden romper
 | Componente | Responsabilidad | Publicado |
 |---|---|---|
 | `frontend` | Sirve la SPA y actúa como **reverse proxy** (único origen público). Aplica CSP y cabeceras de seguridad de los documentos. | Sí, solo en `127.0.0.1` |
-| `api` | API REST, Backend-for-Frontend de autenticación, autorización, health checks. | No |
+| `api` | API REST, Backend-for-Frontend de autenticación, autorización, health checks y, si se activa, publicación de la agenda en Outlook con Microsoft Graph (ADR-0016). | No |
 | `migrator` | Aplica migraciones EF Core y termina. Único proceso con privilegios DDL. | No |
 | `postgres` | Persistencia. Red interna sin salida. | No |
 | `itmas-agent` (fuera de Docker) | Agente de inventario instalado como servicio en los equipos (SPEC-0002). Envía su inventario por HTTPS al mismo origen público. | No (solo conexiones salientes) |
@@ -37,7 +39,7 @@ Aplicación *standalone*, *zoneless*, con signals y carga diferida de rutas.
 frontend/src/app/
 ├── core/                    Servicios singleton y transversales (sin UI de features)
 │   ├── config/              APP_CONFIG (valores públicos), TitleStrategy
-│   ├── services/            ThemeService, NotificationService, BrowserNavigation
+│   ├── services/            ThemeService, NotificationService, BrowserNavigation, FileDownload
 │   ├── interceptors/        csrfInterceptor, httpErrorInterceptor
 │   ├── error-handling/      GlobalErrorHandler
 │   └── models/              ProblemDetails, ApiError
@@ -64,6 +66,9 @@ frontend/src/app/
 │   ├── sql-audit/           Auditoría SQL (SPEC-0005): instances/ (listado), instance/ (pestañas Cuentas y Permisos),
 │                            account/ (detalle, roles, permisos, historial), components/ (etiqueta de riesgo, estado,
 │                            casilla "Válido" con actualización optimista), data/ (API, modelos, etiquetas)
+│   ├── agenda/              Agenda de infraestructura (SPEC-0006): page/ (lista del año y vistas Año, Mes y Semana, con el estado
+│   │                        en la dirección), calendar/ (FullCalendar bajo el tema Material, carga diferida), events/ y series/
+│   │                        (formularios), detail/, types/, components/ (resumen, filtros, estados), data/ (API, modelos, tiempo)
 │   └── manual/              Manual de uso público (SPEC-0004): índice con búsqueda y página por proceso
 ├── app.routes.ts            Rutas (lazy), guards
 └── app.config.ts            Providers: router, HttpClient + interceptores, inicializadores
@@ -79,6 +84,13 @@ frontend/src/app/
 **Temas.** `styles.scss` define un único tema M3 (`mat.theme` con paletas por defecto `azure`/`blue`, Roboto,
 densidad 0). `mat.theme` emite valores `light-dark()`; `html { color-scheme: light dark }` sigue al sistema y
 `ThemeService` fija `light` o `dark` con `<html data-theme>`. No hay tokens ni componentes personalizados.
+
+**Calendarios de la agenda** ([ADR-0017](specs/architecture/adr-0017-fullcalendar-calendar-views.md)). Las vistas Año, Mes y
+Semana las dibuja FullCalendar 7 (solo complementos estándar, versiones exactas) en `features/agenda/calendar/`. La página de la
+agenda es la dueña del estado (vista, periodo y filtros, en la dirección) y del acceso a la API; `app-agenda-calendar` solo dibuja lo
+que recibe y avisa cuando FullCalendar cambia de vista por sí mismo. Se carga con `@defer` solo al elegir un calendario; sus dos
+hojas van en los estilos globales y el tema `classic` se somete a Material asignando sus variables a `--mat-sys-*` (no hay colores
+propios). Las fechas son las locales de la organización, sin pasar por la zona del navegador; el calendario es de solo lectura.
 
 **Manual de uso** ([ADR-0013](specs/architecture/adr-0013-user-manual.md)). Su contenido son archivos estáticos en
 `frontend/public/manual/` (`index.json` + un `.md` por proceso) que el build copia a `/manual/`. La ruta `/manual` es
@@ -96,7 +108,8 @@ backend/
 ├── src/
 │   ├── Itmas3.Domain/          Modelo de negocio puro. Sin dependencias. (Entity<TId>, DomainException)
 │   │   ├── Authorization/      User, Policy, PolicyStatement, PermissionDefinition (SPEC-0001)
-│   │   └── Inventory/          Device (registro + enrolamiento, SPEC-0002/0003), InventoryReport
+│   │   ├── Inventory/          Device (registro + enrolamiento, SPEC-0002/0003), InventoryReport
+│   │   └── Agenda/             EventType, AgendaEvent, EventSeries, AgendaTag, TagName, recurrencia y su generador, advertencias (SPEC-0006)
 │   ├── Itmas3.Application/     Casos de uso y puertos. Depende solo de Domain.
 │   │   ├── Abstractions/       ICurrentUser, IPermissionEvaluator (puertos)
 │   │   ├── Authorization/      Convención de nombres de permisos
@@ -104,20 +117,27 @@ backend/
 │   │   ├── Identity/GetCurrentUserProfile/   Caso de uso (handler + DTO)
 │   │   ├── Authorization/      Catálogo de permisos, evaluador, salvaguardas, casos de uso
 │   │   │                       (Users/, Policies/, Permissions/) y puerto de consultas (Queries/)
-│   │   └── Inventory/          EnrollDevice, SubmitInventoryReport, AuthenticateDevice, PurgeHistory, DeviceSecrets,
+│   │   ├── Inventory/          EnrollDevice, SubmitInventoryReport, AuthenticateDevice, PurgeHistory, DeviceSecrets,
 │   │                           ManageDevices/ (registro), Queries/ (listado, historial, informe), permisos
-│   │   └── SqlAudit/           SubmitSnapshot (diferencias, riesgo, registro de cambios), Validation/, Maintenance/
-│   │                           (purga, recálculo del riesgo), Queries/, permisos, códigos del contrato
+│   │   ├── SqlAudit/           SubmitSnapshot (diferencias, riesgo, registro de cambios), Validation/, Maintenance/
+│   │   │                       (purga, recálculo del riesgo), Queries/, permisos, códigos del contrato
+│   │   └── Agenda/             Casos de uso de eventos, series, etiquetas y tipos; Outlook/ (puerto IOutlookCalendarGateway,
+│   │                           publicación y sincronización en línea); ExportCalendar/ (.ics); consultas y permisos `agenda.*`
 │   ├── Itmas3.Infrastructure/  Adaptadores: EF Core/PostgreSQL, Data Protection, evaluador de permisos
 │   │   ├── Persistence/        AppDbContext, DatabaseOptions, Configurations/, Migrations/
 │   │   ├── Authorization/      Repositorios, unidad de trabajo auditada, instantáneas en caché, consultas
 │   │   ├── Inventory/          Repositorios, consultas del inventario, unidad de trabajo con auditoría
-│   │   └── SqlAudit/           Repositorios y almacén de elementos por lotes (COPY binario, ExecuteUpdate), consultas
+│   │   ├── SqlAudit/           Repositorios y almacén de elementos por lotes (COPY binario, ExecuteUpdate), consultas
+│   │   └── Agenda/             Repositorios, unidad de trabajo auditada (repite la operación si dos peticiones crean a la vez la
+│   │                           misma etiqueta nueva), consultas y Graph/ (adaptador de Microsoft Graph con MSAL, solo con Outlook activo)
 │   └── Itmas3.Api/             Presentación y composition root
 │       ├── Controllers/        Controllers delgados (Authorization/: users, policies, permissions, audit-events;
 │       │                       Inventory/: devices, devices/{id}/reports, device-enrollments, inventory-reports;
-│       │                       SqlAudit/: sql-audit-snapshots, sql-instances, sql-accounts, sql-access-items)
+│       │                       SqlAudit/: sql-audit-snapshots, sql-instances, sql-accounts, sql-access-items;
+│       │                       Agenda/: agenda-events, agenda-series, agenda-event-types, agenda-tags, agenda-people)
 │       ├── SqlAudit/           Opciones, límite de frecuencia por equipo, mantenimiento (purga y recálculo del riesgo)
+│       ├── Agenda/             Opciones (validadas al arrancar) y registro del módulo; el puerto de Outlook se elige según
+│       │                       AGENDA_OUTLOOK_ENABLED
 │       ├── Inventory/          Esquemas de autenticación de dispositivos, políticas, rate limiting, purga del histórico
 │       ├── Contracts/          DTOs HTTP (request/response)
 │       ├── Authentication/     BFF OIDC + cookie de sesión
@@ -178,6 +198,11 @@ El orden importa y está en `Composition/RequestPipeline.cs`:
   validación; hasta 200 000 por instancia, con índices parciales sobre los actuales), `sql_access_changes` (registro de
   cambios, 1 año) y `sql_snapshot_receipts` (idempotencia por `submissionId` y duración del procesamiento). No se guarda
   el JSON de las instantáneas: el estado actual y el registro de cambios bastan.
+- **Agenda de infraestructura (SPEC-0006)**: `agenda_event_types` (catálogo con 12 tipos sembrados), `agenda_series` (la regla, solo
+  para describirla), `agenda_events` (eventos y ocurrencias materializadas: hora local, zona e instante UTC, estado de la publicación
+  en Outlook; `xmin` y `revision` para la concurrencia), `agenda_tags` y `agenda_event_tags`. Los nombres de tipos y de etiquetas son únicos
+  sin distinguir mayúsculas (`lower(name)`); si dos peticiones crean a la vez la misma etiqueta nueva, la unidad de trabajo repite la
+  segunda y la reutiliza. Sin purga: los eventos se conservan. Detalle en [specs/database/README.md](specs/database/README.md).
 
 ### Modelo de autorización
 
@@ -258,7 +283,9 @@ siempre el último de cada equipo.
   `cap_drop: ALL` y `no-new-privileges`.
 - Health checks: `pg_isready` por TCP (no se da por lista a PostgreSQL mientras ejecuta la inicialización),
   `/health` de la API (incluye conectividad con PostgreSQL), `/healthz` de nginx.
-- Redes: `edge` (proxy ↔ API, con salida para Entra ID) y `data` (`internal: true`).
+- Redes: `edge` (proxy ↔ API, con salida para Entra ID) y `data` (`internal: true`). Con `AGENDA_OUTLOOK_ENABLED=true` la API
+  también sale a `graph.microsoft.com` (y a `login.microsoftonline.com` para el token de aplicación de la agenda,
+  SPEC-0006, ADR-0016): son los únicos destinos del adaptador de Outlook, con rutas fijas, y sin Outlook activo no hay llamada alguna.
 - Perfil opcional `agent`: `agent-e2e` ejecuta el agente Linux en Ubuntu 24.04 y muestra su inventario, sin enviarlo.
 
 ## 6.1 Agente de dispositivo (ADR-0010)
@@ -303,6 +330,7 @@ los controladores `Microsoft.Data.SqlClient`, `Npgsql` y `MySqlConnector` inclui
 | Carpetas `services/guards/interceptors/models` sueltas | Agrupadas por responsabilidad dentro de `core/` y `auth/` | Evita carpetas globales que crecen sin cohesión; cada concepto vive junto a su dominio técnico. |
 | — | Servicio `migrator` adicional | Separa privilegios DDL de la API y evita migraciones concurrentes entre réplicas. |
 | — | `specs/_templates/`, `AGENTS.md` | Plantillas para SDD y punto de entrada estándar para herramientas de IA. |
+| Cada adaptador se registra en `Infrastructure/DependencyInjection.cs` con sus tipos `internal` | El cliente HTTP tipado del adaptador de Microsoft Graph de la agenda (`Infrastructure/Agenda/Graph/`) se registra en `Api/Agenda/AgendaModuleSetup.cs`, y por eso sus tipos son públicos | `Infrastructure` no referencia `Microsoft.Extensions.Http` y el registro elige el adaptador según la configuración ya validada de la agenda (SPEC-0006, decisiones 15 y 17). |
 
 ## 9. Cómo crece el sistema
 

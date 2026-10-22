@@ -19,6 +19,10 @@ puede modificar ni borrar.
 - Equipos: registro, cambios, regeneración del código, eliminación, enrolamiento del agente y enrolamientos rechazados.
 - Auditoría SQL: cada vez que alguien marca o desmarca como válida una cuenta, un rol o un permiso de un motor SQL
   (tipos de recurso *Cuenta SQL* y *Rol o permiso SQL*), con la instancia, la cuenta y el elemento.
+- Agenda de infraestructura: crear, modificar y eliminar actividades, programarlas, cancelarlas, registrar su ejecución,
+  cambiar sus etiquetas, crear y modificar series y tipos de actividad, y el resultado de las publicaciones en Outlook
+  (tipos de recurso *Actividad de la agenda*, *Serie de la agenda* y *Tipo de actividad*). Cada evento guarda los campos
+  de la actividad antes y después del cambio, y nunca guarda secretos ni las respuestas de Outlook.
 - También los intentos rechazados por una regla o una salvaguarda, con su motivo.
 
 La auditoría nunca guarda códigos ni credenciales de los equipos.

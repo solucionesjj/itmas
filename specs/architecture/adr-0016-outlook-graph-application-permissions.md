@@ -1,13 +1,18 @@
 ---
 id: ADR-0016
 title: Integración con Outlook mediante Microsoft Graph con permisos de aplicación acotados
-status: Proposed
+status: Accepted
 date: 2026-10-17
 deciders: [architecture, security]
 related: [SPEC-0006, ADR-0002]
 ---
 
 # ADR-0016 — Integración con Outlook mediante Microsoft Graph con permisos de aplicación acotados
+
+> **Aceptado por el solicitante el 2026-10-18.** Revisión de `security` **hecha el 2026-10-21** (SPEC-0006 §18): alcance con RBAC,
+> credencial, dominios permitidos y límites, y la lectura de la constitución de la última sección, que es correcta. Sus
+> hallazgos se corrigieron o el solicitante aceptó el riesgo (SPEC-0006 §19.8); la verificación con el tenant (CA-24) está en
+> SPEC-0008.
 
 ## Contexto
 SPEC-0006 (agenda anual de infraestructura) debe publicar las actividades programadas en un calendario compartido de
@@ -46,8 +51,9 @@ Fuerzas en juego:
      global anularía el límite.
    - No se conceden otros permisos (`Mail.Send`, `MailboxSettings.ReadWrite`, etc.).
 3. **Credencial.** Un secreto de cliente por variable de entorno (`AGENDA_OUTLOOK_CLIENT_SECRET`), como la aplicación del
-   BFF, con caducidad corta. **Se recomienda certificado para producción**: MSAL lo admite con un cambio de
-   configuración, y queda como seguimiento (abajo). El secreto solo existe en el contenedor `api` y nunca en el
+   BFF, con caducidad corta. **Se recomienda certificado para producción**: MSAL lo admite, pero el adaptador de la v1
+   solo lee un secreto (`GraphOutlookSettings`, `MsalGraphTokenProvider`), así que pasar a certificado **exige un cambio de
+   código** además de la configuración; queda como seguimiento (abajo). El secreto solo existe en el contenedor `api` y nunca en el
    repositorio, en logs ni en la línea de comandos (§4).
 4. **Adaptador.** `GraphOutlookCalendarGateway` en `Infrastructure/Agenda/`, que implementa el puerto
    `IOutlookCalendarGateway` de `Application`.
@@ -111,19 +117,22 @@ Fuerzas en juego:
     el reintento manual.
   - Es unidireccional: lo que se edite en Outlook se sobrescribe y las respuestas de asistencia no se leen.
   - Las invitaciones salen del buzón corporativo: un abuso desde ITMas sería correo corporativo legítimo. Se mitiga con
-    `agenda.publish` separado, dominios permitidos, límite de invitados y auditoría.
+    `agenda.publish` separado (también para modificar lo ya Programado, desde la enmienda de SPEC-0006 del 2026-10-21),
+    dominios permitidos (también para el responsable), límite de invitados, un límite por hora contado después de autorizar
+    y auditoría. El límite cuenta peticiones y no destinatarios: riesgo aceptado (SPEC-0006 §19.8).
 - **Seguimiento:**
   - Pasar a certificado (o a una identidad administrada si el despliegue lo permite) antes de la primera puesta en
-    producción, o aceptar de forma explícita el secreto con caducidad corta (`security`).
-  - Verificar periódicamente el alcance (SPEC-0006 CA-24): que la aplicación solo opere sobre el buzón de la agenda.
+    producción, con el cambio de código que exige. **El solicitante aceptó el secreto con caducidad corta hasta producción**
+    (SPEC-0006 §19.8); el cambio está previsto en SPEC-0008.
+  - Verificar el alcance con el tenant real antes de activar Outlook (SPEC-0008, CA-24) y después de forma periódica: que la
+    aplicación solo opere sobre el buzón de la agenda.
   - Guardar el `webLink` del evento (columna que concreta `database`) para el enlace "Abrir en Outlook" (SPEC-0006 RF-14).
   - Leer las respuestas de asistencia en una versión posterior, si el equipo lo pide.
   - Procesamiento en segundo plano según SPEC-0006 RNF-6.
-  - Revisión de `security` pendiente de: el alcance con RBAC, la credencial, los dominios permitidos y los límites, y la
-    lectura de la constitución (abajo).
+  - ~~Revisión de `security`~~ hecha el 2026-10-21 (SPEC-0006 §18).
 
 ## Impacto en la constitución
 Ninguno. Se aplican §3.8 (mínimo privilegio: permiso acotado a un buzón), §4 (la credencial, por variable de entorno),
 §9.4 (pruebas sin servicios externos) y §12.5 (dependencias). §3.2 regula la autenticación de personas y de
-dispositivos; una credencial de aplicación saliente hacia Microsoft 365 no es ninguna de las dos. `security` debe
-confirmar esta lectura: si no la compartiera, sería una enmienda MINOR a §3.
+dispositivos; una credencial de aplicación saliente hacia Microsoft 365 no es ninguna de las dos. `security` confirmó esta
+lectura el 2026-10-21: la credencial saliente se rige por §4 y §3.8, y no hace falta enmienda.

@@ -343,3 +343,103 @@ avisa de que lo reemplaza.
 
 **No es un control de seguridad:** `git commit --no-verify` lo omite. La verificación centralizada queda para una
 futura integración continua.
+
+## 11. Agenda de infraestructura: Outlook y el tenant (SPEC-0006, ADR-0016)
+
+La agenda funciona sin Outlook: con `AGENDA_OUTLOOK_ENABLED=false` (valor por defecto) programar solo cambia el estado del evento y la
+API no llama a nada externo. Esta sección es para quien activa la publicación en un entorno. Las variables están en
+[`.env.example`](.env.example) y en el [README](README.md); el diseño, en [ADR-0016](specs/architecture/adr-0016-outlook-graph-application-permissions.md)
+y en `specs/features/SPEC-0006-infrastructure-agenda.md` (§10.2, §14).
+
+### 11.1 Activarla
+
+Con `AGENDA_OUTLOOK_ENABLED=true` son obligatorias `AGENDA_OUTLOOK_TENANT_ID`, `AGENDA_OUTLOOK_CLIENT_ID`,
+`AGENDA_OUTLOOK_CLIENT_SECRET`, `AGENDA_OUTLOOK_MAILBOX` y `AGENDA_PUBLIC_URL` (URL absoluta `https`); la dirección del equipo
+(`AGENDA_OUTLOOK_TEAM_ADDRESS`) es opcional. Si falta alguna, la API **no arranca** y el mensaje nombra la variable, nunca su valor.
+El secreto solo existe como variable de entorno del contenedor `api`: no lo pases por la línea de comandos, no lo escribas en un
+archivo versionado ni en un ticket (constitución §4).
+
+### 11.2 Prerrequisitos en Microsoft 365 (los realiza el equipo de infraestructura)
+
+Los comandos son los de la documentación de Microsoft ([RBAC for Applications](https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac))
+con valores de ejemplo entre `<>`; **no se ejecutaron desde este repositorio**: valídalos en el tenant antes de darlos por buenos. Los
+nombres de carpeta, el filtro del ámbito y los roles pueden variar con la versión del módulo `ExchangeOnlineManagement`.
+
+1. **Buzón compartido** que aloje el calendario, y calendario compartido con el equipo en **solo lectura**.
+
+   ```powershell
+   Connect-ExchangeOnline
+   New-Mailbox -Shared -Name "Agenda de Infraestructura" -Alias <alias-del-buzon>
+   # El nombre de la carpeta depende del idioma del buzón ("Calendar", "Calendario"...):
+   Get-MailboxFolderStatistics -Identity <alias-del-buzon> -FolderScope Calendar | Select-Object Name, FolderPath
+   Add-MailboxFolderPermission -Identity "<alias-del-buzon>:\<carpeta-del-calendario>" -User <grupo-de-seguridad-con-correo-del-equipo> -AccessRights Reviewer
+   ```
+
+   `-User` solo admite buzones, usuarios de correo y **grupos de seguridad habilitados para correo**: una lista de distribución normal no
+   sirve para dar permisos. Si el equipo solo tiene una lista de distribución, crea un grupo de seguridad con correo con las mismas personas.
+   Para «notificar al equipo» (`AGENDA_OUTLOOK_TEAM_ADDRESS`) sí basta una lista de distribución, porque solo recibe la invitación: confirma que existe
+   en Exchange Online y que su dominio es uno de los permitidos (`AGENDA_ALLOWED_ATTENDEE_DOMAINS`, o el del buzón si la variable está vacía).
+2. **Aplicación de Entra ID propia**, distinta de la del inicio de sesión (BFF): sin permisos delegados y **sin ningún permiso de API
+   consentido**. Credencial: certificado (preferible) o secreto con caducidad corta. Anota su vencimiento como una actividad de la propia
+   agenda para que se renueve a tiempo.
+3. **Acota el permiso de calendario con RBAC for Applications**, solo al buzón de la agenda:
+
+   ```powershell
+   New-ServicePrincipal -AppId <id-de-la-aplicacion> -ObjectId <id-del-objeto-de-la-aplicacion-empresarial> -DisplayName "ITMas Agenda"
+   New-ManagementScope -Name "ITMas-Agenda-Buzon" -RecipientRestrictionFilter "PrimarySmtpAddress -eq '<buzon-de-la-agenda>'"
+   New-ManagementRoleAssignment -App <id-del-service-principal> -Role "Application Calendars.ReadWrite" -CustomResourceScope "ITMas-Agenda-Buzon"
+   ```
+
+   **No consientas `Calendars.ReadWrite` en Entra ID**: los permisos de las dos fuentes se suman y el consentimiento global alcanzaría
+   todos los buzones del tenant, anulando el límite. Tampoco concedas `Mail.Send` ni `MailboxSettings.ReadWrite`.
+4. **Verifica el alcance.** Los cambios tardan entre 30 minutos y 2 horas en aplicarse (caché de permisos de Exchange).
+
+   ```powershell
+   Test-ServicePrincipalAuthorization -Identity <id-del-service-principal> -Resource <buzon-de-la-agenda>
+   Test-ServicePrincipalAuthorization -Identity <id-del-service-principal> -Resource <otro-buzon-cualquiera>
+   ```
+
+   El primero debe mostrar el rol de calendarios dentro del ámbito (`InScope: True`) y el segundo, fuera (`InScope: False`). Esta comprobación **no ve
+   los permisos consentidos en Entra ID**: un `InScope: False` no prueba que no haya un consentimiento global que anule el límite. Comprueba también en
+   Entra ID (**Aplicaciones empresariales → Permisos**) que la aplicación no tiene concedido `Calendars.ReadWrite`, y limita sus propietarios y quién puede
+   añadirle credenciales: quien pueda hacerlo hereda el acceso al buzón. La prueba que demuestra el alcance efectivo es la de §11.3, paso 4 (un buzón fuera
+   del ámbito debe dar `graph_forbidden`).
+5. **Entrega a quien despliega ITMas**, por el canal del gestor de secretos: el identificador del tenant, el de la aplicación, la
+   credencial y la dirección del buzón (variables de §11.1).
+
+### 11.3 Prueba con un buzón de pruebas (SPEC-0008, antes CA-24 de SPEC-0006)
+
+Con Outlook activado en un entorno de pruebas y los datos de un buzón de pruebas:
+
+1. Crea una actividad con un título neutro y **prográmala**: debe quedar en estado *Publicado* y aparecer en el calendario del buzón (y,
+   en solo lectura, en el del equipo).
+2. **Modifica** su hora: la invitación se actualiza, no se duplica.
+3. **Cancélala** con un motivo: los invitados reciben la cancelación con el motivo.
+4. **Alcance:** cambia `AGENDA_OUTLOOK_MAILBOX` a un buzón de pruebas **fuera** del ámbito y reinicia `api`; programar una actividad
+   debe dejarla *Programada* con el error `graph_forbidden`. Devuelve la variable a su valor.
+5. Anota el resultado (fecha, quién lo hizo y qué se comprobó, sin direcciones ni identificadores) en la trazabilidad de SPEC-0008.
+   Outlook **no** se activa en producción hasta que SPEC-0008 esté `Implemented`.
+
+### 11.4 Diagnóstico de los códigos `graph_*`
+
+Un fallo de Outlook nunca impide guardar, programar, cancelar ni cerrar: el evento muestra un código y se reintenta con **Sincronizar de
+nuevo**, que es idempotente. El detalle de la respuesta de Graph no se guarda ni se muestra; los registros llevan la operación, el
+identificador del evento, el código y el `request-id` de Graph (solo si es un GUID), para el soporte de Microsoft.
+
+| Código | Causa habitual | Qué hacer |
+|---|---|---|
+| `graph_unauthorized` | Secreto vencido o incorrecto, o tenant o aplicación equivocados. | Revisa la credencial y su caducidad (§11.5). El siguiente intento pide un token nuevo. |
+| `graph_forbidden` | La aplicación no tiene permiso sobre ese buzón: ámbito mal definido o cambio aún no aplicado (hasta 2 h). | Repite la verificación de §11.2 y confirma que `AGENDA_OUTLOOK_MAILBOX` es el buzón del ámbito. |
+| `graph_not_found` | El buzón no existe o su dirección está mal escrita. (Un evento borrado en Outlook se vuelve a crear solo.) | Revisa `AGENDA_OUTLOOK_MAILBOX`. |
+| `graph_throttled` | Límite de peticiones de Graph (`429`). | El lote se detiene y el resto queda *Pendiente*; espera y usa **Sincronizar de nuevo**. |
+| `graph_unavailable` | Graph no responde (`5xx` o red) o no hay salida a `graph.microsoft.com` y `login.microsoftonline.com`. | Revisa la salida de red de `api` y el estado de Microsoft 365. |
+| `graph_timeout` | La llamada superó los 10 s. | Reintenta; si se repite, revisa la red. |
+| `graph_rejected` | Graph rechazó el contenido (por ejemplo, una zona horaria que no admite). | Revisa `AGENDA_TIME_ZONE` y el evento; avisa a desarrollo. |
+| `not_configured` | Outlook desactivado o sin adaptador. | Activa y completa las variables de §11.1. |
+
+### 11.5 Renovar o rotar la credencial
+
+1. Crea la credencial nueva en la aplicación de Entra ID **antes** de que venza la actual.
+2. Actualízala en el gestor de secretos (`AGENDA_OUTLOOK_CLIENT_SECRET`) y reinicia el contenedor `api` (`docker compose up -d api`).
+3. Comprueba con **Sincronizar de nuevo** sobre una actividad programada que el estado vuelve a *Publicado*.
+4. Elimina la credencial anterior y anota el nuevo vencimiento en la agenda.

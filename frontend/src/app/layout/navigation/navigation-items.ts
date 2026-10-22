@@ -31,6 +31,17 @@ export const NAVIGATION: readonly NavigationGroup[] = [
     ],
   },
   {
+    title: 'Agenda',
+    items: [
+      {
+        label: 'Actividades',
+        icon: 'calendar_month',
+        route: '/agenda',
+        permission: 'agenda.read',
+      },
+    ],
+  },
+  {
     title: 'Administración',
     items: [
       { label: 'Usuarios', icon: 'group', route: '/admin/users', permission: 'users.read' },

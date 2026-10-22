@@ -158,6 +158,21 @@ export const AUDIT_ACTION_LABELS: Readonly<Record<string, string>> = {
   'sql-audit.account.unvalidated': 'Cuenta SQL desmarcada',
   'sql-audit.item.validated': 'Rol o permiso SQL validado',
   'sql-audit.item.unvalidated': 'Rol o permiso SQL desmarcado',
+  // Infrastructure agenda (SPEC-0006 §12.2)
+  'agenda.event.created': 'Actividad creada',
+  'agenda.event.updated': 'Actividad modificada',
+  'agenda.event.deleted': 'Actividad eliminada',
+  'agenda.event.scheduled': 'Actividad programada',
+  'agenda.event.cancelled': 'Actividad cancelada',
+  'agenda.event.completed': 'Ejecución registrada',
+  'agenda.event.completion-updated': 'Notas o evidencia modificadas',
+  'agenda.event.tags-updated': 'Etiquetas modificadas',
+  'agenda.series.created': 'Serie creada',
+  'agenda.series.updated': 'Serie modificada',
+  'agenda.event-type.created': 'Tipo de actividad creado',
+  'agenda.event-type.updated': 'Tipo de actividad modificado',
+  'agenda.event.outlook-published': 'Actividad publicada en Outlook',
+  'agenda.event.outlook-failed': 'Falló la publicación en Outlook',
 };
 
 export const AUDIT_RESULT_LABELS: Readonly<Record<AuditEvent['result'], string>> = {

@@ -1,4 +1,10 @@
 using Itmas3.Application.Abstractions.Authorization;
+using Itmas3.Application.Agenda;
+using Itmas3.Application.Agenda.Events;
+using Itmas3.Application.Agenda.ExportCalendar;
+using Itmas3.Application.Agenda.Outlook;
+using Itmas3.Application.Agenda.Series;
+using Itmas3.Application.Agenda.Types;
 using Itmas3.Application.Authorization;
 using Itmas3.Application.Authorization.Permissions.SynchronizeCatalog;
 using Itmas3.Application.Authorization.Permissions.UpdatePermission;
@@ -68,6 +74,27 @@ public static class DependencyInjection
         services.AddScoped<UnvalidateSqlAccessItemHandler>();
         services.AddScoped<PurgeSqlAuditHistoryHandler>();
         services.AddScoped<RecalculateSqlRiskHandler>();
+
+        // Infrastructure agenda (SPEC-0006). AgendaSettings and the ports are registered by the composition root and Infrastructure.
+        services.AddSingleton<IPermissionDefinitionProvider, AgendaPermissionDefinitions>();
+        services.AddScoped<AgendaEventPreparer>();
+        services.AddScoped<AgendaTagResolver>();
+        services.AddScoped<AgendaWarningService>();
+        services.AddScoped<OutlookPublisher>();
+        services.AddScoped<AgendaNotificationGuard>();
+        services.AddScoped<CreateEventTypeHandler>();
+        services.AddScoped<UpdateEventTypeHandler>();
+        services.AddScoped<CreateEventHandler>();
+        services.AddScoped<UpdateEventHandler>();
+        services.AddScoped<DeleteDraftEventHandler>();
+        services.AddScoped<ScheduleEventsHandler>();
+        services.AddScoped<CancelEventHandler>();
+        services.AddScoped<CompleteEventHandler>();
+        services.AddScoped<SetEventTagsHandler>();
+        services.AddScoped<CreateSeriesHandler>();
+        services.AddScoped<UpdateSeriesHandler>();
+        services.AddScoped<SyncWithOutlookHandler>();
+        services.AddScoped<ExportCalendarHandler>();
 
         return services;
     }

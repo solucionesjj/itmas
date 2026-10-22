@@ -1,0 +1,187 @@
+// Shared layout of the agenda pages. Layout only: colours and typography come from Material 3 tokens.
+:host {
+  display: block;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.page-title {
+  font: var(--mat-sys-headline-small);
+  margin: 0;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}
+
+.supporting-text {
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 8px 16px;
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-body-medium);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 16px 0;
+}
+
+.period {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+}
+
+.period-title {
+  font: var(--mat-sys-title-large);
+  margin: 0 0 0 8px;
+}
+
+.zone {
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.batch {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 8px 0;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+}
+
+.select-cell {
+  width: 48px;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.when-cell {
+  min-width: 170px;
+}
+
+// The names of the types are long: the chip shows as much as fits and the tooltip has the rest.
+.type-chip {
+  max-width: 180px;
+}
+
+.month-row {
+  min-height: 0;
+}
+
+.month-cell {
+  padding-top: 16px;
+  padding-bottom: 4px;
+  background: var(--mat-sys-surface-container-low);
+}
+
+.month-title {
+  font: var(--mat-sys-title-medium);
+  margin: 0;
+}
+
+.month-count {
+  font: var(--mat-sys-body-medium);
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.title-cell {
+  min-width: 260px;
+}
+
+.event-link {
+  color: var(--mat-sys-primary);
+  font: var(--mat-sys-title-small);
+  overflow-wrap: anywhere;
+}
+
+.secondary {
+  display: block;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
+.warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: var(--mat-sys-body-small);
+  color: var(--mat-sys-tertiary);
+}
+
+.warning mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.actions-cell {
+  white-space: nowrap;
+  text-align: end;
+}
+
+.empty {
+  padding: 24px 16px;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.empty a,
+.empty button {
+  margin-left: 8px;
+}
+
+.error-state {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 16px 0;
+}
+
+.section-title {
+  font: var(--mat-sys-title-medium);
+  margin: 24px 0 8px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin: 16px 0;
+}
+
+.error {
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-medium);
+  margin: 8px 0;
+}

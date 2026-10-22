@@ -1,3 +1,4 @@
+using Itmas3.Domain.Agenda;
 using Itmas3.Domain.Authorization;
 using Itmas3.Domain.Inventory;
 using Itmas3.Domain.SqlAudit;
@@ -50,6 +51,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<SqlAccessItem> SqlAccessItems => Set<SqlAccessItem>();
 
     public DbSet<SqlAccessChange> SqlAccessChanges => Set<SqlAccessChange>();
+
+    // Infrastructure agenda (SPEC-0006). The join table of the tags is mapped by the event configuration.
+    public DbSet<EventType> AgendaEventTypes => Set<EventType>();
+
+    public DbSet<EventSeries> AgendaSeries => Set<EventSeries>();
+
+    public DbSet<AgendaEvent> AgendaEvents => Set<AgendaEvent>();
+
+    public DbSet<AgendaTag> AgendaTags => Set<AgendaTag>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
