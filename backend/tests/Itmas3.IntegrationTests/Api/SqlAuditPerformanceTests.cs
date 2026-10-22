@@ -13,6 +13,7 @@ namespace Itmas3.IntegrationTests.Api;
 /// in less than 30 s, both the first time (all inserts) and on the next day (comparison with few changes). The use case
 /// is called directly: such a snapshot exceeds the 16 MB body limit, which is reviewed with the first real instance (P-2b).
 /// </summary>
+[Collection(nameof(PerformanceCollection))]
 public sealed class SqlAuditPerformanceTests(PostgreSqlFixture database) : ApiTestBase(database)
 {
     private static readonly TimeSpan Budget = TimeSpan.FromSeconds(30);
