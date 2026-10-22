@@ -175,7 +175,11 @@ Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json
 ## 7. Convenciones
 
 - **Backend:** `TreatWarningsAsErrors`, analizadores .NET, *nullable* habilitado, NuGet Audit (falla ante
-  vulnerabilidades conocidas), versiones en `Directory.Packages.props`.
+  vulnerabilidades conocidas), versiones en `Directory.Packages.props`. Si el aviso (`NU1901`–`NU1904`) afecta a una
+  dependencia transitiva, se fija la versión corregida en el grupo «Transitive security pins» de
+  `Directory.Packages.props` (fijación transitiva central) y se retira cuando el paquete que la trae la actualice;
+  nunca se desactiva NuGet Audit ni se baja su nivel. Para comprobarlo sin la caché de restauración, compila una
+  copia limpia: `git archive HEAD -- . ':!frontend' | tar -x -C <carpeta-vacía>` y `dotnet build` en `backend/`.
 - **Frontend:** TypeScript `strict`, componentes standalone, signals, Prettier (`.prettierrc`), un componente
   por archivo, sin estilos que sobrescriban Material.
 - **Commits:** referencian el ID de la spec, p. ej. `SPEC-0001: add user list endpoint` (varios IDs:
