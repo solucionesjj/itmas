@@ -12,7 +12,8 @@ exige además `agenda.publish` (*Programar y cancelar actividades*), porque el c
 
 1. Abre **Agenda → Actividades** y pulsa **Nueva actividad**. También puedes pulsar un día vacío de la vista **Mes** o
    una hora vacía de la vista **Semana** que todavía no haya pasado: se abre **Nueva actividad** con esa fecha (y hora)
-   ya escritas, que puedes cambiar (ver [Consultar la agenda del año](consultar-agenda)).
+   ya escritas, que puedes cambiar (ver [Consultar la agenda del año](consultar-agenda)). Si pulsas el día de **hoy**, la
+   hora propuesta es la actual más una, para que no empiece en el pasado.
 2. Elige el **Tipo de actividad**. Debajo se muestran la duración y el recordatorio por defecto de ese tipo, y si es un
    periodo de congelamiento (en el que no deben programarse cambios).
 3. Escribe el **Título** (hasta 120 caracteres) y, si quieres, la **Descripción**. No escribas contraseñas, claves ni

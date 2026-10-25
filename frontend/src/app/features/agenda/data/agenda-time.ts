@@ -52,6 +52,23 @@ export function todayIn(timeZone: string, now: Date = new Date()): string {
   }
 }
 
+/**
+ * Where a new activity chosen from an empty day or hour of a calendar starts (RF-12b, P-21). A whole day that is **today** in
+ * the zone of the organization starts at the current time plus one hour, instead of the 09:00 of the form, which may have
+ * passed (decision of 2026-10-24); after 23:00 that is already the next day. Any other day or an hour keeps what was chosen.
+ */
+export function plannedStart(
+  slot: { readonly date: string; readonly time: string | null },
+  timeZone: string,
+  now: Date = new Date(),
+): { readonly date: string; readonly time: string | null } {
+  if (slot.time !== null || slot.date !== todayIn(timeZone, now)) {
+    return slot;
+  }
+  const later = instantToLocalInput(new Date(now.getTime() + 60 * 60_000).toISOString(), timeZone);
+  return { date: dateOf(later), time: timeOf(later) };
+}
+
 /** Day of the week of a local date, as in a calendar that starts on Monday: 0 = Monday … 6 = Sunday. */
 export function mondayBasedWeekday(date: string): number {
   const { year, month, day } = parseLocal(date);

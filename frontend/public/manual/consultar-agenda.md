@@ -58,7 +58,8 @@ En las vistas **Año**, **Mes** y **Semana**:
 - Los días de los meses vecinos que completan la cuadrícula se muestran atenuados.
 - Quien tenga el permiso `agenda.create` puede pulsar un día vacío (en **Mes**) o una hora vacía (en **Semana**) para
   abrir **Nueva actividad** con esa fecha y hora ya escritas (ver [Planificar actividades y series](planificar-actividad)).
-  Solo funciona en días y horas que todavía no han pasado: una actividad no puede empezar en el pasado.
+  Solo funciona en días y horas que todavía no han pasado: una actividad no puede empezar en el pasado. Si pulsas el día
+  de **hoy** en **Mes**, la hora propuesta es la actual más una.
 - Los calendarios son solo de lectura: no se cambia una fecha arrastrando la actividad. Para reprogramarla, edítala.
 - La dirección de la página guarda la vista, el periodo y los filtros: puedes guardarla en favoritos o compartirla y
   quien la abra verá lo mismo.

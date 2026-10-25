@@ -910,6 +910,25 @@ describe('AgendaPage (RF-12, RF-13, §8.4)', () => {
       expect(urlOf()).toBe('/agenda/events/new?date=2026-10-21&time=14:30');
     });
 
+    it('proposes the current time plus one hour when the day chosen is today, and no hour for another day', async () => {
+      // The suite fixes the clock at 12:00 UTC of 2026-10-18: 07:00 in Bogotá.
+      const { harness } = await open('/agenda?view=month&year=2026&month=10');
+      const calendar = calendarOf(harness.fixture).componentInstance as AgendaCalendar;
+
+      calendar.slotChoose.emit({ date: '2026-10-18', time: null });
+      await settle(harness.fixture);
+      expect(urlOf()).toBe('/agenda/events/new?date=2026-10-18&time=08:00');
+
+      await harness.navigateByUrl('/agenda?view=month&year=2026&month=10');
+      await settle(harness.fixture);
+      (calendarOf(harness.fixture).componentInstance as AgendaCalendar).slotChoose.emit({
+        date: '2026-10-21',
+        time: null,
+      });
+      await settle(harness.fixture);
+      expect(urlOf()).toBe('/agenda/events/new?date=2026-10-21');
+    });
+
     it('offers to plan from an empty day with agenda.create (RF-12b)', async () => {
       const { harness } = await open('/agenda?view=month&year=2026&month=10');
 

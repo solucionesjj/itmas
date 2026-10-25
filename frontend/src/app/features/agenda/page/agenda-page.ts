@@ -51,7 +51,14 @@ import {
   visibleRange,
   weekRange,
 } from '../data/agenda-state';
-import { capitalize, monthName, parseLocal, todayIn, whenLabel } from '../data/agenda-time';
+import {
+  capitalize,
+  monthName,
+  parseLocal,
+  plannedStart,
+  todayIn,
+  whenLabel,
+} from '../data/agenda-time';
 import { EventList, EventSummary, EventType, LIMITS, Summary } from '../data/agenda.models';
 import { AgendaActions } from '../events/agenda-actions';
 
@@ -415,11 +422,13 @@ export class AgendaPage {
     );
   }
 
-  /** An empty day or hour of the calendar opens "Nueva actividad" with it already filled (RF-12b, P-21). */
+  /**
+   * An empty day or hour of the calendar opens "Nueva actividad" with it already filled (RF-12b, P-21); today, at the current
+   * time plus one hour (see `plannedStart`).
+   */
   protected plan(slot: CalendarSlot): void {
-    void this.router.navigate(['/agenda/events/new'], {
-      queryParams: { date: slot.date, time: slot.time },
-    });
+    const { date, time } = plannedStart(slot, this.timeZone());
+    void this.router.navigate(['/agenda/events/new'], { queryParams: { date, time } });
   }
 
   protected openById(id: string): void {

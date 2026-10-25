@@ -9,6 +9,7 @@ import {
   longDate,
   mondayBasedWeekday,
   parseLocal,
+  plannedStart,
   shortDate,
   timeOf,
   todayIn,
@@ -55,6 +56,50 @@ describe('local dates (RNF-9)', () => {
     // 03:00 UTC of the 19th is still the evening of the 18th in Bogotá (UTC-5).
     expect(todayIn('America/Bogota', new Date('2026-10-19T03:00:00Z'))).toBe('2026-10-18');
     expect(todayIn('America/Bogota', new Date('2026-10-19T05:00:00Z'))).toBe('2026-10-19');
+  });
+
+  describe('plannedStart (decision of 2026-10-24)', () => {
+    const zone = 'America/Bogota';
+    // 17:22 UTC is 12:22 in Bogotá.
+    const noon = new Date('2026-10-23T17:22:00Z');
+
+    it('proposes the current time plus one hour for today, in the zone of the organization', () => {
+      expect(plannedStart({ date: '2026-10-23', time: null }, zone, noon)).toEqual({
+        date: '2026-10-23',
+        time: '13:22',
+      });
+    });
+
+    it('moves to the next day when the hour after now is past midnight', () => {
+      // 04:30 UTC of the 24th is 23:30 of the 23rd in Bogotá.
+      expect(
+        plannedStart({ date: '2026-10-23', time: null }, zone, new Date('2026-10-24T04:30:00Z')),
+      ).toEqual({ date: '2026-10-24', time: '00:30' });
+    });
+
+    it('keeps another day or an hour that was chosen', () => {
+      expect(plannedStart({ date: '2026-10-27', time: null }, zone, noon)).toEqual({
+        date: '2026-10-27',
+        time: null,
+      });
+      expect(plannedStart({ date: '2026-10-23', time: '15:00' }, zone, noon)).toEqual({
+        date: '2026-10-23',
+        time: '15:00',
+      });
+    });
+
+    it('decides what today is in the zone of the organization, not in the one of the browser', () => {
+      // 03:00 UTC of the 19th: still the 18th (22:00) in Bogotá, already the 19th in the zone of the suite (Asia/Tokyo).
+      const lateEvening = new Date('2026-10-19T03:00:00Z');
+      expect(plannedStart({ date: '2026-10-18', time: null }, zone, lateEvening)).toEqual({
+        date: '2026-10-18',
+        time: '23:00',
+      });
+      expect(plannedStart({ date: '2026-10-19', time: null }, zone, lateEvening)).toEqual({
+        date: '2026-10-19',
+        time: null,
+      });
+    });
   });
 
   it('validates real calendar dates', () => {

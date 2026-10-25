@@ -205,7 +205,8 @@ Microsoft 365**.
   mes o semana) y los filtros se guardan en la dirección de la página, para poder guardarla o compartirla. Cada vista
   tiene "Anterior", "Hoy" y "Siguiente" y el título del periodo.
 - **RF-12b** Con `agenda.create`, elegir un día vacío en la vista Mes o una hora vacía en la vista Semana abre "Nuevo
-  evento" con esa fecha y hora ya rellenas (P-21). Las vistas solo leen: no se reprograma arrastrando (Q-18).
+  evento" con esa fecha y hora ya rellenas (P-21). Si el día elegido es **hoy**, la hora propuesta es la actual más una, en la
+  zona de la organización (D-8, 2026-10-24). Las vistas solo leen: no se reprograma arrastrando (Q-18).
 - **RF-13** El **resumen del año**, encabezado de la lista del año, muestra, por mes, la cantidad de eventos por estado y las vencidas, y el total por
   tipo. Respeta los filtros activos: con una etiqueta elegida, muestra en qué meses hay eventos que la tienen.
 - **RF-14** El **detalle** de un evento muestra todos sus datos, el registro de ejecución, quién lo creó y modificó y
@@ -1508,8 +1509,11 @@ tenant ni direcciones internas (constitución §10.4).
     `year-summary.spec.ts` y `agenda-page.spec.ts`). Y el **ícono de los avisos** de la agenda se encogía hasta casi desaparecer cuando el texto
     ocupaba varias líneas en pantalla estrecha (`agenda-page.scss`). Frontend: `npm test -- --watch=false` **562** en verde, `prettier --check`
     limpio y `npm run build` sin avisos de presupuesto.
-  - **Observación para el solicitante (no corregida):** elegir **hoy** en la vista Mes precarga las 09:00 aunque ya hayan pasado; al guardar, la API
-    responde con RN-16. No contradice la decisión 20, que solo habla de días y horas ya pasados.
+  - **Observación para el solicitante:** elegir **hoy** en la vista Mes precargaba las 09:00 aunque ya hubieran pasado; al guardar, la API
+    respondía con RN-16. **Decidida el 2026-10-24 (§19.8, D-8) y corregida:** se propone la hora actual más una, en la zona de la organización
+    (`plannedStart` en `data/agenda-time.ts`, usada por la página de la agenda; pruebas en `agenda-time.spec.ts` y `agenda-page.spec.ts`).
+    «Nueva actividad» abierta desde el botón, sin día elegido, sigue proponiendo las 09:00 del día que se escriba: el formulario no conoce
+    la zona de la organización.
   - **No verificado:** todo contra la API real; la CSP en esta ronda (`ng serve` no la aplica; se comprobó con nginx en el incremento E); lector
     de pantalla, Firefox y Safari.
 
@@ -1637,6 +1641,7 @@ Tras las revisiones obligatorias (§18, «Revisiones obligatorias del cierre»),
 | D-5 | CA-24 y la prueba real con el tenant (tarea 11) | **Trasladarlos a una spec nueva** de activación de Outlook, en `Draft`: [SPEC-0008](SPEC-0008-outlook-activation.md). Esta spec queda `Implemented` sin excepciones a la constitución §9.2. | §9 (CA-24 trasladado), §16.1 (tareas 11 y cierre), §18. |
 | D-6 | Cambios ajenos a esta spec en el mismo árbol | Autoriza commits `minor:` aparte para las fijaciones transitivas de NuGet, la vulnerabilidad de `vite` y la estabilización de la prueba de rendimiento de SPEC-0005. El cambio de nginx no es de esta spec y no viaja con ella. | Ninguno; trazabilidad (constitución §11.2 y §11.6). |
 | D-7 | Revisiones y entorno | Revisiones con agentes independientes por rol; en Docker, solo `docker compose up --build` (sin `down -v`). | §18. |
+| D-8 | Hora propuesta al planificar hoy desde el calendario (2026-10-24) | Si el día elegido en un calendario es **hoy**, el formulario propone una hora futura: la actual **más una hora**, en lugar de las 09:00. | RF-12b; manual (`consultar-agenda`, `planificar-actividad`). |
 
 ## Anexo A. Prácticas del sector y cadencias de referencia
 
