@@ -95,13 +95,28 @@ describe('YearSummary (RF-13, CA-30)', () => {
     ]);
   });
 
-  it('says there is nothing in a year without activities, and tolerates a summary that has not arrived', async () => {
-    const empty = await render(summaryTotals());
-    expect(text(empty.element)).toContain('Sin actividades en este año.');
+  it('says there is nothing in a year without activities', async () => {
+    const { element } = await render(summaryTotals());
 
+    expect(text(element)).toContain('Sin actividades en este año.');
+  });
+
+  it('CA-23: shows no numbers while the summary is on its way or if it failed, only the months to choose', async () => {
     const loading = await render(null);
-    expect(loading.element.querySelectorAll('mat-chip-option').length).toBe(12);
-    expect(text(loading.element)).toContain('Sin actividades en este año.');
+    const months = loading.element.querySelectorAll('mat-chip-option');
+    expect(months.length).toBe(12);
+    expect(text(months[0])).toBe('Ene');
+    expect(months[0].querySelector('button')?.getAttribute('aria-label')).toBe('Enero');
+    expect(text(loading.element.querySelector('[role=status]'))).toBe('Cargando el resumen…');
+    expect(text(loading.element)).not.toContain('Sin actividades en este año.');
+    expect(loading.element.querySelector('mat-card')).toBeNull();
+
+    loading.fixture.componentRef.setInput('failed', true);
+    await settle(loading.fixture);
+    expect(text(loading.element.querySelector('[role=alert]'))).toBe(
+      'No se pudo cargar el resumen del año.',
+    );
+    expect(loading.element.querySelector('[role=status]')).toBeNull();
   });
 
   it('names a type it does not know instead of failing', async () => {

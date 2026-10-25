@@ -33,6 +33,11 @@
   background: var(--mat-sys-secondary-container);
   color: var(--mat-sys-on-secondary-container);
   font: var(--mat-sys-body-medium);
+
+  // A notice of several lines must not squeeze its icon (it shrank to a sliver in a narrow screen).
+  mat-icon {
+    flex: none;
+  }
 }
 
 .toolbar {

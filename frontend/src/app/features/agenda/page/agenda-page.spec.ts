@@ -9,7 +9,7 @@ import { ApiError } from '../../../core/models/api-error';
 import { AgendaCalendar } from '../calendar/agenda-calendar';
 import { AgendaApi } from '../data/agenda-api';
 import { TYPES, summaryOf, summaryTotals } from '../data/agenda-fixtures';
-import { EventList, EventSummary } from '../data/agenda.models';
+import { EventList, EventSummary, Summary } from '../data/agenda.models';
 import { AgendaActions } from '../events/agenda-actions';
 import { AgendaPage } from './agenda-page';
 
@@ -1012,6 +1012,32 @@ describe('AgendaPage (RF-12, RF-13, §8.4)', () => {
 
       expect(checkedToggle(element)).toContain('Lista del año');
     });
+  });
+
+  it('CA-23: the summary says it is loading until it arrives and that it failed if it does, never zeros', async () => {
+    const pending = new Subject<Summary>();
+    api.summary.mockReturnValue(pending);
+    items = [draft('e1')];
+
+    const { harness, element } = await open();
+
+    expect(text(element.querySelector('app-year-summary [role=status]'))).toBe(
+      'Cargando el resumen…',
+    );
+    expect(text(element.querySelector('app-year-summary'))).not.toContain('Sin actividades');
+    pending.next(summaryTotals());
+    pending.complete();
+    await settle(harness.fixture);
+    expect(element.querySelector('app-year-summary [role=status]')).toBeNull();
+    expect(text(element.querySelector('app-year-summary'))).toContain('Por estado');
+
+    api.summary.mockReturnValue(throwError(() => new ApiError(500, null)));
+    await harness.navigateByUrl('/agenda?year=2025');
+    await settle(harness.fixture);
+    expect(text(element.querySelector('app-year-summary [role=alert]'))).toBe(
+      'No se pudo cargar el resumen del año.',
+    );
+    expect(element.querySelector('app-year-summary mat-card')).toBeNull();
   });
 
   it('keeps the loading state until the list arrives', async () => {

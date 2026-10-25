@@ -167,6 +167,8 @@ export class AgendaPage {
 
   protected readonly list = signal<EventList | null>(null);
   protected readonly summary = signal<Summary | null>(null);
+  /** The summary of the year could not be loaded, although the list may have been. */
+  protected readonly summaryFailed = signal(false);
   protected readonly types = signal<readonly EventType[]>([]);
   protected readonly loading = signal(true);
   protected readonly failed = signal(false);
@@ -334,12 +336,22 @@ export class AgendaPage {
         }
       });
 
-    // The summary heads the year list only (RF-13): the calendars do not ask for it.
+    // The summary heads the year list only (RF-13): the calendars do not ask for it. It is cleared at each request, so the
+    // numbers of another year or other filters are never shown while the new ones arrive (CA-23).
     query
       .pipe(
+        tap(() => {
+          this.summary.set(null);
+          this.summaryFailed.set(false);
+        }),
         switchMap((state) =>
           state.view === 'list'
-            ? this.api.summary(state.year, state.filters).pipe(catchError(() => of(null)))
+            ? this.api.summary(state.year, state.filters).pipe(
+                catchError(() => {
+                  this.summaryFailed.set(true);
+                  return of(null);
+                }),
+              )
             : of(null),
         ),
         takeUntilDestroyed(),

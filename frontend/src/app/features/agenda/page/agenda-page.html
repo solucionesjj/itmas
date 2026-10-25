@@ -79,6 +79,7 @@
 @if (!calendarView()) {
   <app-year-summary
     [summary]="summary()"
+    [failed]="summaryFailed()"
     [year]="state().year"
     [month]="state().month"
     [types]="types()"

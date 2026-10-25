@@ -10,7 +10,8 @@ import { AgendaStatus } from './status-indicator';
 
 /**
  * Summary of the year (SPEC-0006 RF-13): the year selector, the twelve months with their number of activities, and the totals
- * by state and by type. It follows the active filters, so with a tag chosen the months show where it appears.
+ * by state and by type. It follows the active filters, so with a tag chosen the months show where it appears. Until the summary
+ * arrives, or if it fails, no number is shown: zeros would read as "nothing planned" (CA-23).
  */
 @Component({
   selector: 'app-year-summary',
@@ -40,43 +41,49 @@ import { AgendaStatus } from './status-indicator';
             [highlighted]="item.total > 0"
             [aria-label]="item.aria"
           >
-            {{ item.label }} · {{ item.total }}
+            {{ item.text }}
           </mat-chip-option>
         }
       </mat-chip-listbox>
 
-      <div class="cards">
-        <mat-card appearance="outlined">
-          <mat-card-header><mat-card-title>Por estado</mat-card-title></mat-card-header>
-          <mat-card-content>
-            <ul class="totals">
-              @for (row of statusRows(); track row.key) {
-                <li>
-                  <app-agenda-status [status]="row.presentation" />
-                  <span class="count">{{ row.count }}</span>
-                </li>
-              }
-            </ul>
-          </mat-card-content>
-        </mat-card>
-        <mat-card appearance="outlined">
-          <mat-card-header><mat-card-title>Por tipo</mat-card-title></mat-card-header>
-          <mat-card-content>
-            @if (typeRows().length > 0) {
+      @if (summary()) {
+        <div class="cards">
+          <mat-card appearance="outlined">
+            <mat-card-header><mat-card-title>Por estado</mat-card-title></mat-card-header>
+            <mat-card-content>
               <ul class="totals">
-                @for (row of typeRows(); track row.id) {
+                @for (row of statusRows(); track row.key) {
                   <li>
-                    <span class="type">{{ row.name }}</span>
+                    <app-agenda-status [status]="row.presentation" />
                     <span class="count">{{ row.count }}</span>
                   </li>
                 }
               </ul>
-            } @else {
-              <p class="none">Sin actividades en este año.</p>
-            }
-          </mat-card-content>
-        </mat-card>
-      </div>
+            </mat-card-content>
+          </mat-card>
+          <mat-card appearance="outlined">
+            <mat-card-header><mat-card-title>Por tipo</mat-card-title></mat-card-header>
+            <mat-card-content>
+              @if (typeRows().length > 0) {
+                <ul class="totals">
+                  @for (row of typeRows(); track row.id) {
+                    <li>
+                      <span class="type">{{ row.name }}</span>
+                      <span class="count">{{ row.count }}</span>
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="none">Sin actividades en este año.</p>
+              }
+            </mat-card-content>
+          </mat-card>
+        </div>
+      } @else if (failed()) {
+        <p class="none state" role="alert">No se pudo cargar el resumen del año.</p>
+      } @else {
+        <p class="none state" role="status">Cargando el resumen…</p>
+      }
     </section>
   `,
   styles: `
@@ -127,6 +134,9 @@ import { AgendaStatus } from './status-indicator';
       color: var(--mat-sys-on-surface-variant);
       margin: 0;
     }
+    .state {
+      margin: 16px 0;
+    }
   `,
 })
 export class YearSummary {
@@ -135,6 +145,8 @@ export class YearSummary {
   /** The month the list is narrowed to, or null. */
   readonly month = input<number | null>(null);
   readonly types = input<readonly EventType[]>([]);
+  /** The summary could not be loaded (it is null then too). */
+  readonly failed = input(false);
   readonly yearChange = output<number>();
   readonly monthChange = output<number | null>();
 
@@ -150,13 +162,16 @@ export class YearSummary {
       const total = row ? row.draft + row.scheduled + row.completed + row.cancelled : 0;
       const overdue = row?.overdue ?? 0;
       const name = capitalize(monthName(month));
+      const known = this.summary() !== null;
       return {
         month,
         total,
-        label: name.slice(0, 3),
-        aria: `${name}: ${total} ${total === 1 ? 'actividad' : 'actividades'}${
-          overdue > 0 ? `, ${overdue} ${overdue === 1 ? 'vencida' : 'vencidas'}` : ''
-        }`,
+        text: known ? `${name.slice(0, 3)} · ${total}` : name.slice(0, 3),
+        aria: known
+          ? `${name}: ${total} ${total === 1 ? 'actividad' : 'actividades'}${
+              overdue > 0 ? `, ${overdue} ${overdue === 1 ? 'vencida' : 'vencidas'}` : ''
+            }`
+          : name,
       };
     }),
   );

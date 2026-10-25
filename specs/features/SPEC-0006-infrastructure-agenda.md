@@ -1477,8 +1477,41 @@ tenant ni direcciones internas (constitución §10.4).
   534,4 kB); `npm audit` sin vulnerabilidades tras el `override` de `vite` (commit `minor:` aparte). `docker compose config -q` válido y
   `docker compose up --build`: migrador terminado con 0, `api` y `frontend` sanos, y las rutas de la agenda responden `401` sin sesión a
   través de nginx (la imagen del frontend incluye el cambio ajeno de nginx del árbol de trabajo). **No verificado:** `docker compose down -v`
-  (por decisión del solicitante); las pantallas de la regla F-2 y de la decisión 20 en el navegador (solo con pruebas unitarias); y todo
+  (por decisión del solicitante); las pantallas de la regla F-2 y de la decisión 20 en el navegador (solo con pruebas unitarias; verificadas el 2026-10-23, abajo); y todo
   contra la API real con sesión de Entra ID, que no existe en el entorno de desarrollo. Queda para la persona: `/sdd-validate SPEC-0006`.
+- **`/sdd-validate SPEC-0006` (2026-10-22).** Comandos de la tabla de AGENTS.md en verde (backend 1 193, frontend 560 y build, Compose y
+  `docker compose up --build` sanos). Resultado: **validación incompleta**, por CA-23 (la verificación documentada dejaba fuera los estados de
+  carga y error) y porque no se habían visto en el navegador las pantallas de F-2 ni de la decisión 20; además, `npm audit` y
+  `has-pending-model-changes` no están en la tabla de comandos, y `docker compose down -v` no se ejecuta por decisión del solicitante. Lo
+  primero se atendió en la verificación siguiente.
+- **Verificación de CA-23, F-2 y la decisión 20 (2026-10-23).** Con `ng serve` y una API **simulada** (no la real: no hay sesión de Entra ID en
+  el entorno de desarrollo) que puede responder lento (5 s), con error (`500`), vacío y con una sesión sin `agenda.publish`, en el navegador
+  integrado, con el reloj del equipo (23-oct-2026, 12:22 en Bogotá):
+  - *Carga (CA-23):* barra de progreso con nombre accesible en la lista del año y los calendarios («Cargando actividades»), el detalle («Cargando
+    la actividad»), la edición, la nueva serie y los tipos («Cargando los tipos»).
+  - *Error (CA-23):* «No se pudo cargar la agenda.» en la lista y en Mes, «No se pudo cargar la actividad.» en el detalle y en la edición, «No se
+    pudieron cargar los tipos de actividad.» en nueva actividad, nueva serie y tipos, cada uno con **Reintentar**; el aviso general del
+    servidor con su referencia; y **Reintentar** recupera la pantalla de tipos al volver la API.
+  - *Vacío (CA-23):* «Todavía no hay actividades planificadas.» con «Nueva actividad» y «Nueva serie» en la lista; «No hay actividades en este
+    periodo.» en Mes; «Todavía no hay tipos de actividad.» en tipos. En tema **oscuro** y a **375 px**, el error de la lista y el aviso de F-2 sin
+    desplazamiento horizontal. En la consola, solo los `500` provocados.
+  - *F-2:* sin `agenda.publish`, en una actividad Programada el detalle no ofrece «Editar», «Editar la serie», «Cancelar» ni «Sincronizar de
+    nuevo» (sí «Editar etiquetas», que es de `agenda.update`); su menú en la lista solo tiene «Ver» y «Registrar ejecución»; y la dirección de
+    edición muestra «Esta actividad está programada. Para modificarla necesitas también el permiso para programar y cancelar actividades.» con
+    «Volver al detalle», sin formulario. Un borrador ofrece «Editar», «Editar la serie» y «Eliminar borrador» (sin «Programar»). Con el permiso,
+    la Programada vuelve a ofrecer «Editar».
+  - *Decisión 20:* en Mes, un día pasado vacío (15-oct) no hace nada; hoy (23-oct) y un día futuro (27-oct) abren «Nueva actividad» con la fecha.
+    En Semana, una hora ya pasada de hoy y una de ayer no hacen nada; las 14:00 de hoy abren «Nueva actividad» con fecha y hora.
+  - **Encontró y corrigió dos defectos:** el **resumen del año** mostraba ceros y «Sin actividades en este año.» mientras cargaba o si fallaba, y
+    los números de la consulta anterior mientras llegaba la nueva: ahora se vacía en cada consulta y dice «Cargando el resumen…» o «No se pudo
+    cargar el resumen del año.», con los meses sin números (`components/year-summary.ts`, `page/agenda-page.*`; pruebas en
+    `year-summary.spec.ts` y `agenda-page.spec.ts`). Y el **ícono de los avisos** de la agenda se encogía hasta casi desaparecer cuando el texto
+    ocupaba varias líneas en pantalla estrecha (`agenda-page.scss`). Frontend: `npm test -- --watch=false` **562** en verde, `prettier --check`
+    limpio y `npm run build` sin avisos de presupuesto.
+  - **Observación para el solicitante (no corregida):** elegir **hoy** en la vista Mes precarga las 09:00 aunque ya hayan pasado; al guardar, la API
+    responde con RN-16. No contradice la decisión 20, que solo habla de días y horas ya pasados.
+  - **No verificado:** todo contra la API real; la CSP en esta ronda (`ng serve` no la aplica; se comprobó con nginx en el incremento E); lector
+    de pantalla, Firefox y Safari.
 
 ## 19. Decisiones y preguntas abiertas
 
