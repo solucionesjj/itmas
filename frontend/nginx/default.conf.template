@@ -10,6 +10,15 @@ gzip on;
 gzip_types text/plain text/css application/javascript application/json image/svg+xml;
 gzip_min_length 1024;
 
+# Behind the TLS reverse proxy of the host, e.g. Caddy (ADR-0018). The frontend is published only on 127.0.0.1, so
+# the proxy is the only peer, seen from the gateway of the edge network. Its X-Forwarded-For (last address) gives
+# the real client IP and its X-Forwarded-Proto lets the API build https URLs (OIDC redirect_uri). Without that proxy
+# both fall back to the connection itself. Keep the range in sync with EDGE_NETWORK_SUBNET and never publish this
+# port beyond loopback.
+set_real_ip_from 172.28.10.0/24;
+real_ip_header X-Forwarded-For;
+map $http_x_forwarded_proto $forwarded_proto { default $scheme; https https; }
+
 server {
     listen 8080;
     server_name _;
@@ -39,7 +48,7 @@ server {
         proxy_set_header Connection "";
         proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
         proxy_set_header X-Forwarded-Host $http_host;
         proxy_read_timeout 60s;
     }
@@ -50,9 +59,9 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Host $http_host;
-        # nginx is the edge: overwrite (never append) client-supplied forwarding headers.
+        # Forwarding headers are rebuilt here (never appended): $remote_addr is the client IP resolved by real_ip above.
         proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
         proxy_set_header X-Forwarded-Host $http_host;
         # OIDC responses carry large (chunked) cookies.
         proxy_buffer_size 32k;

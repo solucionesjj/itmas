@@ -4,7 +4,7 @@ title: Topología de contenedores con proxy de mismo origen
 status: Accepted
 date: 2026-10-07
 deciders: [architecture, security]
-related: [SPEC-0000, ADR-0002]
+related: [SPEC-0000, ADR-0002, ADR-0018]
 ---
 
 # ADR-0007 — Topología de contenedores con proxy de mismo origen
@@ -18,7 +18,9 @@ BD no expuesta. El BFF (ADR-0002) necesita que la SPA y la API compartan origen.
   `/signout-callback-oidc` hacia `api`. Es el **único puerto publicado** (en `127.0.0.1`).
 - Redes: `edge` (frontend ↔ api, con salida para Entra ID; subred fija confiable para `X-Forwarded-*`) y
   `data` (`internal: true`: api/migrator ↔ postgres, sin salida a Internet).
-- nginx sobrescribe `X-Forwarded-For/Proto/Host`; la API solo los acepta desde la subred `edge`.
+- nginx sobrescribe `X-Forwarded-For/Proto/Host`; la API solo los acepta desde la subred `edge`. Con un proxy TLS del host
+  delante (ADR-0018), nginx toma la IP del cliente y el esquema de las cabeceras de ese proxy y sigue reconstruyendo las
+  cabeceras hacia la API.
 - `/health*` no se expone por el proxy (404); los health checks se ejecutan dentro de los contenedores.
 - Contenedores no root, `cap_drop: ALL`, `no-new-privileges`, `read_only` en api/migrator.
 
@@ -32,7 +34,8 @@ BD no expuesta. El BFF (ADR-0002) necesita que la SPA y la API compartan origen.
 ## Consecuencias
 - Positivas: cookies first-party, CORS cerrado, superficie pública mínima.
 - Negativas: nginx debe conocer las rutas del BFF (lista explícita en `default.conf.template`).
-- Seguimiento: en producción, TLS en el borde (ingress) delante de `frontend` o en el propio nginx.
+- Seguimiento: el TLS de producción se resuelve en [ADR-0018](adr-0018-host-tls-reverse-proxy.md): un proxy inverso del
+  host delante de `frontend`, que sigue siendo el único puerto publicado y solo en `127.0.0.1`.
 
 ## Impacto en la constitución
 Recogido en §8.

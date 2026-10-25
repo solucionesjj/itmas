@@ -23,13 +23,19 @@ en [`specs/architecture/`](specs/architecture/); las reglas que no pueden romper
 
 | Componente | Responsabilidad | Publicado |
 |---|---|---|
-| `frontend` | Sirve la SPA y actúa como **reverse proxy** (único origen público). Aplica CSP y cabeceras de seguridad de los documentos. | Sí, solo en `127.0.0.1` |
+| Proxy TLS del host (fuera de Docker, solo en producción) | Termina TLS con Let's Encrypt, redirige HTTP a HTTPS, añade HSTS y reenvía a `127.0.0.1:${FRONTEND_PORT}` (ADR-0018). | Sí, 80 y 443 |
+| `frontend` | Sirve la SPA y actúa como **reverse proxy** (único origen público de la aplicación). Aplica CSP y cabeceras de seguridad de los documentos. | Sí, solo en `127.0.0.1` |
 | `api` | API REST, Backend-for-Frontend de autenticación, autorización, health checks y, si se activa, publicación de la agenda en Outlook con Microsoft Graph (ADR-0016). | No |
 | `migrator` | Aplica migraciones EF Core y termina. Único proceso con privilegios DDL. | No |
 | `postgres` | Persistencia. Red interna sin salida. | No |
 | `itmas-agent` (fuera de Docker) | Agente de inventario instalado como servicio en los equipos (SPEC-0002). Envía su inventario por HTTPS al mismo origen público. | No (solo conexiones salientes) |
 
 nginx también sirve los paquetes del agente en `/downloads/agent/` desde un volumen de solo lectura (`AGENT_DOWNLOADS_DIR`).
+
+**Producción (ADR-0018).** En el servidor único, delante de `frontend` hay un proxy inverso instalado en el host (Caddy como
+referencia). `frontend` sigue publicándose solo en `127.0.0.1`: es el proxy quien escucha en 80 y 443. nginx toma la IP del
+cliente de la última dirección de `X-Forwarded-For` solo cuando la conexión llega desde la red `edge` (`set_real_ip_from`), y
+reenvía a la API `X-Forwarded-Proto: https` solo si el proxy lo envió con ese valor. Sin proxy (desarrollo) todo funciona como antes.
 
 ## 2. Frontend (Angular 22 + Angular Material / Material Design 3)
 
@@ -255,8 +261,9 @@ Una sesión de usuario no satisface las políticas de dispositivo, y una API key
 envía `X-CSRF: 1`, así que la protección CSRF no cambia. Con cada inventario se guardan dos IPs (ADR-0011):
 
 - La **IP pública declarada**, que el agente obtiene de ipinfo.io.
-- La **IP de conexión**, que es `RemoteIpAddress` después de `UseForwardedHeaders`. nginx sobrescribe `X-Forwarded-For`,
-  así que el cliente no puede falsearla.
+- La **IP de conexión**, que es `RemoteIpAddress` después de `UseForwardedHeaders`. nginx reconstruye `X-Forwarded-For` con
+  `$remote_addr`: en producción es la IP del cliente que `real_ip` toma de la cabecera del proxy del host (ADR-0018), y sin
+  proxy es la de la conexión. El cliente no puede falsearla (el proxy reemplaza la cabecera que envía; a comprobar en el despliegue).
 
 Cada equipo se registra antes en el inventario (`/api/v1/devices`, permisos `devices.*`), que emite su código de
 enrolamiento de un solo uso ([ADR-0012](specs/architecture/adr-0012-per-device-enrollment-codes.md)). El código

@@ -4,7 +4,7 @@ title: IP pública y ubicación con ipinfo.io desde el agente; IP de conexión e
 status: Accepted
 date: 2026-10-08
 deciders: [architecture, security]
-related: [SPEC-0002, ADR-0010, ADR-0007]
+related: [SPEC-0002, ADR-0010, ADR-0007, ADR-0018]
 ---
 
 # ADR-0011 — IP pública y ubicación
@@ -17,7 +17,8 @@ ipinfo.io, que se usa de forma libre y sin token, y quiere distinguir dos IPs:
 - La **IP de conexión**, la IP de origen de la petición HTTP tal como la ve el servidor.
 
 Por ahora el servidor está expuesto directamente a Internet, con nginx como borde y un certificado de Let's Encrypt.
-Más adelante estará detrás de un balanceador. La constitución §9.4 prohíbe que las pruebas dependan de Internet, y
+Más adelante estará detrás de un balanceador. *(Actualizado el 2026-10-24: en producción el TLS lo termina un proxy del host
+delante de nginx; ver ADR-0018.)* La constitución §9.4 prohíbe que las pruebas dependan de Internet, y
 §2.5 exige justificar una dependencia de impacto transversal.
 
 ## Decisión
@@ -34,7 +35,8 @@ Más adelante estará detrás de un balanceador. La constitución §9.4 prohíbe
      (`ReverseProxy:KnownNetworks`), así que un cliente no puede falsearla.
    - Si TLS se termina en otro proxy delante de nginx, o cuando llegue el balanceador, el nginx del contenedor tendrá que
      usar `set_real_ip_from` y `real_ip_header` con la red de ese componente. Está en el checklist de producción de
-     SECURITY.md.
+     SECURITY.md. Con el proxy del host de [ADR-0018](adr-0018-host-tls-reverse-proxy.md) la plantilla ya lo hace para la red
+     `edge`: nginx toma la última dirección de `X-Forwarded-For` y sigue reconstruyendo la cabecera hacia la API.
 3. El **servidor no llama a ipinfo.io** ni a ningún otro servicio externo para el inventario.
 4. **Pruebas:** el cliente de ipinfo del agente se sustituye por un `HttpMessageHandler` de prueba. Las pruebas del
    servidor no necesitan red.

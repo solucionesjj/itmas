@@ -230,6 +230,8 @@ Toda spec que cambie algo visible para las personas usuarias actualiza el manual
 | No veo la sección Administración | Tu usuario no tiene permisos: configura `AUTHZ_BOOTSTRAP_ROOT_OIDS` (README) o pide políticas a un Root. |
 | `400 Bad Request - Invalid Hostname` | Se accedió con un host no incluido en `APP_ALLOWED_HOSTS` (p. ej. `127.0.0.1`). Usa `http://localhost:<puerto>`: además, el `redirect_uri` de Entra ID y la cookie de sesión dependen del host. |
 | Entra ID: `AADSTS50011` (redirect URI mismatch) | Registra en el App Registration (plataforma Web) exactamente `http://localhost:<FRONTEND_PORT>/signin-oidc` y `/signout-callback-oidc`. |
+| Producción: `AADSTS50011` con un `redirect_uri` que empieza por `http://` | nginx no recibió `X-Forwarded-Proto: https`: el proxy del host no lo envía o la imagen de `frontend` es anterior a ADR-0018. Reconstruye con `docker compose up -d --build frontend` y revisa el Caddyfile (§12.6). |
+| Producción: la IP de conexión de los inventarios es una `172.x` | La conexión no llega desde el rango de `set_real_ip_from` o el proxy no envía `X-Forwarded-For`. Compara la subred de `edge` (`EDGE_NETWORK_SUBNET`) con la plantilla de nginx (ADR-0018). |
 | `api` unhealthy tras cambiar contraseñas | El volumen conserva los roles antiguos: `docker compose down -v`. |
 | Tests de integración: `DockerUnavailableException` | Docker no está en ejecución. |
 | La API no arranca en Production | Falta configuración de Entra ID (comportamiento *fail-fast* intencional). |
@@ -443,3 +445,197 @@ identificador del evento, el código y el `request-id` de Graph (solo si es un G
 2. Actualízala en el gestor de secretos (`AGENDA_OUTLOOK_CLIENT_SECRET`) y reinicia el contenedor `api` (`docker compose up -d api`).
 3. Comprueba con **Sincronizar de nuevo** sobre una actividad programada que el estado vuelve a *Publicado*.
 4. Elimina la credencial anterior y anota el nuevo vencimiento en la agenda.
+
+## 12. Publicación en un servidor Linux (ADR-0018)
+
+Procedimiento para publicar ITMas en **un único servidor Ubuntu con IP pública**, con Docker Compose y un proxy TLS en el host
+(Caddy como referencia, [ADR-0018](specs/architecture/adr-0018-host-tls-reverse-proxy.md), `Proposed`). Las imágenes se construyen
+en el propio servidor. No incluye automatización (CI/CD) ni alta disponibilidad: el servidor es un punto único de fallo.
+
+> Los comandos de esta sección se redactaron a partir de la documentación oficial de cada herramienta y **no se han ejecutado todavía
+> en el servidor real**. Tras la primera publicación, corrige lo que difiera. Las copias de seguridad (§12.9) son un requisito
+> previo: no publiques sin ellas.
+
+### 12.1 Requisitos previos
+
+- Acceso por SSH con un usuario con `sudo`, y un equipo de trabajo con Docker para compilar los paquetes del agente.
+- Los puertos **80 y 443** abiertos desde Internet hacia el servidor (también en el cortafuegos del proveedor). Si el 80 no es
+  alcanzable, Let's Encrypt solo puede emitir el certificado con el desafío DNS-01.
+- Control del DNS de `sacservices.cloud` y acceso al *App Registration* de Entra ID.
+- Salida a Internet desde el servidor hacia `github.com`, `login.microsoftonline.com`, Let's Encrypt y, solo si se activa Outlook,
+  `graph.microsoft.com`.
+- Un destino para las copias de seguridad **fuera del servidor** (§12.9).
+
+### 12.2 Entra ID y DNS
+
+1. En el *App Registration* (plataforma **Web**) añade las Redirect URIs `https://itmas.sacservices.cloud/signin-oidc` y
+   `https://itmas.sacservices.cloud/signout-callback-oidc`. Ten a mano el *Tenant ID*, el *Client ID* y un *client secret*.
+2. Crea el registro `A` de `itmas.sacservices.cloud` hacia la IP pública del servidor (y `AAAA` solo si tiene IPv6). Hazlo
+   **antes** de instalar el proxy: si Let's Encrypt falla varias veces seguidas, limita los intentos.
+
+### 12.3 Preparar el servidor
+
+Cortafuegos. Permite SSH **antes** de activarlo para no quedarte fuera:
+
+```bash
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow OpenSSH
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
+sudo ufw enable
+```
+
+Docker Engine, desde el repositorio oficial:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+Rotación de logs de Docker. Sin ella los logs llenan el disco. Escribe en `/etc/docker/daemon.json` y reinicia Docker
+(`sudo systemctl restart docker`) **antes** de crear los contenedores:
+
+```json
+{ "log-driver": "local", "log-opts": { "max-size": "20m", "max-file": "5" } }
+```
+
+Otros ajustes:
+
+- Añade a tu usuario al grupo `docker` (`sudo usermod -aG docker $USER`) y vuelve a entrar. Ese grupo equivale a root y permite leer
+  los secretos con `docker inspect`: solo para administradores.
+- Con 2 GB de RAM o menos, crea 2 GB de *swap*: el build de Angular y de .NET puede quedarse sin memoria.
+- Instala `fail2ban` y `unattended-upgrades` (`sudo apt-get install -y fail2ban unattended-upgrades`).
+- Desactiva el acceso SSH por contraseña **después** de comprobar que tu clave funciona: en
+  `/etc/ssh/sshd_config.d/10-hardening.conf` escribe `PasswordAuthentication no` y `PermitRootLogin no`, y ejecuta
+  `sudo systemctl reload ssh`.
+
+### 12.4 Código y `.env`
+
+El repositorio es privado: crea en el servidor una *deploy key* de solo lectura, regístrala en GitHub (*Settings → Deploy keys*,
+sin permiso de escritura) y clona. Despliega siempre desde una etiqueta (`git tag`), no desde una rama.
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/itmas_deploy -N ""
+cat ~/.ssh/itmas_deploy.pub
+```
+
+```bash
+sudo mkdir -p /opt/itmas3 && sudo chown $USER /opt/itmas3
+GIT_SSH_COMMAND="ssh -i ~/.ssh/itmas_deploy" git clone git@github.com:solucionesjj/itmas.git /opt/itmas3
+cd /opt/itmas3 && git checkout <etiqueta>
+./scripts/init-env.sh
+```
+
+Edita `/opt/itmas3/.env` (secreto: nunca va al repositorio). Valores de producción:
+
+| Variable | Valor |
+|---|---|
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `APP_ALLOWED_HOSTS` | `itmas.sacservices.cloud` |
+| `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET` | los del *App Registration* |
+| `AUTHZ_BOOTSTRAP_ROOT_OIDS` | tu *Object ID*, **solo hasta §12.7** |
+| `AGENDA_PUBLIC_URL` | `https://itmas.sacservices.cloud` |
+| `AGENDA_OUTLOOK_ENABLED` | `false`: no se activa en producción hasta que SPEC-0008 esté `Implemented` |
+
+`FRONTEND_PORT` queda en `8080` y **no se publica en otra interfaz que `127.0.0.1`**. En `Production` la API no arranca sin la
+configuración de Entra ID completa.
+
+### 12.5 Levantar la aplicación
+
+```bash
+cd /opt/itmas3 && docker compose config -q && docker compose up -d --build
+```
+
+```bash
+docker compose ps
+```
+
+El primer build tarda varios minutos. Deben quedar `postgres` y `api` en `healthy` y el `migrator` terminado con código 0.
+
+### 12.6 Proxy TLS (Caddy)
+
+```bash
+sudo apt-get install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt-get update
+sudo apt-get install -y caddy
+```
+
+Contenido de `/etc/caddy/Caddyfile`. El HSTS va sin `includeSubDomains` ni `preload` (ADR-0018):
+
+```text
+itmas.sacservices.cloud {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	reverse_proxy 127.0.0.1:8080
+}
+```
+
+Aplica con `sudo systemctl reload caddy` y vigila la emisión del certificado con `journalctl -u caddy -f`. Si cambias
+`FRONTEND_PORT`, cambia también el puerto del `reverse_proxy`.
+
+### 12.7 Verificar y cerrar el bootstrap
+
+Desde fuera del servidor:
+
+1. `https://itmas.sacservices.cloud/auth/session` devuelve `{"isAuthenticated":false,...}`.
+2. `https://itmas.sacservices.cloud/health` devuelve **404** (los *health checks* no se exponen).
+3. Inicia sesión. Con `AADSTS50011`, revisa las Redirect URIs y que la imagen de `frontend` sea posterior a ADR-0018.
+4. Tu cuenta pasa a Root y aparece **Administración**. Después quita `AUTHZ_BOOTSTRAP_ROOT_OIDS` del `.env` y ejecuta
+   `docker compose up -d`.
+5. **IP real (ADR-0018):** enrola un equipo y comprueba en **Inventario** que la IP de conexión es la del cliente, no una `172.x`.
+   Repite con `curl -H 'X-Forwarded-For: 1.2.3.4' https://itmas.sacservices.cloud/auth/session` desde fuera: ese valor no debe
+   aparecer en ningún registro. Si algo falla, ver §9.
+
+### 12.8 Paquetes del agente
+
+Compílalos en tu equipo de trabajo, que ya tiene Docker, para no cargar el servidor, y cópialos a `agent/dist` del repositorio
+clonado (la ruta por defecto de `AGENT_DOWNLOADS_DIR`):
+
+```bash
+./scripts/build-agent.sh
+```
+
+```bash
+rsync -av agent/dist/ <usuario>@itmas.sacservices.cloud:/opt/itmas3/agent/dist/
+```
+
+Quedan publicados en `https://itmas.sacservices.cloud/downloads/agent/`, cada versión con su `SHA256SUMS`.
+
+### 12.9 Copias de seguridad (requisito previo)
+
+Con un solo servidor, el disco es el único punto de falla: **copiar los volcados fuera del servidor, cifrados, es obligatorio**. El
+destino está **pendiente de decisión** (ADR-0018, Seguimiento). La base de datos contiene la auditoría (`app.audit_events`) y el mapa
+de cuentas privilegiadas de los motores SQL, así que el cifrado no es opcional.
+
+Volcado diario como `root` (por ejemplo desde `/etc/cron.d/itmas`) y antes de cada actualización:
+
+```bash
+cd /opt/itmas3 && mkdir -p /var/backups/itmas3 && chmod 700 /var/backups/itmas3
+docker compose exec -T postgres sh -c 'pg_dump -Fc -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > "/var/backups/itmas3/itmas3-$(date +%F-%H%M).dump"
+```
+
+Define la retención local (p. ej. `find /var/backups/itmas3 -name 'itmas3-*.dump' -mtime +7 -delete`) y la copia externa. **Prueba
+una restauración en otra máquina antes de necesitarla** (`pg_restore --clean --if-exists` sobre una base nueva). Para recuperar
+más fino que un día haría falta archivar el WAL (pgBackRest, WAL-G), que queda fuera de este procedimiento.
+
+### 12.10 Actualizar y volver atrás
+
+```bash
+cd /opt/itmas3 && git fetch --tags && git checkout <etiqueta-nueva> && docker compose up -d --build
+```
+
+Haz antes un volcado (§12.9). La actualización corta el servicio unos segundos: los agentes reintentan y las sesiones sobreviven
+(el *key ring* está en PostgreSQL). Para volver atrás, `git checkout` de la etiqueta anterior y el mismo `docker compose up -d --build`;
+si hubo una migración que lo impida, restaura el volcado. **Nunca ejecutes `docker compose down -v`**: borra los datos.
+
+Tras el primer despliegue, **reinicia el servidor una vez** y comprueba que todo vuelve solo (`docker compose ps`, `systemctl status caddy`).

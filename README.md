@@ -88,6 +88,12 @@ Abre <http://localhost:8080> (o el puerto definido en `FRONTEND_PORT`). Orden de
 Sin configurar Entra ID la aplicación arranca en `Development`, pero el botón de inicio de sesión
 informa que el servicio no está disponible.
 
+## Producción
+
+Para publicar en un servidor Linux único (Docker Compose con un proxy TLS en el host), sigue
+[DEVELOPMENT.md §12](DEVELOPMENT.md#12-publicación-en-un-servidor-linux-adr-0018). La decisión está en
+[ADR-0018](specs/architecture/adr-0018-host-tls-reverse-proxy.md) (pendiente de aceptación).
+
 ## Detener
 
 ```bash

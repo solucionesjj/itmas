@@ -78,3 +78,4 @@ specs/
 | [ADR-0015](architecture/adr-0015-database-connections-without-verified-tls.md) | Conexiones a motores con certificados no válidos (enmienda 2.0.0) | Accepted |
 | [ADR-0016](architecture/adr-0016-outlook-graph-application-permissions.md) | Integración con Outlook mediante Microsoft Graph con permisos de aplicación acotados | Accepted |
 | [ADR-0017](architecture/adr-0017-fullcalendar-calendar-views.md) | FullCalendar para las vistas de calendario de la agenda, sujeto al tema Material | Accepted |
+| [ADR-0018](architecture/adr-0018-host-tls-reverse-proxy.md) | TLS en un proxy inverso del host delante del frontend (servidor Linux único) | Proposed |

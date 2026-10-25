@@ -413,6 +413,10 @@ agent/
   - Si TLS lo termina otro proxy del host (por ejemplo certbot con un nginx del host, Caddy o Traefik), o cuando llegue
     el balanceador, el nginx del contenedor deberá configurar `set_real_ip_from` y `real_ip_header` con la red de ese
     componente. La API no cambia. La spec de infraestructura de producción lo concretará y quedará en el checklist de SECURITY.md.
+  - **Nota (2026-10-24, [ADR-0018](../architecture/adr-0018-host-tls-reverse-proxy.md)):** en producción el TLS lo termina un proxy
+    inverso del host delante de nginx, y la plantilla de nginx ya incluye `set_real_ip_from` y `real_ip_header` para la red `edge`.
+    Esto concreta el caso anterior. El contrato de la API y CA-20 no cambian, pero CA-20 se verifica a través del proxy
+    (`curl` desde fuera con un `X-Forwarded-For` falsificado).
   - Si la IP no es fiable, se registra como desconocida: nunca se inventa.
 - **IP pública y ubicación con ipinfo.io (ADR-0011):**
   - Las obtiene el agente: es el único que ve la red del equipo y hace una sola consulta al día. Se usa sin token, así

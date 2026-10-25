@@ -183,9 +183,14 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
 
 ## 7. HTTPS y TLS
 
-- La terminación TLS se hace en el borde (ingress, balanceador o nginx con certificado). La API está preparada:
-  `UseHsts` fuera de Development, `UseHttpsRedirection` activable con `Security:UseHttpsRedirection`,
-  y respeta `X-Forwarded-Proto` del proxy confiable.
+- La terminación TLS se hace en el borde. En el servidor de producción es un proxy inverso del host delante de `frontend`
+  (Caddy como referencia, [ADR-0018](specs/architecture/adr-0018-host-tls-reverse-proxy.md)); en otros despliegues puede ser un
+  balanceador o el propio nginx con certificado. La API está preparada: `UseHsts` fuera de Development,
+  `UseHttpsRedirection` activable con `Security:UseHttpsRedirection`, y respeta `X-Forwarded-Proto` del proxy confiable.
+- Con el proxy del host, `frontend` solo escucha en `127.0.0.1`. nginx toma la IP del cliente de la última dirección de
+  `X-Forwarded-For` solo cuando la conexión llega desde la red `edge`, y da por bueno `X-Forwarded-Proto` solo si vale `https`.
+  El esquema no se limita por origen, así que la seguridad de ambos depende de que `frontend` no se publique en otra interfaz:
+  si se hiciera, un cliente podría falsear su IP y el esquema.
 - Las cookies se emiten siempre con `Secure`. En local funciona sobre `http://localhost` porque los navegadores
   tratan `localhost` como contexto seguro; cualquier otro host exige HTTPS.
 
@@ -202,10 +207,12 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
 - [ ] `AUTHZ_BOOTSTRAP_ROOT_OIDS` vacío una vez creado el Root (dejarlo solo como procedimiento de emergencia documentado).
 - [ ] Política de retención y exportación de `app.audit_events`.
 - [ ] Exportación de telemetría (`OTEL_EXPORTER_OTLP_ENDPOINT`) y alertas sobre `Error`/`Critical`.
-- [ ] **IP real del cliente (SPEC-0002, ADR-0011).** Si nginx es el borde y tiene el certificado de Let's Encrypt, no
-      hay que hacer nada. Si TLS lo termina otro proxy del host (certbot con un nginx del host, Caddy, Traefik) o un
-      balanceador, configura en nginx `set_real_ip_from <red del proxy>` y `real_ip_header X-Forwarded-For`. Si no,
-      la IP de conexión de los inventarios será la del proxy.
+- [ ] **IP real del cliente y esquema (SPEC-0002, ADR-0011, ADR-0018).** Con el proxy TLS del host, la plantilla de nginx ya
+      usa `set_real_ip_from` con la red `edge` (`172.28.10.0/24` por defecto): si cambias `EDGE_NETWORK_SUBNET`, cámbiala también
+      ahí. Tras desplegar, comprueba en **Inventario** que la IP de conexión es la del cliente (no una `172.x`) y que un
+      `X-Forwarded-For` falsificado enviado desde fuera se ignora. Si TLS lo termina un balanceador u otro proxy, usa su red.
+- [ ] **`frontend` solo en loopback (ADR-0018).** Publícalo únicamente en `127.0.0.1` (`FRONTEND_PORT`). El cortafuegos del
+      host debe abrir solo 22 (restringido), 80 y 443; Docker publica puertos saltándose `ufw`, así que no publiques nada más.
 - [ ] Entregar los códigos de enrolamiento por un canal interno y seguro, solo a quien instala el agente. Si un código
       no usado pudo filtrarse, regenerarlo (o eliminar el equipo).
 - [ ] **Revocar un dispositivo comprometido (SPEC-0003).** En **Inventario → Equipos**, *Eliminar* el equipo (permiso
