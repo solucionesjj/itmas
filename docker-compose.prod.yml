@@ -1,0 +1,17 @@
+# Production override (SPEC-0009, ADR-0020): run the images published by the release workflow instead of building them.
+# Used only by scripts/deploy.sh, always together with the base file and never with docker-compose.dev.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --no-build
+# The image references (repository@sha256:digest) come from the environment that deploy.sh exports. They hold no secrets.
+# Local development keeps building from the code with `docker compose up --build` (constitution §8.1).
+services:
+  migrator:
+    image: ${ITMAS_MIGRATOR_IMAGE:?ITMAS_MIGRATOR_IMAGE is required (scripts/deploy.sh sets it)}
+    build: !reset null
+
+  api:
+    image: ${ITMAS_API_IMAGE:?ITMAS_API_IMAGE is required (scripts/deploy.sh sets it)}
+    build: !reset null
+
+  frontend:
+    image: ${ITMAS_FRONTEND_IMAGE:?ITMAS_FRONTEND_IMAGE is required (scripts/deploy.sh sets it)}
+    build: !reset null

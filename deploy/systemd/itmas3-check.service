@@ -1,0 +1,16 @@
+[Unit]
+Description=ITMas host checks and heartbeat (SPEC-0009)
+Requires=docker.service
+Wants=network-online.target
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+TimeoutStartSec=4min
+WorkingDirectory=/opt/itmas3
+ExecStart=/opt/itmas3/scripts/check-host.sh
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/itmas3

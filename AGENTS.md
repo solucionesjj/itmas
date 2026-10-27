@@ -23,6 +23,8 @@ Este repositorio evoluciona mediante **Specification-Driven Development**. Antes
 | Pruebas del agente con motores SQL reales | `cd agent && dotnet test tests/Itmas3.Agent.IntegrationTests` (requiere Docker) |
 | Paquetes del agente | `./scripts/build-agent.sh` |
 | Pruebas del hook de commit | `./scripts/test-commit-msg-hook.sh` |
+| Pruebas de los scripts del servidor (SPEC-0009) | `./scripts/test-deploy.sh`, `./scripts/test-host-tasks.sh`, `./scripts/test-backup.sh` (su parte de restauración real requiere Docker) |
+| Prueba de la IP real y el esquema en nginx (ADR-0018) | `./scripts/test-nginx-realip.sh` (requiere Docker) |
 | Validar Compose sin mostrar valores | `docker compose config -q` (sin `-q` imprime los valores de `.env`) |
 | Nueva migración | ver [DEVELOPMENT.md §5](DEVELOPMENT.md#5-migraciones-ef-core) |
 

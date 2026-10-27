@@ -1,0 +1,11 @@
+// ITMas host hardening (SPEC-0009 RF-10): automatic security updates only, never an automatic reboot.
+// When the system asks for a reboot (/var/run/reboot-required) scripts/check-host.sh alerts and a person reboots in an agreed window.
+#clear Unattended-Upgrade::Allowed-Origins;
+Unattended-Upgrade::Allowed-Origins {
+        "${distro_id}:${distro_codename}-security";
+        "${distro_id}ESMApps:${distro_codename}-apps-security";
+        "${distro_id}ESM:${distro_codename}-infra-security";
+};
+Unattended-Upgrade::Automatic-Reboot "false";
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";

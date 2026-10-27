@@ -20,7 +20,8 @@ COPY nginx/default.conf.template nginx/security-headers.inc.template /etc/nginx/
 COPY --from=build /app/dist/frontend/browser /usr/share/nginx/html
 # Non-secret defaults; override at runtime.
 ENV API_UPSTREAM=http://api:8080 \
-    ENTRA_AUTHORITY_ORIGIN=https://login.microsoftonline.com
+    ENTRA_AUTHORITY_ORIGIN=https://login.microsoftonline.com \
+    EDGE_TRUSTED_PROXY_FROM=172.28.10.0/24
 USER 101
 EXPOSE 8080
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 \

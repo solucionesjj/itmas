@@ -1,0 +1,9 @@
+[Unit]
+Description=ITMas host checks every five minutes (SPEC-0009)
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target

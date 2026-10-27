@@ -1,0 +1,12 @@
+{
+  "Rules": [
+    {
+      "ID": "expire-itmas3-backups-after-30-days",
+      "Status": "Enabled",
+      "Filter": { "Prefix": "<PREFIX>/" },
+      "Expiration": { "Days": 30 },
+      "NoncurrentVersionExpiration": { "NoncurrentDays": 1 },
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+    }
+  ]
+}

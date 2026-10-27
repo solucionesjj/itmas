@@ -19,6 +19,7 @@ consults:
 triggers:
   - spec con sección "Cambios de base de datos"
   - nueva entidad persistida, índice, restricción o cambio de rol
+  - copia o restauración de la base de datos (procedimiento de SPEC-0009)
 ---
 
 # Agente: database

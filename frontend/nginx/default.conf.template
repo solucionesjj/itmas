@@ -1,5 +1,5 @@
 # Rendered at container start by the nginx image (envsubst over /etc/nginx/templates).
-# Variables: API_UPSTREAM, ENTRA_AUTHORITY_ORIGIN (see security-headers.inc.template).
+# Variables: API_UPSTREAM, EDGE_TRUSTED_PROXY_FROM, ENTRA_AUTHORITY_ORIGIN (see security-headers.inc.template).
 #
 # Single public origin: static SPA + reverse proxy to the API for /api, /auth and the OIDC callbacks.
 # The API and the database are never published directly.
@@ -11,13 +11,17 @@ gzip_types text/plain text/css application/javascript application/json image/svg
 gzip_min_length 1024;
 
 # Behind the TLS reverse proxy of the host, e.g. Caddy (ADR-0018). The frontend is published only on 127.0.0.1, so
-# the proxy is the only peer, seen from the gateway of the edge network. Its X-Forwarded-For (last address) gives
-# the real client IP and its X-Forwarded-Proto lets the API build https URLs (OIDC redirect_uri). Without that proxy
-# both fall back to the connection itself. Keep the range in sync with EDGE_NETWORK_SUBNET and never publish this
-# port beyond loopback.
-set_real_ip_from 172.28.10.0/24;
+# the proxy reaches nginx from the gateway of the edge network. Its X-Forwarded-For (last address) gives the real
+# client IP and its X-Forwarded-Proto lets the API build https URLs (OIDC redirect_uri). Both are honoured only when
+# the connection comes from EDGE_TRUSTED_PROXY_FROM (default: the whole edge subnet; narrow it to the gateway only
+# after checking on Linux the origin nginx sees, SPEC-0009 CA-22). Without that proxy both fall back to the
+# connection itself. Trust model (ADR-0018, decision 3): any process of the host that reaches 127.0.0.1 is trusted
+# for these headers. Never publish this port beyond loopback.
+set_real_ip_from ${EDGE_TRUSTED_PROXY_FROM};
 real_ip_header X-Forwarded-For;
-map $http_x_forwarded_proto $forwarded_proto { default $scheme; https https; }
+real_ip_recursive off;
+geo $realip_remote_addr $from_edge_proxy { default 0; ${EDGE_TRUSTED_PROXY_FROM} 1; }
+map "$from_edge_proxy:$http_x_forwarded_proto" $forwarded_proto { default $scheme; "1:https" https; }
 
 server {
     listen 8080;

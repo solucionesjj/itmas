@@ -46,8 +46,12 @@ independiente de `init-env.sh`: se puede ejecutar aunque `.env` ya exista, y var
 ├── agents/                Definición de agentes especializados
 ├── .claude/               Skills de proyecto y permisos de Claude Code (SPEC-0007)
 ├── .githooks/             Hooks de git versionados: commit-msg (SPEC-0007)
-├── scripts/               Utilidades (init-env.sh, build-agent.sh, install-git-hooks.sh, test-commit-msg-hook.sh)
+├── scripts/               Utilidades (init-env.sh, build-agent.sh, install-git-hooks.sh) y del servidor de producción
+│                          (deploy.sh, backup-db.sh, restore-db.sh, harden-host.sh, install-host-tasks.sh, check-host.sh, lib/) con sus test-*.sh
+├── deploy/                Configuración versionada del host de producción: Caddy, SSH, fail2ban, actualizaciones, systemd, plantillas de AWS (SPEC-0009)
+├── .github/workflows/     CI (ci.yml) y publicación de imágenes con aprobación (release.yml) (SPEC-0009, ADR-0020)
 ├── docker-compose.yml     Entorno completo
+├── docker-compose.prod.yml Producción: las imágenes publicadas en lugar de construirlas (solo lo usa scripts/deploy.sh)
 └── docker-compose.dev.yml Overlay opcional: publica PostgreSQL en 127.0.0.1 para depurar
 ```
 
@@ -138,6 +142,8 @@ cuando sea posible y nunca se edita una migración ya aplicada en un entorno com
 | Agente: unitarias | `cd agent && dotnet test tests/Itmas3.Agent.Tests` | .NET SDK |
 | Agente: motores SQL reales (Testcontainers, ~5 min) | `cd agent && dotnet test tests/Itmas3.Agent.IntegrationTests` | .NET SDK + Docker |
 | Agente en Docker + paquetes | `./scripts/build-agent.sh` | Docker |
+| Scripts del servidor (despliegue, copias, endurecimiento, comprobaciones) | `./scripts/test-deploy.sh`, `./scripts/test-host-tasks.sh`, `./scripts/test-backup.sh` | `sh`; la restauración real de `test-backup.sh` requiere Docker |
+| IP real y esquema en nginx (ADR-0018) | `./scripts/test-nginx-realip.sh` | Docker |
 | Agente Linux en contenedor (inventario sin envío) | `docker compose --profile agent run --rm agent-e2e` | Docker |
 
 Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json`).
@@ -230,9 +236,9 @@ Toda spec que cambie algo visible para las personas usuarias actualiza el manual
 | No veo la sección Administración | Tu usuario no tiene permisos: configura `AUTHZ_BOOTSTRAP_ROOT_OIDS` (README) o pide políticas a un Root. |
 | `400 Bad Request - Invalid Hostname` | Se accedió con un host no incluido en `APP_ALLOWED_HOSTS` (p. ej. `127.0.0.1`). Usa `http://localhost:<puerto>`: además, el `redirect_uri` de Entra ID y la cookie de sesión dependen del host. |
 | Entra ID: `AADSTS50011` (redirect URI mismatch) | Registra en el App Registration (plataforma Web) exactamente `http://localhost:<FRONTEND_PORT>/signin-oidc` y `/signout-callback-oidc`. |
-| Producción: `AADSTS50011` con un `redirect_uri` que empieza por `http://` | nginx no recibió `X-Forwarded-Proto: https`: el proxy del host no lo envía o la imagen de `frontend` es anterior a ADR-0018. Reconstruye con `docker compose up -d --build frontend` y revisa el Caddyfile (§12.6). |
-| Producción: la IP de conexión de los inventarios es una `172.x` | La conexión no llega desde el rango de `set_real_ip_from` o el proxy no envía `X-Forwarded-For`. Compara la subred de `edge` (`EDGE_NETWORK_SUBNET`) con la plantilla de nginx (ADR-0018). |
-| `api` unhealthy tras cambiar contraseñas | El volumen conserva los roles antiguos: `docker compose down -v`. |
+| Producción: `AADSTS50011` con un `redirect_uri` que empieza por `http://` | nginx no recibió `X-Forwarded-Proto: https`: el proxy del host no lo envía o la imagen de `frontend` es anterior a ADR-0018. Despliega una etiqueta posterior con `sudo ./scripts/deploy.sh` (no reconstruyas en el servidor: `up --build` sustituye la imagen por la local y esquiva la guarda de puertos) y revisa el Caddyfile (§12.6). |
+| Producción: la IP de conexión de los inventarios es una `172.x` | La conexión no llega desde el rango de `set_real_ip_from` o el proxy no envía `X-Forwarded-For`. Compara la subred de `edge` con `EDGE_TRUSTED_PROXY_FROM` (ADR-0018). |
+| `api` unhealthy tras cambiar contraseñas | El volumen conserva los roles antiguos: en desarrollo, `docker compose down -v`. **En producción nunca**: borra los datos (restaura el volcado, §12.9). |
 | Tests de integración: `DockerUnavailableException` | Docker no está en ejecución. |
 | La API no arranca en Production | Falta configuración de Entra ID (comportamiento *fail-fast* intencional). |
 | `Mensaje de commit rechazado` | El primer renglón no empieza por `SPEC-NNNN:`, `ADR-NNNN:` ni `minor: <motivo>` (§10.3). |
@@ -446,93 +452,121 @@ identificador del evento, el código y el `request-id` de Graph (solo si es un G
 3. Comprueba con **Sincronizar de nuevo** sobre una actividad programada que el estado vuelve a *Publicado*.
 4. Elimina la credencial anterior y anota el nuevo vencimiento en la agenda.
 
-## 12. Publicación en un servidor Linux (ADR-0018)
+## 12. Publicación en un servidor Linux (ADR-0018, SPEC-0009)
 
-Procedimiento para publicar ITMas en **un único servidor Ubuntu con IP pública**, con Docker Compose y un proxy TLS en el host
-(Caddy como referencia, [ADR-0018](specs/architecture/adr-0018-host-tls-reverse-proxy.md), `Proposed`). Las imágenes se construyen
-en el propio servidor. No incluye automatización (CI/CD) ni alta disponibilidad: el servidor es un punto único de fallo.
+Procedimiento para publicar ITMas en **un único servidor Ubuntu 24.04 con IP pública** (AWS EC2 `x86_64`: el CI construye `linux/amd64`), con Docker Compose y un proxy TLS en el host
+(Caddy, [ADR-0018](specs/architecture/adr-0018-host-tls-reverse-proxy.md)). Las imágenes las publica GitHub Actions en GHCR al empujar una etiqueta y
+una persona las despliega con `scripts/deploy.sh` ([ADR-0020](specs/architecture/adr-0020-continuous-deployment-ghcr.md)). El proxy, las copias, el
+monitoreo y el endurecimiento viven en el host, fuera de Compose, y se rigen por el §8.7 de la constitución ([ADR-0019](specs/architecture/adr-0019-host-edge-operations-outside-compose.md)).
+No hay alta disponibilidad: el servidor es un punto único de fallo.
 
-> Los comandos de esta sección se redactaron a partir de la documentación oficial de cada herramienta y **no se han ejecutado todavía
-> en el servidor real**. Tras la primera publicación, corrige lo que difiera. Las copias de seguridad (§12.9) son un requisito
-> previo: no publiques sin ellas.
+**Modelo de ejecución.** Todo lo del servidor lo ejecuta `root` con `sudo` y el clon `/opt/itmas3` es de `root`: los temporizadores ejecutan como `root` los scripts de ese clon, así que nadie más debe poder
+cambiarlos. La persona administradora usa `sudo`, no el grupo `docker` (equivale a `root`). `host.conf`, el estado de los despliegues (`/var/lib/itmas3`) y la credencial de `docker login` son de `root`.
+
+> Los scripts y los *workflows* se probaron con sustitutos (`./scripts/test-*.sh`) y los de nginx y el restore con Docker, y el `Caddyfile` se validó con Caddy en un contenedor, pero **ni los *workflows* ni los comandos de esta
+> sección se han ejecutado todavía en GitHub ni en el servidor real**. Tras el primer despliegue corrige lo que difiera y anótalo en la §18 de SPEC-0009. Las copias de seguridad (§12.9) son un requisito previo: no publiques sin una restauración probada.
 
 ### 12.1 Requisitos previos
 
-- Acceso por SSH con un usuario con `sudo`, y un equipo de trabajo con Docker para compilar los paquetes del agente.
-- Los puertos **80 y 443** abiertos desde Internet hacia el servidor (también en el cortafuegos del proveedor). Si el 80 no es
-  alcanzable, Let's Encrypt solo puede emitir el certificado con el desafío DNS-01.
-- Control del DNS de `sacservices.cloud` y acceso al *App Registration* de Entra ID.
-- Salida a Internet desde el servidor hacia `github.com`, `login.microsoftonline.com`, Let's Encrypt y, solo si se activa Outlook,
-  `graph.microsoft.com`.
-- Un destino para las copias de seguridad **fuera del servidor** (§12.9).
+- **AWS** (los crea quien administra AWS; plantillas y verificaciones en [`deploy/aws/`](deploy/aws/README.md), sin identificadores en el repositorio): instancia EC2 **`x86_64`** con volumen **EBS cifrado**,
+  **IMDSv2 obligatorio con *hop limit* 1**, *security group* que solo abre 22, 80 y 443 (también en IPv6: ninguna regla `::/0` en otros puertos), rol de instancia que solo puede **añadir** objetos a las copias, y un bucket de S3 en **otra cuenta**
+  con versionado, *Object Lock*, propietario del bucket forzado, cifrado SSE-S3 y vencimiento a los 30 días.
+- **GitHub** (ajustes del repositorio, no son archivos; **obligatorios**, no recomendaciones):
+  - entorno **`production`** con revisores obligatorios y *Deployment branches and tags* limitado a `v*`;
+  - *ruleset* de etiquetas `v*` que solo permita crearlas, moverlas y borrarlas a la administración, y protección de `main`;
+  - *Settings → Actions → General*: **aprobación obligatoria de los *workflows* de todos los colaboradores externos** y permisos del `GITHUB_TOKEN` de solo lectura por defecto (el repositorio es **público a propósito**: cualquiera puede abrir un PR);
+  - ninguna otra credencial: la publicación usa el `GITHUB_TOKEN` del *workflow*.
+  Comprueba el estado con `gh api repos/solucionesjj/itmas/environments/production` y `gh api repos/solucionesjj/itmas/rulesets`. Como el repositorio es público, **nada confidencial** va en él: ni identificadores de cuentas de AWS, ni direcciones, ni *buckets*, ni claves (constitución §4).
+  Activa también el reporte privado de vulnerabilidades (*Settings → Code security*), al que apunta SECURITY.md.
+- **Claves de las copias:** en el equipo de la persona administradora, `age-keygen -o itmas3-backup.key`. La clave **privada no va al servidor**: guárdala en el gestor de contraseñas y haz una **copia sellada** fuera de línea
+  (junto con una copia del `.env` del servidor, RF-6). La pública (`age1…`) es `BACKUP_AGE_RECIPIENT`.
+- **Visibilidad de los paquetes de GHCR** (ADR-0020, §8): como el código es público y las imágenes no llevan secretos, lo recomendado es marcar `itmas3-api`, `itmas3-migrator`, `itmas3-frontend` e `itmas3-agent` como **públicos**
+  (*Package settings → Change visibility*, después de la primera publicación: GHCR no siempre hereda la visibilidad del repositorio) y entonces el servidor **no guarda ninguna credencial de GitHub**.
+  **Solo si se dejan privados** hace falta una credencial de lectura: un token personal clásico con solo `read:packages` (GHCR no admite los de granularidad fina), mejor de una **cuenta de servicio de GitHub dedicada** con lectura solo de los paquetes `itmas3-*`
+  (*Package settings → Manage access*) y caducidad de 90 días como máximo, no el de una persona.
+- **DNS y Entra ID:** §12.2.
+- **Salida a Internet** desde el servidor hacia `github.com`, `ghcr.io`, `login.microsoftonline.com`, Let's Encrypt, el almacenamiento de las copias y, solo si se activa Outlook, `graph.microsoft.com`.
+- **Un servicio externo** con sonda HTTP y latidos (se elige al desplegar; SPEC-0009 §19.5) y una **lista de correo** del equipo para los avisos.
 
 ### 12.2 Entra ID y DNS
 
 1. En el *App Registration* (plataforma **Web**) añade las Redirect URIs `https://itmas.sacservices.cloud/signin-oidc` y
    `https://itmas.sacservices.cloud/signout-callback-oidc`. Ten a mano el *Tenant ID*, el *Client ID* y un *client secret*.
-2. Crea el registro `A` de `itmas.sacservices.cloud` hacia la IP pública del servidor (y `AAAA` solo si tiene IPv6). Hazlo
-   **antes** de instalar el proxy: si Let's Encrypt falla varias veces seguidas, limita los intentos.
+2. Crea el registro `A` de `itmas.sacservices.cloud` hacia la IP pública del servidor (**sin** `AAAA` salvo decisión expresa de `security`: con IPv6 los límites por IP particionan por /128 y un /64
+   permite rotarlas, ADR-0018 decisión 6; un registro CAA que solo admita Let's Encrypt acota la emisión). Crea el registro **después** del ensayo de §12.5 y **antes** de arrancar Caddy (§12.6): si Let's Encrypt falla varias veces
+   seguidas, limita los intentos.
 
 ### 12.3 Preparar el servidor
 
-Cortafuegos. Permite SSH **antes** de activarlo para no quedarte fuera:
+1. **Clave SSH.** Comprueba que entras con tu clave y deja esa sesión abierta: el endurecimiento desactiva las contraseñas.
+2. **Docker Engine**, desde el repositorio oficial. Comprueba con `docker version` que es la **28.0 o posterior** y no definas `DOCKER_INSECURE_NO_IPTABLES_RAW` (ADR-0018, decisión 6). **No** añadas a nadie al grupo `docker`:
+
+   ```bash
+   sudo apt-get update
+   sudo apt-get install -y ca-certificates curl
+   sudo install -m 0755 -d /etc/apt/keyrings
+   sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+   sudo apt-get update
+   sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+   ```
+
+3. **Herramientas de las copias y Caddy (solo los paquetes).** `age` y `rclone` vienen de Ubuntu; `install-host-tasks.sh check` comprueba que `rclone` admite las opciones que usa (`--no-check-dest`, `--s3-no-check-bucket`, `--s3-no-head`).
+   Si la versión de Ubuntu no las admite, instala el `.deb` oficial de rclone comprobando su suma SHA-256 contra la que publica rclone.org. Caddy va **antes** de `install-host-tasks.sh` para que sus archivos de configuración no choquen con el paquete.
+   Comprueba la huella de la clave del repositorio de Caddy contra la de <https://caddyserver.com/docs/install> y anótala en la §18 de SPEC-0009 (ADR-0018, decisión 6):
+
+   ```bash
+   sudo apt-get install -y age rclone debian-keyring debian-archive-keyring apt-transport-https
+   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' -o /tmp/caddy.gpg.key
+   gpg --show-keys --with-fingerprint /tmp/caddy.gpg.key
+   ```
+
+   Si la huella coincide:
+
+   ```bash
+   sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg /tmp/caddy.gpg.key
+   curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+   sudo chmod o+r /usr/share/keyrings/caddy-stable-archive-keyring.gpg /etc/apt/sources.list.d/caddy-stable.list
+   sudo apt-get update
+   sudo apt-get install -y caddy
+   sudo systemctl stop caddy
+   rm -f /tmp/caddy.gpg.key
+   ```
+
+   (Caddy queda parado hasta que tenga su configuración, §12.6.)
+4. **Código.** El repositorio es público: se clona **por HTTPS, como `root` y sin credencial** (no hay *deploy key* en el servidor). No cambies de rama: `deploy.sh` hace el `checkout` de la etiqueta tras comprobar que su *commit* está en `origin/main`.
+
+   ```bash
+   sudo git clone https://github.com/solucionesjj/itmas.git /opt/itmas3
+   ```
+
+5. **Endurecimiento** (`ufw`, `fail2ban`, actualizaciones de seguridad sin reinicio automático, rotación de logs de Docker). Primero sin tocar SSH; después, con tu clave probada en una segunda sesión:
+
+   ```bash
+   cd /opt/itmas3 && sudo ./scripts/harden-host.sh apply
+   sudo ./scripts/harden-host.sh apply --confirm-ssh-key
+   sudo ./scripts/harden-host.sh check
+   ```
+
+   Si `daemon.json` cambió, reinicia Docker **antes** de crear los contenedores (`sudo systemctl restart docker`). SSH queda **abierto a Internet** con clave y `fail2ban` (riesgo R-1 aceptado, SPEC-0009).
+6. **Tareas del host** (copia diaria, comprobaciones cada 5 minutos, archivos de Caddy) y su configuración. Repite `apply` y `check` si instalas Caddy después:
+
+   ```bash
+   cd /opt/itmas3 && sudo ./scripts/install-host-tasks.sh apply
+   sudo $EDITOR /etc/itmas3/host.conf /etc/caddy/itmas3.env
+   sudo ./scripts/install-host-tasks.sh check
+   ```
+
+   `host.conf` (plantilla [`deploy/host.conf.example`](deploy/host.conf.example)) lleva la clave pública de las copias, el destino, la región y la URL de latido; `itmas3.env`, el correo de contacto de Let's Encrypt. Los dos son de `root` y modo 600,
+   y `check` falla mientras falten valores (sin imprimirlos).
+
+### 12.4 `.env`
+
+Crea `.env` con contraseñas aleatorias y complétalo (es un secreto: nunca va al repositorio, y guarda una **copia sellada** con la clave de las copias, RF-6):
 
 ```bash
-sudo ufw default deny incoming
-sudo ufw default allow outgoing
-sudo ufw allow OpenSSH
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw enable
+cd /opt/itmas3 && sudo ./scripts/init-env.sh
 ```
-
-Docker Engine, desde el repositorio oficial:
-
-```bash
-sudo apt-get update
-sudo apt-get install -y ca-certificates curl
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-sudo apt-get update
-sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-```
-
-Rotación de logs de Docker. Sin ella los logs llenan el disco. Escribe en `/etc/docker/daemon.json` y reinicia Docker
-(`sudo systemctl restart docker`) **antes** de crear los contenedores:
-
-```json
-{ "log-driver": "local", "log-opts": { "max-size": "20m", "max-file": "5" } }
-```
-
-Otros ajustes:
-
-- Añade a tu usuario al grupo `docker` (`sudo usermod -aG docker $USER`) y vuelve a entrar. Ese grupo equivale a root y permite leer
-  los secretos con `docker inspect`: solo para administradores.
-- Con 2 GB de RAM o menos, crea 2 GB de *swap*: el build de Angular y de .NET puede quedarse sin memoria.
-- Instala `fail2ban` y `unattended-upgrades` (`sudo apt-get install -y fail2ban unattended-upgrades`).
-- Desactiva el acceso SSH por contraseña **después** de comprobar que tu clave funciona: en
-  `/etc/ssh/sshd_config.d/10-hardening.conf` escribe `PasswordAuthentication no` y `PermitRootLogin no`, y ejecuta
-  `sudo systemctl reload ssh`.
-
-### 12.4 Código y `.env`
-
-El repositorio es privado: crea en el servidor una *deploy key* de solo lectura, regístrala en GitHub (*Settings → Deploy keys*,
-sin permiso de escritura) y clona. Despliega siempre desde una etiqueta (`git tag`), no desde una rama.
-
-```bash
-ssh-keygen -t ed25519 -f ~/.ssh/itmas_deploy -N ""
-cat ~/.ssh/itmas_deploy.pub
-```
-
-```bash
-sudo mkdir -p /opt/itmas3 && sudo chown $USER /opt/itmas3
-GIT_SSH_COMMAND="ssh -i ~/.ssh/itmas_deploy" git clone git@github.com:solucionesjj/itmas.git /opt/itmas3
-cd /opt/itmas3 && git checkout <etiqueta>
-./scripts/init-env.sh
-```
-
-Edita `/opt/itmas3/.env` (secreto: nunca va al repositorio). Valores de producción:
 
 | Variable | Valor |
 |---|---|
@@ -542,46 +576,61 @@ Edita `/opt/itmas3/.env` (secreto: nunca va al repositorio). Valores de producci
 | `AUTHZ_BOOTSTRAP_ROOT_OIDS` | tu *Object ID*, **solo hasta §12.7** |
 | `AGENDA_PUBLIC_URL` | `https://itmas.sacservices.cloud` |
 | `AGENDA_OUTLOOK_ENABLED` | `false`: no se activa en producción hasta que SPEC-0008 esté `Implemented` |
+| `EDGE_TRUSTED_PROXY_FROM` | vacío hasta comprobar el origen que ve nginx (§12.7, paso 7) |
+| `AGENT_DOWNLOADS_DIR` | no la cambies: `deploy.sh` y nginx deben usar la misma carpeta (`/opt/itmas3/agent/dist`) |
 
-`FRONTEND_PORT` queda en `8080` y **no se publica en otra interfaz que `127.0.0.1`**. En `Production` la API no arranca sin la
-configuración de Entra ID completa.
+`FRONTEND_PORT` queda en `8080` y **no se publica en otra interfaz que `127.0.0.1`**: `deploy.sh` se detiene si Compose publica algo más, y `check-host.sh` lo vigila cada 5 minutos. En `Production` la API no arranca sin la configuración de Entra ID completa.
+Las variables de las imágenes (`ITMAS_API_IMAGE`, `ITMAS_MIGRATOR_IMAGE`, `ITMAS_FRONTEND_IMAGE`) las exporta `deploy.sh` y no van en `.env`; `ITMAS_REGISTRY`, `ITMAS_PUBLIC_HOST` e `ITMAS_STATE_DIR` son opcionales en `host.conf`.
 
-### 12.5 Levantar la aplicación
+### 12.5 Primera publicación
+
+1. **Etiqueta y publicación.** Desde `main`, `git tag v0.1.0 && git push origin v0.1.0` (formato `vMAJOR.MINOR.PATCH`). El *workflow* `Release` ejecuta las suites y las auditorías, construye y escanea con Trivy las tres imágenes (bloquea alta o crítica con corrección, sin publicar nada),
+   **espera la aprobación del entorno `production`** y solo entonces las publica en GHCR con etiquetas inmutables; después publica los paquetes del agente si su versión es nueva. El resumen muestra el *commit* y los *digests*.
+2. **Visibilidad de los paquetes** (§12.1). Tras esta primera publicación, marca los cuatro paquetes como públicos y comprueba desde un equipo **sin sesión** en GHCR que se leen:
+
+   ```bash
+   docker buildx imagetools inspect ghcr.io/solucionesjj/itmas3-api:v0.1.0
+   ```
+
+   Si los dejas privados, crea la credencial de lectura **como `root`** en el servidor (el token entra por la entrada estándar, no por la línea de comandos) y comprueba que la lee `sudo docker pull`:
+
+   ```bash
+   sudo sh -c 'docker login ghcr.io -u <usuario-de-servicio> --password-stdin < /root/ghcr-token'
+   sudo shred -u /root/ghcr-token 2> /dev/null || sudo rm -f /root/ghcr-token
+   ```
+3. **Despliegue.** En el servidor, compara el *commit* y los *digests* que muestra el script con los del resumen y confirma:
+
+   ```bash
+   cd /opt/itmas3 && sudo ./scripts/deploy.sh v0.1.0
+   ```
+
+   El script exige que el *commit* de la etiqueta esté en `origin/main` y no acepta una etiqueta movida, resuelve los *digests*, pide confirmación **antes** de tocar nada, hace el `checkout`, se detiene si el Compose publica un puerto distinto de
+   `127.0.0.1:${FRONTEND_PORT}`, hace el volcado previo (si ya existe la base de datos), descarga las imágenes **por *digest***, ejecuta el `migrator` con la imagen nueva, levanta `api` y `frontend`, espera a que estén `healthy`,
+   comprueba `/auth/session` por el loopback con el `Host` permitido y publica los paquetes del agente. Deja un registro en `/var/lib/itmas3/deploy.log`.
+4. **Ensayo antes del DNS** (SPEC-0009 CA-12, CA-13): despliega dos etiquetas y prueba `sudo ./scripts/deploy.sh rollback`. Para simular un fallo **antes del `migrator`**, pon temporalmente una contraseña errónea en `APP_DB_MIGRATOR_PASSWORD` del `.env`: el despliegue
+   termina con código 3 y la versión que atiende no se toca. Para uno **después del `migrator`**, deja vacío `ENTRA_CLIENT_ID` (la API no arranca en `Production`): termina con código 4 y no se revierte nada. Restaura el `.env` en los dos casos.
 
 ```bash
-cd /opt/itmas3 && docker compose config -q && docker compose up -d --build
+sudo docker compose ps
 ```
 
-```bash
-docker compose ps
-```
-
-El primer build tarda varios minutos. Deben quedar `postgres` y `api` en `healthy` y el `migrator` terminado con código 0.
+Deben quedar `postgres`, `api` y `frontend` en `healthy` y el `migrator` terminado con código 0. `sudo ./scripts/deploy.sh status` muestra la versión actual y la anterior.
 
 ### 12.6 Proxy TLS (Caddy)
 
+La configuración está versionada en [`deploy/caddy/`](deploy/caddy/Caddyfile) y la instala `scripts/install-host-tasks.sh apply` (§12.3, paso 6): emisor fijado a Let's Encrypt, `admin off` (sin API de administración), solo HTTP/1.1 y HTTP/2, sin las cabeceras `Server` ni `Via`, y HSTS
+**escalonado** sin `includeSubDomains` ni `preload`. Lo que cambia vive en `/etc/caddy/itmas3.env`: `ACME_EMAIL`, `FRONTEND_PORT` y `HSTS_MAX_AGE`. Deja `HSTS_MAX_AGE=300` al publicar, súbelo a `86400` cuando el sitio esté confirmado y a `31536000`
+tras una renovación real del certificado. Crea antes el registro DNS (§12.2). Con `admin off` no hay `reload`:
+
 ```bash
-sudo apt-get install -y debian-keyring debian-archive-keyring apt-transport-https curl
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
-sudo apt-get update
-sudo apt-get install -y caddy
+sudo systemctl start caddy
+sudo systemctl restart caddy   # tras cambiar itmas3.env
+journalctl -u caddy -f
 ```
 
-Contenido de `/etc/caddy/Caddyfile`. El HSTS va sin `includeSubDomains` ni `preload` (ADR-0018):
-
-```text
-itmas.sacservices.cloud {
-	header {
-		Strict-Transport-Security "max-age=31536000"
-		-Server
-	}
-	reverse_proxy 127.0.0.1:8080
-}
-```
-
-Aplica con `sudo systemctl reload caddy` y vigila la emisión del certificado con `journalctl -u caddy -f`. Si cambias
-`FRONTEND_PORT`, cambia también el puerto del `reverse_proxy`.
+Caddy viene de un repositorio de terceros que `unattended-upgrades` no actualiza: actualízalo **al menos cada 7 días** con `sudo apt-get update && sudo apt-get install --only-upgrade caddy`; `scripts/check-host.sh` avisa si una actualización lleva más de 7 días pendiente.
+`/var/lib/caddy`, donde guarda la clave TLS y la de la cuenta ACME, queda en modo 700. Su unidad de systemd pierde `CAP_NET_ADMIN` y aplica una protección ligera del sistema de archivos; tras instalar, revisa `journalctl -u caddy` y
+`systemd-analyze security caddy`.
 
 ### 12.7 Verificar y cerrar el bootstrap
 
@@ -590,52 +639,99 @@ Desde fuera del servidor:
 1. `https://itmas.sacservices.cloud/auth/session` devuelve `{"isAuthenticated":false,...}`.
 2. `https://itmas.sacservices.cloud/health` devuelve **404** (los *health checks* no se exponen).
 3. Inicia sesión. Con `AADSTS50011`, revisa las Redirect URIs y que la imagen de `frontend` sea posterior a ADR-0018.
-4. Tu cuenta pasa a Root y aparece **Administración**. Después quita `AUTHZ_BOOTSTRAP_ROOT_OIDS` del `.env` y ejecuta
-   `docker compose up -d`.
-5. **IP real (ADR-0018):** enrola un equipo y comprueba en **Inventario** que la IP de conexión es la del cliente, no una `172.x`.
-   Repite con `curl -H 'X-Forwarded-For: 1.2.3.4' https://itmas.sacservices.cloud/auth/session` desde fuera: ese valor no debe
-   aparecer en ningún registro. Si algo falla, ver §9.
+4. Tu cuenta pasa a Root y aparece **Administración**. Después quita `AUTHZ_BOOTSTRAP_ROOT_OIDS` del `.env` y vuelve a ejecutar `sudo ./scripts/deploy.sh <la misma etiqueta>` (recrea `api` con el `.env` nuevo; no cambia la versión anterior guardada para `rollback`).
+5. **IP real y cabeceras (ADR-0018):** enrola un equipo y comprueba en **Inventario** que la IP de conexión es la del cliente, no una `172.x`.
+   Después, desde fuera: `curl -i -X POST https://itmas.sacservices.cloud/api/v1/device-enrollments -H 'Authorization: Enrollment codigo-invalido' -H 'X-Forwarded-For: 1.2.3.4' -H 'Content-Type: application/json' -d '{}'`
+   debe dar `401`, y `sudo docker compose logs api` debe mostrar «Device enrollment rejected … from» seguido de **tu** IP, nunca `1.2.3.4`. No sirve `/auth/session`: no registra la IP.
+6. Cabeceras, en una ruta de la SPA **y** en una de la API: `curl -sI https://itmas.sacservices.cloud/` y `curl -s -D - -o /dev/null https://itmas.sacservices.cloud/auth/session | grep -ci '^strict-transport-security'` (debe dar `1`);
+   ni `Server` ni `Via` ni `Alt-Svc`. El emisor debe ser Let's Encrypt:
+   `openssl s_client -connect itmas.sacservices.cloud:443 -servername itmas.sacservices.cloud </dev/null | openssl x509 -noout -issuer`.
+7. En el servidor: `ss -ltnp` y `ss -lunp` solo muestran 80 y 443 hacia fuera, el puerto del `frontend` en `127.0.0.1` y nada en `localhost:2019`; tras
+   `curl -s http://127.0.0.1:8080/`, `sudo docker compose logs --tail=3 frontend` muestra como origen la puerta de enlace de `edge`. **Solo entonces** (CA-22) pon `EDGE_TRUSTED_PROXY_FROM=172.28.10.1/32` en el `.env` y vuelve a ejecutar `deploy.sh`
+   (nginx pasa a confiar únicamente en esa dirección); repite el paso 5. Con `curl --path-as-is`, `/%68ealth`, `//health`, `/./health` y `/api/..%2fhealth` no devuelven `200` de la API. Si algo falla, ver §9.
+8. Reinicia el servidor **una vez** y comprueba que todo vuelve solo: `sudo docker compose ps` y `systemctl status caddy`.
 
 ### 12.8 Paquetes del agente
 
-Compílalos en tu equipo de trabajo, que ya tiene Docker, para no cargar el servidor, y cópialos a `agent/dist` del repositorio
-clonado (la ruta por defecto de `AGENT_DOWNLOADS_DIR`):
+Los construye y publica el *workflow* `Release` **solo cuando cambia la versión del agente** (`agent/Directory.Build.props`), con su `SHA256SUMS` generado en la misma compilación, y `deploy.sh` los deja en `agent/dist/<versión>/` y
+`agent/dist/latest/` (la ruta de `AGENT_DOWNLOADS_DIR`) tras verificar las sumas y que no sobra ningún archivo. Una versión ya publicada **no se sobrescribe**; `latest` solo avanza si la versión es la mayor y cambia al final renombrando
+directorios (nginx sirve esa ruta con `disable_symlinks on`). Siguen en `https://itmas.sacservices.cloud/downloads/agent/`, cada versión con su `SHA256SUMS`. Si `deploy.sh` termina con código 5, la versión está desplegada pero los paquetes no
+se publicaron: revisa el mensaje. `./scripts/build-agent.sh` sigue sirviendo para construirlos en un equipo de trabajo.
 
-```bash
-./scripts/build-agent.sh
-```
+### 12.9 Copias de seguridad
 
-```bash
-rsync -av agent/dist/ <usuario>@itmas.sacservices.cloud:/opt/itmas3/agent/dist/
-```
+La base de datos contiene la auditoría (`app.audit_events`), el mapa de cuentas privilegiadas de los motores SQL y el *key ring* de Data Protection sin cifrar, así que **la copia siempre va cifrada y fuera del servidor**.
 
-Quedan publicados en `https://itmas.sacservices.cloud/downloads/agent/`, cada versión con su `SHA256SUMS`.
+- **Qué hace** `scripts/backup-db.sh` (cada día a las 03:15 con jitter, desde `itmas3-backup.timer`, y antes de cada despliegue): comprueba el espacio libre, `pg_dump -Fc`, lo lee entero con `pg_restore` (detecta truncamientos), cuenta las filas de cada tabla **a partir del propio volcado**, cifra con la
+  **clave pública** de `age`, copia al bucket de la otra cuenta con `rclone` (rol de instancia: sin claves guardadas) y borra las copias locales de 7 días o más. Una copia que no subió se reintenta en la ejecución siguiente. El destino aplica su propia retención de 30 días; el servidor
+  no puede leer, listar ni borrar lo que subió (sí puede añadir versiones nuevas: por eso se restaura la versión que elijas, no «la última por nombre»).
+- **Qué no incluye:** los roles de PostgreSQL (los crea `database/init/01-create-roles.sh` con las contraseñas del `.env`), el propio `.env` y la clave privada. Por eso se guardan aparte, con copia sellada.
+- **Traer una copia** (el servidor no puede leer el bucket): desde un equipo con credenciales de la cuenta de destino, `aws s3api list-object-versions --bucket <bucket> --prefix <prefijo>/` y `aws s3api get-object --bucket <bucket> --key <prefijo>/<archivo> --version-id <id> <archivo>`;
+  descarga también el `….counts.age` del mismo nombre.
+- **Prueba de restauración** (antes de publicar y cada trimestre, **en un equipo de trabajo con Docker, nunca en el servidor**):
 
-### 12.9 Copias de seguridad (requisito previo)
+  ```bash
+  ./scripts/restore-db.sh --backup itmas3-AAAAMMDD-HHMMSS.dump.age --identity itmas3-backup.key --api-image itmas3/api:local --migrator-image itmas3/migrator:local
+  ```
 
-Con un solo servidor, el disco es el único punto de falla: **copiar los volcados fuera del servidor, cifrados, es obligatorio**. El
-destino está **pendiente de decisión** (ADR-0018, Seguimiento). La base de datos contiene la auditoría (`app.audit_events`) y el mapa
-de cuentas privilegiadas de los motores SQL, así que el cifrado no es opcional.
+  Arranca un PostgreSQL temporal, crea los roles con `database/init`, restaura **en una sola transacción**, compara los recuentos de todas las tablas con los del volcado, verifica los privilegios (el rol de la API sin DDL y con solo DML), ejecuta el `migrator`
+  (debe terminar sin cambios o aplicar solo lo nuevo) y, con `--api-image`, que la API queda `healthy`. Anota fecha y duración en la §18 de SPEC-0009, sin datos. Sin recuentos sale con error salvo `--no-counts`.
+- **Recuperar el servidor** (la base de datos de producción **no se restaura encima**: `pg_restore --clean` sobre un esquema más nuevo falla y deja la base vacía). Prepara el servidor (§12.3 a §12.6 sin desplegar), recupera el `.env` de la copia sellada, levanta solo `postgres` y restaura en una **base nueva** que luego
+  sustituye a la actual, sin dejar el volcado en claro en disco:
 
-Volcado diario como `root` (por ejemplo desde `/etc/cron.d/itmas`) y antes de cada actualización:
+  ```bash
+  cd /opt/itmas3 && sudo docker compose -f docker-compose.yml up -d postgres && sudo docker compose -f docker-compose.yml stop api frontend
+  sudo docker compose -f docker-compose.yml exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres -c "CREATE DATABASE \"${POSTGRES_DB}_restore\""'
+  age -d -i itmas3-backup.key itmas3-….dump.age | ssh <servidor> 'sudo docker compose -f /opt/itmas3/docker-compose.yml exec -T postgres sh -c "pg_restore -U \"\$POSTGRES_USER\" -d \"\${POSTGRES_DB}_restore\" --exit-on-error"'
+  ```
 
-```bash
-cd /opt/itmas3 && mkdir -p /var/backups/itmas3 && chmod 700 /var/backups/itmas3
-docker compose exec -T postgres sh -c 'pg_dump -Fc -U "$POSTGRES_USER" -d "$POSTGRES_DB"' > "/var/backups/itmas3/itmas3-$(date +%F-%H%M).dump"
-```
-
-Define la retención local (p. ej. `find /var/backups/itmas3 -name 'itmas3-*.dump' -mtime +7 -delete`) y la copia externa. **Prueba
-una restauración en otra máquina antes de necesitarla** (`pg_restore --clean --if-exists` sobre una base nueva). Para recuperar
-más fino que un día haría falta archivar el WAL (pgBackRest, WAL-G), que queda fuera de este procedimiento.
+  Después, en `psql` como superusuario conectado a `postgres`: `REVOKE ALL ON DATABASE "<db>_restore" FROM PUBLIC; GRANT CONNECT ON DATABASE "<db>_restore" TO <rol-migrador>, <rol-app>; ALTER DATABASE "<db>" RENAME TO "<db>_prev"; ALTER DATABASE "<db>_restore" RENAME TO "<db>";`
+  (valores del `.env`), y `sudo ./scripts/deploy.sh rollback` o `deploy.sh <etiqueta>`. La base anterior queda como `<db>_prev`.
+- **Objetivos:** pérdida máxima de 24 horas y recuperación en un día hábil, sin archivado de WAL (SPEC-0009 Q-2).
 
 ### 12.10 Actualizar y volver atrás
 
-```bash
-cd /opt/itmas3 && git fetch --tags && git checkout <etiqueta-nueva> && docker compose up -d --build
-```
+Para una versión nueva: etiqueta, aprobación del entorno y `sudo ./scripts/deploy.sh <etiqueta>`. La actualización corta el servicio unos segundos: los agentes reintentan y las sesiones sobreviven (el *key ring* está en PostgreSQL).
 
-Haz antes un volcado (§12.9). La actualización corta el servicio unos segundos: los agentes reintentan y las sesiones sobreviven
-(el *key ring* está en PostgreSQL). Para volver atrás, `git checkout` de la etiqueta anterior y el mismo `docker compose up -d --build`;
-si hubo una migración que lo impida, restaura el volcado. **Nunca ejecutes `docker compose down -v`**: borra los datos.
+- Si algo falla **antes de que el `migrator` termine** (código 3), no se tocaron los contenedores. Pero el `migrator` aplica y confirma **cada migración por separado**: si falla a mitad con varias pendientes, las anteriores de esa ejecución **sí quedan aplicadas**. `deploy.sh` registra el nivel
+  de esquema antes y después; si la versión que atiende es incompatible con el esquema nuevo, restaura el volcado previo (§12.9).
+- Si falla **después** (código 4), no se revierte nada automáticamente: `sudo ./scripts/deploy.sh status` muestra las versiones y `sudo ./scripts/deploy.sh rollback` repone los *digests* anteriores **sin** ejecutar el `migrator`. Se niega si el nivel de esquema actual no es el de esa versión
+  (salvo `--schema-changed-ok`: en ese caso restaura el volcado previo). `database` revisa en cada migración si es compatible con la versión anterior.
+- **Nunca ejecutes `docker compose down -v`**: borra los datos.
 
-Tras el primer despliegue, **reinicia el servidor una vez** y comprueba que todo vuelve solo (`docker compose ps`, `systemctl status caddy`).
+### 12.11 Monitoreo y alertas
+
+- **Sonda externa:** en el servicio elegido, una sonda HTTP a `https://itmas.sacservices.cloud/auth/session` **cada 5 minutos** que espere `200` y `isAuthenticated`, con aviso tras **2 fallos seguidos** y aviso de recuperación. Cubre proxy, nginx y API, **no PostgreSQL**.
+- **Comprobación del host** (`itmas3-check.timer`, cada 5 minutos, `scripts/check-host.sh`): `postgres`, `api` y `frontend` `healthy`; Caddy activo; ningún puerto publicado por Docker salvo `127.0.0.1`; disco por debajo del 80 %; certificado con más de 14 días; copia del día cifrada **y copiada fuera**; sin reinicio
+  pendiente; sin una actualización de seguridad, de Caddy o de Docker pendiente más de 7 días. Envía un **latido** al servicio si todo va bien, y un aviso con la lista si no; si los latidos dejan de llegar, el servicio avisa de que el servidor o sus tareas se han parado.
+  Los avisos llegan por **correo a la lista del equipo**. La URL de latido es un secreto: solo vive en `/etc/itmas3/host.conf`.
+- Ejecútala a mano con `sudo ./scripts/check-host.sh` para ver el motivo de un aviso.
+
+### 12.12 Mantener y comprobar el host
+
+- `sudo ./scripts/harden-host.sh check` y `sudo ./scripts/install-host-tasks.sh check` comparan lo instalado con `deploy/**` **de la etiqueta desplegada** y verifican cada control (`ufw` con solo 22, 80 y 443, SSH sin contraseña, `fail2ban`, actualizaciones solo de seguridad, Docker 28 o posterior, rotación de logs,
+  permisos y propietario de los secretos, `age` y `rclone`, y que `host.conf` está completo). Ejecútalos tras cualquier cambio manual.
+- Rol responsable de los parches: la persona administradora. Ubuntu se parchea solo (sin reinicio: reinicia en una ventana acordada cuando `check-host.sh` avise); Caddy y Docker, a mano cada 7 días como máximo.
+- Rota el token de lectura de GHCR cuando caduque y repite `docker login` como `root`. Verifica cada trimestre la restauración (§12.9).
+
+### 12.13 Verificación de los criterios de aceptación
+
+Resumen de cómo se comprueba en el servidor cada criterio que no cubre una prueba automática (SPEC-0009 §9). Anota el resultado, sin datos, en la §18.
+
+| CA | Comprobación |
+|---|---|
+| 1, 2 | Tras la primera copia: `rclone` sube con el rol de instancia; desde el servidor, listar y borrar en el bucket deben fallar y una segunda subida del mismo nombre crea otra versión (`deploy/aws/README.md`). |
+| 3 | `sudo ./scripts/check-host.sh` con la última copia renombrada: llega el aviso al correo. |
+| 4 | `restore-db.sh` (§12.9). |
+| 5, 27 | Escaneo externo de 22, 80, 443 y de UDP (también por IPv6); `sudo docker ps`; `ss -ltnp`; `aws ec2 describe-security-groups`; `docker version`; prueba de `169.254.169.254` desde un contenedor (`docker run --rm curlimages/curl -m 3 http://169.254.169.254/latest/meta-data/` debe agotar el tiempo). |
+| 6, 7 | `ssh -o PubkeyAuthentication=no <usuario>@<servidor>` y `ssh root@<servidor>` rechazados; fallos repetidos desde una IP de prueba y `sudo fail2ban-client status sshd`; `sudo unattended-upgrade --dry-run -d`. |
+| 8, 9 | `docker info --format '{{.LoggingDriver}}'`; reinicio del servidor (§12.7, paso 8). |
+| 10 | Una etiqueta sobre un commit con una prueba rota, o con una vulnerabilidad alta sembrada en un repositorio de ensayo, no publica imágenes; la que pasa espera la aprobación. |
+| 11 a 13 | Ensayo de §12.5, paso 4. |
+| 14 | `git grep -nIE '(password|secret|token|apikey)[^a-zA-Z0-9_]*[:=][[:space:]]*[A-Za-z0-9+/_-]{12,}' -- .github scripts deploy docker-compose*.yml` sin coincidencias, y revisión del log de una ejecución de los *workflows*. |
+| 15 | Descarga de `/downloads/agent/` y comprobación de las sumas; una segunda ejecución no sobrescribe. |
+| 16 a 18 | Detener `frontend` y esperar el aviso de la sonda; bajar `DISK_WARN_PCT` y `CERT_WARN_DAYS` en `host.conf` y ejecutar `check-host.sh`. |
+| 19 | `aws ec2 describe-volumes --query 'Volumes[].Encrypted'` y revisión de SECURITY.md. |
+| 20, 22 a 26 | §12.7. |
+| 21 | `docker compose up --build` en un equipo de trabajo. |
+| 28, 29 | `harden-host.sh check` e `install-host-tasks.sh check`; modos de `/var/lib/caddy`, `/etc/itmas3/host.conf` y `/root/.docker/config.json` (600 o 700); huella de Caddy anotada. |

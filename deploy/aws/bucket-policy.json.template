@@ -1,0 +1,36 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowServerRoleToAppend",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::<SERVER_ACCOUNT_ID>:role/<INSTANCE_ROLE_NAME>" },
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::<BUCKET>/<PREFIX>/*"
+    },
+    {
+      "Sid": "DenyServerRoleEverythingElse",
+      "Effect": "Deny",
+      "Principal": { "AWS": "arn:aws:iam::<SERVER_ACCOUNT_ID>:role/<INSTANCE_ROLE_NAME>" },
+      "Action": [
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion",
+        "s3:PutObjectRetention",
+        "s3:BypassGovernanceRetention",
+        "s3:PutBucketPolicy",
+        "s3:PutLifecycleConfiguration"
+      ],
+      "Resource": ["arn:aws:s3:::<BUCKET>", "arn:aws:s3:::<BUCKET>/*"]
+    },
+    {
+      "Sid": "DenyInsecureTransport",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "s3:*",
+      "Resource": ["arn:aws:s3:::<BUCKET>", "arn:aws:s3:::<BUCKET>/*"],
+      "Condition": { "Bool": { "aws:SecureTransport": "false" } }
+    }
+  ]
+}

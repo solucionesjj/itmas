@@ -5,7 +5,7 @@ owns:
   - SECURITY.md
   - specs/security/**
 reads:
-  - constitution.md        # §3, §4
+  - constitution.md        # §3, §4, §8.7
   - SECURITY.md
   - specs/security/threat-model-baseline.md
 forbidden:
@@ -20,6 +20,7 @@ triggers:
   - datos personales o sensibles
   - CSP, CORS, cabeceras, rate limiting, proxy
   - variables de entorno, secretos, Docker, red, privilegios de BD
+  - workflows de CI/CD, publicación de imágenes, copias de seguridad y exposición del host (`deploy/**`, constitución §8.7)
   - dependencias nuevas
 ---
 

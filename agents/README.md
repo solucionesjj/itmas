@@ -37,7 +37,9 @@ Cada archivo `agents/<nombre>.md` empieza con un bloque YAML legible por máquin
 | `frontend/public/manual/**` (manual de uso) | architecture | agente del área del proceso descrito; security (es público) |
 | `agent/**` | device-agent | security (privilegios, credenciales), backend (contrato) |
 | `backend/tests/**`, `frontend/src/**/*.spec.ts` | testing | agente del código probado |
-| `**/Dockerfile`, `docker-compose*.yml`, `.env.example`, `scripts/**` | architecture | security |
+| `**/Dockerfile`, `docker-compose*.yml`, `.env.example`, `scripts/**` | architecture | security (los scripts del host corren como `root`, también `deploy.sh` con `sudo`); testing (pruebas de los scripts); database (copia y restauración) |
+| `.github/workflows/**` (CI/CD) | architecture | security (permisos del token, secretos de entornos, acciones de terceros, publicación en GHCR; constitución §8.7); testing (las suites que invoca); device-agent (si publica los paquetes del agente) |
+| `deploy/**` (configuración del host: proxy TLS, SSH, fail2ban, actualizaciones, unidades de systemd) | architecture | security (se ejecuta como `root` en el servidor y define su exposición; constitución §8.7) |
 | `.claude/**`, `.githooks/**` (skills, permisos y hooks de desarrollo) | architecture | security (ejecutan código y definen permisos); testing (prueba del hook) |
 | `constitution.md`, `specs/architecture/**` | architecture | security (+ aprobación humana para enmiendas) |
 | `specs/security/**`, `SECURITY.md` | security | architecture |

@@ -171,7 +171,8 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
 - `REVOKE ALL ... FROM PUBLIC` en la base de datos y el esquema `public`.
 - PostgreSQL en una red Docker `internal` (sin salida) y sin puertos publicados.
 - `IncludeErrorDetail=false`: los errores del servidor no se copian en excepciones ni logs.
-- Producción: `Database__SslMode=VerifyFull` contra un servidor administrado con TLS.
+- Producción con un servidor administrado: `Database__SslMode=VerifyFull`. En el **servidor único** PostgreSQL es un contenedor de la red `data` interna y se acepta
+  `Database__SslMode=Disable` (desviación aceptada el 2026-10-25, SPEC-0009 R-3), con las copias cifradas fuera del servidor como compensación.
 
 ## 6. Logging seguro
 
@@ -189,8 +190,9 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
   `UseHttpsRedirection` activable con `Security:UseHttpsRedirection`, y respeta `X-Forwarded-Proto` del proxy confiable.
 - Con el proxy del host, `frontend` solo escucha en `127.0.0.1`. nginx toma la IP del cliente de la última dirección de
   `X-Forwarded-For` solo cuando la conexión llega desde la red `edge`, y da por bueno `X-Forwarded-Proto` solo si vale `https`.
-  El esquema no se limita por origen, así que la seguridad de ambos depende de que `frontend` no se publique en otra interfaz:
-  si se hiciera, un cliente podría falsear su IP y el esquema.
+  Ese rango es `EDGE_TRUSTED_PROXY_FROM` (toda la subred de `edge` por defecto; se acota a la puerta de enlace tras comprobar en Linux el origen que ve nginx). **Modelo de confianza:**
+  cualquier proceso del servidor que alcance el puerto de loopback es de confianza para esas cabeceras y podría fijar su IP y el esquema (riesgo residual R-5, aceptado en ADR-0018); la seguridad de ambos
+  depende además de que `frontend` no se publique en otra interfaz (si se hiciera, un cliente remoto podría falsearlos). Si el origen no cae en el rango, todos los clientes comparten la IP de la puerta de enlace y sus límites por IP.
 - Las cookies se emiten siempre con `Secure`. En local funciona sobre `http://localhost` porque los navegadores
   tratan `localhost` como contexto seguro; cualquier otro host exige HTTPS.
 
@@ -199,20 +201,23 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
 - [ ] `ASPNETCORE_ENVIRONMENT=Production`, `APP_ALLOWED_HOSTS` con el dominio real.
 - [ ] TLS en el borde y Redirect URIs `https://` en Entra ID.
 - [ ] Credencial de Entra ID por certificado o identidad administrada (sin client secret).
-- [ ] Secretos inyectados desde un gestor de secretos; rotación definida.
+- [ ] Secretos inyectados desde un gestor de secretos; rotación definida. **Desviación aceptada en el servidor único (SPEC-0009 R-4):** los secretos están en un `.env` de modo 600 del host,
+      visible con `docker inspect` para quien controle el daemon; la persona administradora guarda una copia sellada fuera de línea.
 - [ ] Cifrado en reposo del key ring de Data Protection (`ProtectKeysWithCertificate` / Azure Key Vault):
       hoy las claves se guardan sin cifrar en `app.data_protection_keys` (la API lo advierte al arrancar).
-- [ ] PostgreSQL administrado con TLS (`SslMode=VerifyFull`), backups y cifrado en reposo.
-- [ ] Imágenes fijadas por digest y escaneadas (p. ej. `docker scout`, Trivy); `npm audit` / NuGet audit en CI.
+- [ ] PostgreSQL. Con un servidor administrado: TLS (`SslMode=VerifyFull`), backups y cifrado en reposo. **En el servidor único (SPEC-0009):** sin TLS dentro de la red `data` interna (R-3 aceptado);
+      copia diaria **cifrada con `age` y copiada fuera del servidor** (S3 de otra cuenta, solo añadir, vencimiento a 30 días); restauración probada antes de publicar y cada trimestre (`scripts/restore-db.sh`);
+      volumen EBS cifrado (`aws ec2 describe-volumes`).
+- [ ] Imágenes fijadas por digest y escaneadas; `npm audit` / NuGet audit en CI. Implementado en SPEC-0009 (ADR-0020): el CI ejecuta `npm audit`, NuGet Audit y Trivy (bloquea alta o crítica con corrección) y `deploy.sh` despliega por digest. Verificar con la primera publicación.
 - [ ] `AUTHZ_BOOTSTRAP_ROOT_OIDS` vacío una vez creado el Root (dejarlo solo como procedimiento de emergencia documentado).
 - [ ] Política de retención y exportación de `app.audit_events`.
 - [ ] Exportación de telemetría (`OTEL_EXPORTER_OTLP_ENDPOINT`) y alertas sobre `Error`/`Critical`.
-- [ ] **IP real del cliente y esquema (SPEC-0002, ADR-0011, ADR-0018).** Con el proxy TLS del host, la plantilla de nginx ya
-      usa `set_real_ip_from` con la red `edge` (`172.28.10.0/24` por defecto): si cambias `EDGE_NETWORK_SUBNET`, cámbiala también
-      ahí. Tras desplegar, comprueba en **Inventario** que la IP de conexión es la del cliente (no una `172.x`) y que un
-      `X-Forwarded-For` falsificado enviado desde fuera se ignora. Si TLS lo termina un balanceador u otro proxy, usa su red.
+- [ ] **IP real del cliente y esquema (SPEC-0002, ADR-0011, ADR-0018).** Con el proxy TLS del host, nginx usa `set_real_ip_from` con `EDGE_TRUSTED_PROXY_FROM` (toda la subred de `edge` por defecto; acótalo a
+      `EDGE_NETWORK_GATEWAY/32` solo tras comprobar el origen en Linux, SPEC-0009 CA-22). Tras desplegar, comprueba en **Inventario** que la IP de conexión es la del cliente (no una `172.x`) y que el `POST` a
+      `/api/v1/device-enrollments` con un `X-Forwarded-For` falsificado desde fuera da `401` con la IP real en el log de `api` (DEVELOPMENT.md §12.7, paso 5). `./scripts/test-nginx-realip.sh` ejecuta la tabla de ADR-0018.
 - [ ] **`frontend` solo en loopback (ADR-0018).** Publícalo únicamente en `127.0.0.1` (`FRONTEND_PORT`). El cortafuegos del
-      host debe abrir solo 22 (restringido), 80 y 443; Docker publica puertos saltándose `ufw`, así que no publiques nada más.
+      host debe abrir solo 22, 80 y 443 (el *security group* de AWS abre los mismos); Docker publica puertos saltándose `ufw`, así que no publiques nada más: `scripts/deploy.sh` se detiene si Compose publica algo distinto de
+      `127.0.0.1:${FRONTEND_PORT}`. **SSH (22) está abierto a Internet** por decisión del solicitante (SPEC-0009 R-1: solo clave, sin `root` y `fail2ban`), no «restringido».
 - [ ] Entregar los códigos de enrolamiento por un canal interno y seguro, solo a quien instala el agente. Si un código
       no usado pudo filtrarse, regenerarlo (o eliminar el equipo).
 - [ ] **Revocar un dispositivo comprometido (SPEC-0003).** En **Inventario → Equipos**, *Eliminar* el equipo (permiso
@@ -230,8 +235,35 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
       hay ninguna concesión de `Calendars.ReadWrite` para la aplicación, y limitar sus propietarios y quién puede añadirle credenciales: quien
       pueda hacerlo hereda el acceso al buzón de la agenda.
 - [ ] Revisar periódicamente quién tiene `devices.update` (puede regenerar códigos) y `devices.reports.read` (datos personales).
-- [ ] Publicar solo paquetes del agente generados por `scripts/build-agent.sh` y su `SHA256SUMS`. Los binarios no están
+- [ ] Publicar solo paquetes del agente generados por `scripts/build-agent.sh` y su `SHA256SUMS`: el *workflow* `Release` los construye y `deploy.sh` los verifica y no sobrescribe una versión publicada. Los binarios no están
       firmados (SPEC-0002 P-11, riesgo aceptado): la integridad depende de HTTPS y de que los usuarios verifiquen la suma.
+- [ ] **Operación del servidor único (SPEC-0009, constitución §8.7).** `sudo ./scripts/harden-host.sh check` e `install-host-tasks.sh check` sin diferencias respecto a `deploy/**`.
+      Caddy: administración desactivada (`admin off`), actualizado al menos cada 7 días (no lo actualiza `unattended-upgrades`), `/var/lib/caddy` en modo 700, huella de su clave GPG comprobada, HSTS escalonado
+      (300 s, 86 400 s y 31 536 000 s tras una renovación real) y emisor fijado a Let's Encrypt.
+- [ ] **Credenciales de despliegue.** El repositorio es público: el servidor clona por HTTPS **sin credencial** (no hay *deploy key*). Con los paquetes de GHCR públicos (recomendado, ADR-0020 §8) el servidor no guarda
+      **ninguna** credencial de GitHub; si se dejan privados, solo un token personal clásico con `read:packages` de una cuenta de servicio, en el `docker login` de `root`, modo 600, rotado al caducar y sin acceso al código. El CI no
+      tiene ninguna credencial hacia el servidor. En GitHub: entorno `production` con revisores obligatorios y limitado a las etiquetas `v*`, protección de `main` y de las etiquetas `v*`, y aprobación obligatoria de los
+      *workflows* de colaboradores externos. Todo lo del servidor lo ejecuta `root` con `sudo` (nadie en el grupo `docker`, que equivale a `root`).
+- [ ] **Repositorio público (decisión del solicitante, 2026-10-27).** Nada confidencial en el repositorio, en los *workflows* ni en las imágenes (§4 de la constitución): ni identificadores de cuentas de AWS, direcciones, *buckets* ni claves.
+      La topología (un servidor, SSH con clave y `fail2ban`) y los riesgos aceptados de abajo son legibles por cualquiera: la seguridad no depende de ocultarlos, y las vulnerabilidades se reportan por un canal privado (§9; activa el
+      reporte privado de vulnerabilidades de GitHub).
+- [ ] **Recursos de AWS (SPEC-0009 §10.6).** IMDSv2 obligatorio con *hop limit* 1; rol de instancia que solo puede añadir objetos al prefijo de las copias; bucket de destino en otra cuenta con versionado, *Object Lock*
+      y vencimiento a 30 días; *security group* con solo 22, 80 y 443 (`deploy/aws/README.md`).
+- [ ] **Clave de las copias y URL de latido.** La clave privada de `age` nunca está en el servidor (gestor de contraseñas y copia sellada); la URL de latido del servicio de monitoreo es un secreto que solo vive en
+      `/etc/itmas3/host.conf` (modo 600, `root`).
+
+### Riesgos residuales aceptados en el servidor único (SPEC-0009, 2026-10-25)
+
+Los acepta el solicitante (`jmartinez`) con las mitigaciones de la columna de decisión; se revisan al cambiar la topología o el número de personas administradoras (constitución §8.7 c).
+
+| ID | Riesgo | Decisión |
+|---|---|---|
+| R-1 | SSH abierto a Internet | Aceptado con solo clave, sin `root` y `fail2ban` |
+| R-2 | Una sola persona administradora (RTO, custodia de la clave y aprobación del entorno; sin separación de funciones) | Aceptado, con copia sellada de la clave y del `.env` |
+| R-3 | `Database__SslMode=Disable` (el checklist pide `VerifyFull`) | Aceptado: red `data` interna de un solo host y copias cifradas |
+| R-4 | Secretos en un `.env` modo 600 del host | Aceptado |
+| R-5 | El loopback del host es de confianza total para `X-Forwarded-*` | Aceptado (ADR-0018, decisión 3), con el endurecimiento de la plantilla de nginx |
+| R-7 | El repositorio es público: la topología y estos riesgos los puede leer cualquiera | Aceptado (decisión del solicitante, 2026-10-27): sin identificadores ni secretos, reporte privado de vulnerabilidades y aprobación de los *workflows* de colaboradores externos |
 
 ## 9. Reportar una vulnerabilidad
 

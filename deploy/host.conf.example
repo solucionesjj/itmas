@@ -1,0 +1,35 @@
+# /etc/itmas3/host.conf: settings of the ITMas host scripts (SPEC-0009). Shell syntax, so it must be owned by root and mode 600:
+#   sudo install -d -m 755 /etc/itmas3 && sudo install -m 600 -o root -g root deploy/host.conf.example /etc/itmas3/host.conf
+# Never commit the real file. The scripts refuse to read it if group or others can write it. A variable exported in the environment
+# wins over this file. Every value below is operational data that is NOT in the repository (SPEC-0009 section 19.5).
+
+# --- Backups (scripts/backup-db.sh) --------------------------------------------------------------------------------
+# age PUBLIC key (age1...) of the people who can restore. The matching private key is NOT on this server.
+BACKUP_AGE_RECIPIENT=
+# rclone destination of the encrypted copies: the bucket of the other AWS account, e.g. ":s3:<bucket>/<prefix>".
+BACKUP_REMOTE=
+# Credentials come from the EC2 instance role, so no key is stored here (deploy/aws/README.md).
+export RCLONE_S3_PROVIDER=AWS
+export RCLONE_S3_ENV_AUTH=true
+# Region of the bucket, e.g. us-east-1.
+export RCLONE_S3_REGION=
+#BACKUP_DIR=/var/backups/itmas3
+#BACKUP_KEEP_DAYS=7
+#BACKUP_MAX_AGE_HOURS=26
+
+# --- Monitoring (scripts/check-host.sh, deploy.sh and backup-db.sh failures) -------------------------------------------
+# Heartbeat URL of the external monitoring service (a secret: anyone who knows it can pretend the server is alive).
+HEARTBEAT_URL=
+# Optional URL for failure reports; by default HEARTBEAT_URL followed by /fail.
+#HEARTBEAT_FAIL_URL=
+#DISK_WARN_PCT=80
+#CERT_WARN_DAYS=14
+# Maximum days a security update (Ubuntu security pocket, Caddy or Docker) may stay pending before the check alerts (constitution 8.7 d).
+#PATCH_MAX_DAYS=7
+
+# --- Deployment (scripts/deploy.sh) --------------------------------------------------------------------------------
+#ITMAS_REGISTRY=ghcr.io/solucionesjj
+#ITMAS_PUBLIC_HOST=itmas.sacservices.cloud
+#ITMAS_STATE_DIR=/var/lib/itmas3
+# Folder of the agent packages. It must be the AGENT_DOWNLOADS_DIR of the .env that nginx uses: do not change one without the other.
+#AGENT_DOWNLOADS_DIR=/opt/itmas3/agent/dist

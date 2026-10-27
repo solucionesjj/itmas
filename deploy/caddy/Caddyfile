@@ -1,0 +1,25 @@
+# TLS reverse proxy of the host (ADR-0018, SPEC-0009 RF-27). Installed by scripts/install-host-tasks.sh as /etc/caddy/Caddyfile.
+# The values that change between hosts or over time come from /etc/caddy/itmas3.env (loaded by the systemd drop-in):
+#   ACME_EMAIL      contact mailbox of the team (Let's Encrypt writes there if a renewal fails)
+#   HSTS_MAX_AGE    300 when publishing, 86400 once the site is confirmed, 31536000 after a real certificate renewal
+#   FRONTEND_PORT   port the frontend publishes on 127.0.0.1 (the FRONTEND_PORT of the application .env)
+{
+	email {$ACME_EMAIL}
+	acme_ca https://acme-v02.api.letsencrypt.org/directory
+	# No administration API (constitution 8.7 d); apply changes with "systemctl restart caddy".
+	admin off
+	# HTTP/1.1 and HTTP/2 only: only 80/tcp and 443/tcp are open.
+	servers {
+		protocols h1 h2
+	}
+}
+
+itmas.sacservices.cloud {
+	header {
+		# ">" defers the set until the upstream answered, so it replaces the HSTS the API emits (one header, ours).
+		>Strict-Transport-Security "max-age={$HSTS_MAX_AGE:300}"
+		-Server
+		-Via
+	}
+	reverse_proxy 127.0.0.1:{$FRONTEND_PORT:8080}
+}

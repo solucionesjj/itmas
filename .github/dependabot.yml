@@ -1,0 +1,8 @@
+# Keeps the pinned GitHub Actions of .github/workflows current (SPEC-0009, ADR-0020): they are fixed by commit SHA, so without this
+# they would age silently. Each update arrives as a pull request that a person reviews.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

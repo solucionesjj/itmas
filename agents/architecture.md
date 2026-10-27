@@ -17,6 +17,8 @@ owns:
   - scripts/**
   - .claude/**            # skills y permisos de Claude Code (SPEC-0007)
   - .githooks/**          # hooks de git versionados (SPEC-0007)
+  - .github/workflows/**  # CI/CD (SPEC-0009, ADR-0020)
+  - deploy/**             # configuración del host (SPEC-0009, constitución §8.7)
   - frontend/public/manual/**   # manual de uso (constitución §10.4); el visor es de frontend
 reads:
   - constitution.md
@@ -27,7 +29,7 @@ forbidden:
   - backend/src/**        # delega en backend/database
   - frontend/src/**       # delega en frontend
 consults:
-  - security: cambios en Docker, red, variables de entorno, constitución, autenticación, `.claude/**` o `.githooks/**`
+  - security: cambios en Docker, red, variables de entorno, constitución, autenticación, `.claude/**`, `.githooks/**`, `.github/workflows/**` o `deploy/**`
   - database: cambios de esquema o roles
   - "humano: aprobación de specs (Approved) y de enmiendas a la constitución"
 triggers:

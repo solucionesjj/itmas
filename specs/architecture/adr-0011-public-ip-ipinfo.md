@@ -31,8 +31,9 @@ delante de nginx; ver ADR-0018.)* La constitución §9.4 prohíbe que las prueba
      de la misma recopilación.
 2. **IP de conexión (servidor).**
    - La API guarda con cada inventario `HttpContext.Connection.RemoteIpAddress`, después de `UseForwardedHeaders`.
-   - nginx sobrescribe `X-Forwarded-For` con `$remote_addr` y la API solo confía en esa cabecera desde la red del proxy
-     (`ReverseProxy:KnownNetworks`), así que un cliente no puede falsearla.
+   - nginx reconstruye `X-Forwarded-For` con `$remote_addr` y la API solo confía en esa cabecera desde la red del proxy
+     (`ReverseProxy:KnownNetworks`). Un cliente remoto no puede falsearla; detrás del proxy del host de ADR-0018, cualquier
+     proceso del servidor que alcance el puerto de loopback es de confianza para ella (ADR-0018, decisión 3).
    - Si TLS se termina en otro proxy delante de nginx, o cuando llegue el balanceador, el nginx del contenedor tendrá que
      usar `set_real_ip_from` y `real_ip_header` con la red de ese componente. Está en el checklist de producción de
      SECURITY.md. Con el proxy del host de [ADR-0018](adr-0018-host-tls-reverse-proxy.md) la plantilla ya lo hace para la red

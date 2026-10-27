@@ -1,6 +1,6 @@
 # Constitución del proyecto
 
-**Versión:** 2.0.0 · **Vigente desde:** 2026-10-11 · **Origen:** [SPEC-0000](specs/architecture/SPEC-0000-application-foundation.md)
+**Versión:** 3.0.0 · **Vigente desde:** 2026-10-26 · **Origen:** [SPEC-0000](specs/architecture/SPEC-0000-application-foundation.md)
 
 Esta constitución es la política técnica permanente del proyecto. Toda especificación, plan, cambio de código,
 configuración o documentación (hecho por personas o por agentes de IA) debe cumplirla.
@@ -108,15 +108,22 @@ son bases de datos de ITMas y se rigen por §13.
 
 ## §8. Docker e infraestructura
 
-Esta sección aplica a los componentes de servidor. El agente de dispositivo se rige por §13.
+Esta sección aplica a los componentes de servidor. El agente de dispositivo se rige por §13. Lo que en producción corre en el host fuera de los servicios de Compose (§8.7) se rige por §3, §4 y §8.7 en lugar de §8.1 a §8.6; si alguno de esos componentes se ejecuta en un contenedor, a ese contenedor le aplican además §8.2, §8.5 y §8.6.
 
-1. Todo el sistema de servidor DEBE poder levantarse con `docker compose up --build`.
+1. Todos los servicios de la aplicación (los definidos en los archivos `docker-compose*.yml` del repositorio) DEBEN poder levantarse con `docker compose up --build`, y en producción se ejecutan como servicios de Compose. Solo se ejecutan fuera de Compose los componentes del host que admite §8.7.
 2. Imágenes multi-stage, base mínima (Alpine/chiseled), usuario no root, sin herramientas de build en runtime.
 3. Cada servicio DEBE tener health check significativo; las dependencias se expresan con `condition: service_healthy`
    o `service_completed_successfully`.
 4. Solo el frontend publica un puerto (en `127.0.0.1` en local). La base de datos vive en una red `internal`.
 5. Los contenedores DEBERÍAN ejecutarse con `read_only`, `cap_drop: [ALL]` y `no-new-privileges` cuando sea posible.
 6. Ningún secreto en Dockerfiles, `docker-compose.yml` ni argumentos de build.
+7. **Borde de red de producción y operaciones del host.** La terminación TLS, el cortafuegos, las copias de seguridad, el despliegue, el monitoreo y el endurecimiento del servidor que no sean servicios de Compose, incluidos los recursos de nube de los que dependen sus controles, DEBEN estar enumerados en un ADR `Accepted` o en una spec `Approved`, `In Progress` o `Implemented`, con revisión de `security`. Además:
+   - **(a)** Su configuración y sus scripts DEBEN estar versionados en el repositorio, sin secretos (§4), y DEBE existir una comprobación documentada de que lo instalado coincide con lo versionado.
+   - **(b)** NO DEBEN abrir hacia fuera del host más puertos que los que enumera ese ADR o spec, ni publicar con Docker ningún puerto distinto del del frontend (§8.4). Mientras un proxy del host preceda al frontend, este DEBE publicarse solo en `127.0.0.1`.
+   - **(c)** NO DEBEN relajar §3.8 (los scripts y tareas usan el mínimo privilegio que permita su función; el uso de `root` o del grupo `docker` se justifica en la spec) ni las protecciones de §3.9 frente a un cliente remoto sin acceso al host: cabeceras y CSP, filtrado de hosts y límites por IP calculados con la IP real de la conexión. Un riesgo residual conocido (por ejemplo, la confianza en `X-Forwarded-*` desde el loopback) DEBE constar en el ADR o la spec con su aceptación expresa.
+   - **(d)** Todo software que escuche en una dirección que no sea loopback DEBE tener un rol responsable, una cadencia máxima para los parches de seguridad y una comprobación que avise si no se aplican; NO DEBE tener una interfaz de administración sin autenticación, tampoco en loopback (solo socket Unix de acceso restringido o autenticación por clave); y DEBE guardar sus claves y credenciales legibles solo por su usuario de servicio, fuera de logs y de copias en claro. DEBERÍA aplicar, con el sandbox del gestor de servicios, el equivalente de §8.5 (sin nuevos privilegios, capacidades mínimas, sistema de archivos de solo lectura salvo sus directorios de estado).
+   - **(e)** Las credenciales de despliegue, de registro y de copias DEBEN ser de mínimo alcance (solo lectura o solo añadir) y NO DEBEN estar en el repositorio ni en la línea de comandos (§4). Ninguna credencial de CI PUEDE dar acceso de ejecución al servidor sin un ADR propio con revisión de `security`.
+   - **(f)** Las copias de seguridad de datos de la aplicación DEBEN cifrarse antes de salir del servidor con una clave que no resida en él, y su restauración DEBE probarse antes de publicar y de forma periódica.
 
 ## §9. Testing
 
@@ -204,3 +211,4 @@ Esta sección aplica a los componentes de servidor. El agente de dispositivo se 
 | 1.2.0 | 2026-10-10 | MINOR: nueva §10.4, manual de uso público actualizado con cada funcionalidad; §10.3 incluye el manual (ADR-0013). |
 | 1.3.0 | 2026-10-11 | MINOR: nueva §13.6, auditoría de solo lectura de motores de bases de datos desde el agente; §13.4 remite a ella (ADR-0014). PATCH: §5 regula la persistencia de la aplicación (SPEC-0005). |
 | 2.0.0 | 2026-10-11 | MAJOR: §13.6 admite, por conexión y por elección expresa del administrador del equipo, aceptar un certificado no válido en las conexiones a motores; el cifrado sigue siendo obligatorio y §13.3 no cambia (ADR-0015). |
+| 3.0.0 | 2026-10-26 | MAJOR: §8.1 se limita a los servicios de Compose; nuevo §8.7 para el borde de red de producción y las operaciones del host, con reglas de definición, puertos, protecciones, software expuesto, credenciales y copias (ADR-0019). |

@@ -61,6 +61,7 @@ specs/
 | [SPEC-0006](features/SPEC-0006-infrastructure-agenda.md) | Agenda anual de infraestructura | Implemented |
 | [SPEC-0007](features/SPEC-0007-sdd-tooling.md) | Skills y guardas para el flujo SDD | Implemented |
 | [SPEC-0008](features/SPEC-0008-outlook-activation.md) | Activación de Outlook para la agenda de infraestructura | Draft |
+| [SPEC-0009](features/SPEC-0009-single-server-production.md) | Producción en un único servidor Ubuntu con IP pública | In Progress |
 | [ADR-0001](architecture/adr-0001-clean-architecture.md) | Clean Architecture en 4 proyectos | Accepted |
 | [ADR-0002](architecture/adr-0002-authentication-bff.md) | Autenticación BFF con Microsoft Entra ID | Accepted |
 | [ADR-0003](architecture/adr-0003-authorization-default-deny.md) | Autorización *default deny* basada en permisos | Accepted |
@@ -78,4 +79,6 @@ specs/
 | [ADR-0015](architecture/adr-0015-database-connections-without-verified-tls.md) | Conexiones a motores con certificados no válidos (enmienda 2.0.0) | Accepted |
 | [ADR-0016](architecture/adr-0016-outlook-graph-application-permissions.md) | Integración con Outlook mediante Microsoft Graph con permisos de aplicación acotados | Accepted |
 | [ADR-0017](architecture/adr-0017-fullcalendar-calendar-views.md) | FullCalendar para las vistas de calendario de la agenda, sujeto al tema Material | Accepted |
-| [ADR-0018](architecture/adr-0018-host-tls-reverse-proxy.md) | TLS en un proxy inverso del host delante del frontend (servidor Linux único) | Proposed |
+| [ADR-0018](architecture/adr-0018-host-tls-reverse-proxy.md) | TLS en un proxy inverso del host delante del frontend (servidor Linux único) | Accepted |
+| [ADR-0019](architecture/adr-0019-host-edge-operations-outside-compose.md) | El borde de red de producción y las operaciones del host fuera de Compose (enmienda de §8, MAJOR 3.0.0) | Accepted |
+| [ADR-0020](architecture/adr-0020-continuous-deployment-ghcr.md) | Despliegue continuo con GitHub Actions, GHCR y un script ejecutado por una persona | Accepted |

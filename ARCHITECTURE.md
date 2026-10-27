@@ -35,7 +35,21 @@ nginx también sirve los paquetes del agente en `/downloads/agent/` desde un vol
 **Producción (ADR-0018).** En el servidor único, delante de `frontend` hay un proxy inverso instalado en el host (Caddy como
 referencia). `frontend` sigue publicándose solo en `127.0.0.1`: es el proxy quien escucha en 80 y 443. nginx toma la IP del
 cliente de la última dirección de `X-Forwarded-For` solo cuando la conexión llega desde la red `edge` (`set_real_ip_from`), y
-reenvía a la API `X-Forwarded-Proto: https` solo si el proxy lo envió con ese valor. Sin proxy (desarrollo) todo funciona como antes.
+reenvía a la API `X-Forwarded-Proto: https` solo si la conexión viene de ese rango y el proxy lo envió con ese valor. El rango es `EDGE_TRUSTED_PROXY_FROM` (toda la subred de `edge` por defecto; se acota a la puerta de enlace tras
+comprobar el origen en Linux). El modelo de confianza real es que cualquier proceso del servidor que alcance el puerto de loopback es de confianza para esas cabeceras (ADR-0018, decisión 3). Sin proxy (desarrollo) todo funciona como antes.
+
+**Operación del servidor único (SPEC-0009, ADR-0019, ADR-0020).** Fuera de Compose, en el host, y regido por el §8.7 de la constitución:
+
+```text
+ etiqueta vX.Y.Z ─▶ GitHub Actions (CI, aprobación del entorno "production", Trivy) ─▶ GHCR (imágenes y paquetes del agente)
+                                                                                          │ (credencial de solo lectura)
+ persona administradora ── SSH ──▶ scripts/deploy.sh ── docker-compose.yml + docker-compose.prod.yml (imágenes por digest)
+ itmas3-backup.timer ─▶ scripts/backup-db.sh ─▶ age (clave pública) ─▶ rclone ─▶ S3 de otra cuenta (solo añadir)
+ itmas3-check.timer  ─▶ scripts/check-host.sh ─▶ latido / aviso ─▶ servicio externo (que también sondea /auth/session)
+ deploy/**  configuración versionada: Caddy, ssh, fail2ban, actualizaciones, logs de Docker, unidades de systemd, plantillas de AWS
+```
+
+El CI no tiene ninguna credencial hacia el servidor. `harden-host.sh check` e `install-host-tasks.sh check` comparan lo instalado con `deploy/**`.
 
 ## 2. Frontend (Angular 22 + Angular Material / Material Design 3)
 
@@ -263,7 +277,8 @@ envía `X-CSRF: 1`, así que la protección CSRF no cambia. Con cada inventario 
 - La **IP pública declarada**, que el agente obtiene de ipinfo.io.
 - La **IP de conexión**, que es `RemoteIpAddress` después de `UseForwardedHeaders`. nginx reconstruye `X-Forwarded-For` con
   `$remote_addr`: en producción es la IP del cliente que `real_ip` toma de la cabecera del proxy del host (ADR-0018), y sin
-  proxy es la de la conexión. El cliente no puede falsearla (el proxy reemplaza la cabecera que envía; a comprobar en el despliegue).
+  proxy es la de la conexión. Un cliente remoto no puede falsearla (el proxy reemplaza la cabecera que envía; a comprobar en el despliegue), pero **el loopback del servidor es de confianza total**
+  para `X-Forwarded-*`: un proceso local o un contenedor de `edge` podría fijar su IP y el esquema (riesgo aceptado R-5, ADR-0018 decisión 3).
 
 Cada equipo se registra antes en el inventario (`/api/v1/devices`, permisos `devices.*`), que emite su código de
 enrolamiento de un solo uso ([ADR-0012](specs/architecture/adr-0012-per-device-enrollment-codes.md)). El código
@@ -325,7 +340,7 @@ los controladores `Microsoft.Data.SqlClient`, `Npgsql` y `MySqlConnector` inclui
 | Secure by Design / Default Deny | BFF, *fallback policy* que deniega, permisos explícitos, mínimo privilegio en BD. |
 | Configuration by Environment | `appsettings` sin secretos + variables de entorno con prioridad. |
 | API-first | Contratos en `Contracts/`, Problem Details, documento OpenAPI (`/openapi/v1.json` en Development). |
-| Container-first | Todo el sistema se levanta con `docker compose up --build`. |
+| Container-first | Todos los servicios de la aplicación se levantan con `docker compose up --build`. En producción, el proxy TLS del host y las operaciones del servidor (copias, despliegue, monitoreo, endurecimiento) quedan fuera de Compose y se rigen por §8.7 de la constitución ([ADR-0019](specs/architecture/adr-0019-host-edge-operations-outside-compose.md)). |
 | SDD | Ningún cambio relevante sin especificación (`specs/`); agentes con límites (`agents/`). |
 
 ## 8. Desviaciones respecto a la estructura de referencia

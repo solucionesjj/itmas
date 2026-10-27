@@ -1,0 +1,6 @@
+# ITMas host hardening (SPEC-0009 RF-9): ban addresses that keep failing to log in over SSH.
+[sshd]
+enabled = true
+maxretry = 5
+findtime = 10m
+bantime = 1h

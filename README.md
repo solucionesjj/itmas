@@ -91,8 +91,12 @@ informa que el servicio no está disponible.
 ## Producción
 
 Para publicar en un servidor Linux único (Docker Compose con un proxy TLS en el host), sigue
-[DEVELOPMENT.md §12](DEVELOPMENT.md#12-publicación-en-un-servidor-linux-adr-0018). La decisión está en
-[ADR-0018](specs/architecture/adr-0018-host-tls-reverse-proxy.md) (pendiente de aceptación).
+[DEVELOPMENT.md §12](DEVELOPMENT.md#12-publicación-en-un-servidor-linux-adr-0018-spec-0009): las imágenes las publica GitHub Actions en GHCR al
+empujar una etiqueta `vX.Y.Z` (con aprobación manual) y una persona las despliega con `scripts/deploy.sh` ([ADR-0020](specs/architecture/adr-0020-continuous-deployment-ghcr.md)).
+La configuración del host (`/etc/itmas3/host.conf`) no está en el repositorio: su plantilla es `deploy/host.conf.example`, y las variables `ITMAS_*`, `BACKUP_*` y de monitoreo viven ahí, no en `.env`.
+El repositorio es **público a propósito**: nada confidencial va en él (ni secretos, ni identificadores de cuentas de AWS, direcciones, *buckets* o claves). La decisión del proxy está en
+[ADR-0018](specs/architecture/adr-0018-host-tls-reverse-proxy.md) (`Accepted`); el proxy fuera de Compose lo admite el §8.7 de la constitución ([ADR-0019](specs/architecture/adr-0019-host-edge-operations-outside-compose.md)).
+Las copias de seguridad, el endurecimiento, el despliegue automatizado y el monitoreo están en [SPEC-0009](specs/features/SPEC-0009-single-server-production.md) (en curso).
 
 ## Detener
 
@@ -117,6 +121,8 @@ Toda la configuración sensible llega por variables de entorno (`.env` → Docke
 | `APP_ALLOWED_HOSTS` | Hosts públicos válidos (filtrado de cabecera `Host`). | No |
 | `FRONTEND_PORT` | Puerto publicado en `127.0.0.1`. | No |
 | `EDGE_NETWORK_SUBNET` | Subred de la red del proxy (confiable para `X-Forwarded-*`). | No |
+| `EDGE_NETWORK_GATEWAY` | Puerta de enlace de esa red, fija para que el proxy del host llegue siempre a nginx desde la misma dirección (`172.28.10.1` por defecto). Se cambia junto con la subred. | No |
+| `EDGE_TRUSTED_PROXY_FROM` | Rango del que nginx acepta `X-Forwarded-For` y `X-Forwarded-Proto` (vacío: toda la subred de `edge`). En producción se acota a `EDGE_NETWORK_GATEWAY/32` solo después de comprobar en Linux el origen que ve nginx (ADR-0018, SPEC-0009 CA-22). | No |
 | `POSTGRES_DB` | Nombre de la base de datos. | No |
 | `POSTGRES_SUPERUSER` / `POSTGRES_SUPERUSER_PASSWORD` | Superusuario de arranque, solo lo usa el contenedor `postgres`. | **Sí** (password) |
 | `APP_DB_MIGRATOR_USER` / `APP_DB_MIGRATOR_PASSWORD` | Rol dueño del esquema; solo lo usa `migrator`. | **Sí** (password) |

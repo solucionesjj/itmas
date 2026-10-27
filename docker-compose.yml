@@ -99,8 +99,12 @@ services:
         condition: service_completed_successfully
     networks: [edge, data]
     healthcheck:
-      # Overall health: API + PostgreSQL connectivity (HTTP 503 when unhealthy).
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      # Overall health: API + PostgreSQL connectivity (HTTP 503 when unhealthy). The request carries an allowed Host (the first
+      # of AllowedHosts, or localhost for "*"): host filtering answers 400 to "localhost:8080" with the production hosts, and
+      # the container would never be healthy (SPEC-0009 RF-26). Never add localhost to APP_ALLOWED_HOSTS to work around it.
+      test:
+        - CMD-SHELL
+        - 'h="$${AllowedHosts%%;*}"; [ "$$h" = "*" ] && h=localhost; wget -qO- --header "Host: $$h" http://localhost:8080/health >/dev/null'
       interval: 15s
       timeout: 5s
       retries: 3
@@ -118,6 +122,9 @@ services:
     restart: unless-stopped
     environment:
       API_UPSTREAM: http://api:8080
+      # Connections from this range are trusted for X-Forwarded-For/Proto (ADR-0018). Default: the whole edge subnet; narrow it to
+      # the edge gateway (EDGE_NETWORK_GATEWAY) only after checking on Linux the origin nginx sees (SPEC-0009 CA-22).
+      EDGE_TRUSTED_PROXY_FROM: ${EDGE_TRUSTED_PROXY_FROM:-${EDGE_NETWORK_SUBNET:-172.28.10.0/24}}
       ENTRA_AUTHORITY_ORIGIN: ${ENTRA_AUTHORITY_ORIGIN:-https://login.microsoftonline.com}
     ports:
       # Bound to loopback: the only published port of the whole stack.
@@ -154,6 +161,8 @@ networks:
     ipam:
       config:
         - subnet: ${EDGE_NETWORK_SUBNET:-172.28.10.0/24}
+          # Fixed so the host proxy always reaches nginx from the same address (change it together with the subnet).
+          gateway: ${EDGE_NETWORK_GATEWAY:-172.28.10.1}
   # API/migrator <-> PostgreSQL. Internal: no external connectivity at all.
   data:
     driver: bridge

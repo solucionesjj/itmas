@@ -1,0 +1,110 @@
+# Continuous integration (SPEC-0009 RF-13, ADR-0020). Runs the suites of AGENTS.md plus the dependency audits.
+# Reused by release.yml: nothing is published unless this workflow passes. Read-only token, no secrets.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests (needs Docker for Testcontainers)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: backend/global.json
+      # NuGet Audit is on and warnings are errors (constitution section 12.1): a vulnerable package fails the build.
+      - name: dotnet test
+        working-directory: backend
+        run: dotnet test
+
+  frontend:
+    name: Frontend tests, build and npm audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install
+        working-directory: frontend
+        run: npm ci --no-fund
+      - name: Audit (high and critical)
+        working-directory: frontend
+        run: npm audit --audit-level=high
+      - name: Tests
+        working-directory: frontend
+        run: npm test -- --watch=false
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  agent:
+    name: Device agent unit tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: agent/global.json
+      - name: dotnet test
+        working-directory: agent
+        run: dotnet test tests/Itmas3.Agent.Tests
+
+  scripts:
+    name: Script tests and Compose validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: ShellCheck (installed on the runner image)
+        run: shellcheck --shell=sh --severity=warning scripts/*.sh scripts/lib/*.sh
+      # The real age makes test-backup.sh encrypt and decrypt for real; without it that test falls back to a pass-through.
+      - name: Install age
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends age
+      # One step per suite and "always": a failing suite must not hide the result of the others.
+      - name: Test commit-msg hook
+        if: ${{ !cancelled() }}
+        run: ./scripts/test-commit-msg-hook.sh
+      - name: Test nginx real IP and scheme
+        if: ${{ !cancelled() }}
+        run: ./scripts/test-nginx-realip.sh
+      - name: Test deploy.sh
+        if: ${{ !cancelled() }}
+        run: ./scripts/test-deploy.sh
+      - name: Test backup and restore (real PostgreSQL in Docker)
+        if: ${{ !cancelled() }}
+        run: ./scripts/test-backup.sh
+      - name: Test host scripts
+        if: ${{ !cancelled() }}
+        run: ./scripts/test-host-tasks.sh
+      # The .env of this job is generated with random values and discarded with the runner. -q never prints them.
+      - name: Compose files are valid
+        run: |
+          ./scripts/init-env.sh
+          docker compose config -q
+          digest=sha256:0000000000000000000000000000000000000000000000000000000000000000
+          ITMAS_API_IMAGE="ghcr.io/example/itmas3-api@$digest" \
+          ITMAS_MIGRATOR_IMAGE="ghcr.io/example/itmas3-migrator@$digest" \
+          ITMAS_FRONTEND_IMAGE="ghcr.io/example/itmas3-frontend@$digest" \
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml config -q
