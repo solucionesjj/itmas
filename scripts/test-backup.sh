@@ -421,12 +421,13 @@ cat > /dev/null
 EOF
   recipient="age1pass-through"
   identity="$tmp/identity.txt"
-  : > "$identity"
   if command -v age > /dev/null 2>&1 && command -v age-keygen > /dev/null 2>&1; then
-    age-keygen -o "$identity" 2> /dev/null
+    # age-keygen refuses to write over an existing file, so the identity must not be created beforehand.
+    age-keygen -o "$identity" 2> "$tmp/age-keygen.err" || { cat "$tmp/age-keygen.err" >&2; echo "FAIL: age-keygen could not create the test identity" >&2; exit 1; }
     recipient="$(age-keygen -y "$identity")"
     real_age=1
   else
+    : > "$identity"
     real_age=0
     cat > "$realbin/age" << 'EOF'
 #!/bin/sh
