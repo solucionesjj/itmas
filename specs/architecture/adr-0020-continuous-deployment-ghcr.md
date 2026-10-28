@@ -69,7 +69,7 @@ del agente y que **ninguna credencial de GitHub tenga acceso al servidor** (Q-11
   - **Los *workflows* de PR corren en un repositorio público**: sin secretos y con token de solo lectura, y con aprobación obligatoria para colaboradores externos, evitan el uso abusivo de los *runners*; el entorno `production` y la protección de etiquetas siguen siendo la compuerta de la publicación.
   - **Los *digests* se resuelven por etiqueta.** Quien pueda escribir en GHCR podría mover una etiqueta; lo cubre la confirmación contra el resumen del *workflow* y, a futuro, la verificación de atestaciones (fuera de alcance).
   - **Tras el `migrator` no hay reversión automática** (Q-13); el borde práctico es que una versión que migra y falla exige una decisión humana.
-  - **Sin verificar en el entorno real:** los *workflows* no se han ejecutado en GitHub, ni el script en el servidor. Se verifican según CA-10 a CA-15 de SPEC-0009.
+  - **Sin verificar en el entorno real:** `ci.yml` se ejecutó en GitHub el 2026-10-28 y pasa (SPEC-0009 §18), pero `release.yml` no se ha ejecutado, ni `deploy.sh` en el servidor. Se verifican según CA-10 a CA-15 de SPEC-0009.
 - **Seguimiento:** desplegar desde el CI (Q-11 a o b) cuando el volumen de despliegues lo justifique, sin cambiar `deploy.sh`; verificar atestaciones de las imágenes; refinar la vuelta atrás para revertir también cuando el `migrator` no aplicó ninguna migración (P-14).
 
 ## Impacto en la constitución
