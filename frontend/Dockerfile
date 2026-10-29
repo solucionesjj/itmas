@@ -16,6 +16,9 @@ RUN npm test -- --watch=false
 
 # ---- Runtime: static files + reverse proxy, non-root nginx ---------------------
 FROM nginxinc/nginx-unprivileged:stable-alpine AS runtime
+# Pick up Alpine security fixes published after the base image was built (the release scan blocks HIGH/CRITICAL with a fix).
+USER root
+RUN apk upgrade --no-cache
 COPY nginx/default.conf.template nginx/security-headers.inc.template /etc/nginx/templates/
 COPY --from=build /app/dist/frontend/browser /usr/share/nginx/html
 # Non-secret defaults; override at runtime.
