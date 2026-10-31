@@ -105,6 +105,7 @@ EOF
 cat > "$bin/caddy" << 'EOF'
 #!/bin/sh
 echo "caddy $*" >> "$STUB_LOG"
+[ "$1" != version ] || echo "${STUB_CADDY_VERSION:-v2.11.7 h1:stub=}"
 exit "${STUB_CADDY_RC:-0}"
 EOF
 cat > "$bin/docker" << 'EOF'
@@ -446,6 +447,23 @@ run env "$root/scripts/install-host-tasks.sh" check
 unset STUB_RCLONE_NO_HEAD
 expect_rc "an rclone without the options backup-db.sh needs" 1
 expect_out_has "the missing option is named" "--s3-no-head"
+# Caddy before 2.7.2 drops the deferred HSTS header of the Caddyfile (Ubuntu's own package is 2.6.2, found on the first deployment).
+for version in 2.6.2 "v2.7.1 h1:stub=" "v1.0.4"; do
+  STUB_CADDY_VERSION="$version" && export STUB_CADDY_VERSION
+  run env "$root/scripts/install-host-tasks.sh" check
+  expect_rc "Caddy $version is refused" 1
+  expect_out_has "Caddy $version: the minimum is named" "is older than 2.7.2"
+done
+for version in "v2.7.2 h1:stub=" "v2.10.0 h1:stub=" "v3.0.0-beta.1 h1:stub="; do
+  STUB_CADDY_VERSION="$version" && export STUB_CADDY_VERSION
+  run env "$root/scripts/install-host-tasks.sh" check
+  expect_rc "Caddy $version is accepted" 0
+done
+STUB_CADDY_VERSION="unknown" && export STUB_CADDY_VERSION
+run env "$root/scripts/install-host-tasks.sh" check
+unset STUB_CADDY_VERSION
+expect_rc "an unreadable Caddy version" 1
+expect_out_has "the unreadable version is reported" "cannot read the Caddy version"
 STUB_CADDY_RC=1 && export STUB_CADDY_RC
 reset_tree
 run env "$root/scripts/install-host-tasks.sh" apply

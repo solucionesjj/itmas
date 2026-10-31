@@ -58,6 +58,11 @@ private_mode() {
   [ -z "$(find "$1" -maxdepth 0 \( -perm -040 -o -perm -020 -o -perm -010 -o -perm -004 -o -perm -002 -o -perm -001 \) 2> /dev/null)" ]
 }
 
+# <version> <minimum>: is the dotted version x.y.z at least the minimum?
+version_at_least() {
+  awk -v a="$1" -v b="$2" 'BEGIN { split(a, x, "."); split(b, y, "."); for (i = 1; i <= 3; i++) if (x[i] + 0 != y[i] + 0) exit !(x[i] + 0 > y[i] + 0); exit 0 }'
+}
+
 apply() {
   [ -n "$R" ] || [ "$(id -u)" -eq 0 ] || { echo "Run as root (sudo)." >&2; exit 1; }
   state="$R${ITMAS_STATE_DIR:-/var/lib/itmas3}"
@@ -166,6 +171,16 @@ LIST
     done
     if command -v caddy > /dev/null 2>&1; then
       systemctl is-active --quiet caddy || problem "caddy is not active"
+      # The ">" header prefix of the Caddyfile (our HSTS replaces the API's) needs Caddy 2.7.2 or later: older ones, such as
+      # Ubuntu's own 2.6 package, turn it into an invalid header name and send no HSTS at all. Caddy comes from its official repository.
+      caddy_version="$(caddy version 2> /dev/null | awk 'NR == 1 { sub(/^v/, "", $1); print $1 }' || true)"
+      case "$caddy_version" in
+        [0-9]*.[0-9]*.[0-9]*)
+          version_at_least "$caddy_version" 2.7.2 \
+            || problem "Caddy $caddy_version is older than 2.7.2 and sends no HSTS (install it from the official repository, DEVELOPMENT.md 12.3)"
+          ;;
+        *) problem "cannot read the Caddy version" ;;
+      esac
     fi
   fi
 }

@@ -464,8 +464,8 @@ No hay alta disponibilidad: el servidor es un punto único de fallo.
 **Modelo de ejecución.** Todo lo del servidor lo ejecuta `root` con `sudo` y el clon `/opt/itmas3` es de `root`: los temporizadores ejecutan como `root` los scripts de ese clon, así que nadie más debe poder
 cambiarlos. La persona administradora usa `sudo`, no el grupo `docker` (equivale a `root`). `host.conf`, el estado de los despliegues (`/var/lib/itmas3`) y la credencial de `docker login` son de `root`.
 
-> Los scripts y los *workflows* se probaron con sustitutos (`./scripts/test-*.sh`) y los de nginx y el restore con Docker, y el `Caddyfile` se validó con Caddy en un contenedor, pero **ni los *workflows* ni los comandos de esta
-> sección se han ejecutado todavía en GitHub ni en el servidor real**. Tras el primer despliegue corrige lo que difiera y anótalo en la §18 de SPEC-0009. Las copias de seguridad (§12.9) son un requisito previo: no publiques sin una restauración probada.
+> El primer despliegue real (`v1.0.1`, del 2026-10-28 al 2026-10-30) siguió esta sección; lo que difirió está corregido aquí y anotado en la §18 de SPEC-0009, junto con lo que queda por verificar en el servidor.
+> Las copias de seguridad (§12.9) son un requisito previo: no publiques sin una restauración probada.
 
 ### 12.1 Requisitos previos
 
@@ -514,6 +514,8 @@ cambiarlos. La persona administradora usa `sudo`, no el grupo `docker` (equivale
 
 3. **Herramientas de las copias y Caddy (solo los paquetes).** `age` y `rclone` vienen de Ubuntu; `install-host-tasks.sh check` comprueba que `rclone` admite las opciones que usa (`--no-check-dest`, `--s3-no-check-bucket`, `--s3-no-head`).
    Si la versión de Ubuntu no las admite, instala el `.deb` oficial de rclone comprobando su suma SHA-256 contra la que publica rclone.org. Caddy va **antes** de `install-host-tasks.sh` para que sus archivos de configuración no choquen con el paquete.
+   **Caddy sale de su repositorio oficial, no del de Ubuntu:** `apt-get install caddy` sin ese repositorio instala la 2.6, que convierte la cabecera HSTS del `Caddyfile` en un nombre inválido y no la envía (pasó en el primer despliegue).
+   `install-host-tasks.sh check` exige la 2.7.2 o posterior. Si ya la instalaste desde Ubuntu, añade el repositorio como abajo y reinstala conservando el `Caddyfile`: `sudo apt-get install -y -o Dpkg::Options::=--force-confold caddy`.
    Comprueba la huella de la clave del repositorio de Caddy contra la de <https://caddyserver.com/docs/install> y anótala en la §18 de SPEC-0009 (ADR-0018, decisión 6):
 
    ```bash
@@ -608,6 +610,7 @@ Las variables de las imágenes (`ITMAS_API_IMAGE`, `ITMAS_MIGRATOR_IMAGE`, `ITMA
    El script exige que el *commit* de la etiqueta esté en `origin/main` y no acepta una etiqueta movida, resuelve los *digests*, pide confirmación **antes** de tocar nada, hace el `checkout`, se detiene si el Compose publica un puerto distinto de
    `127.0.0.1:${FRONTEND_PORT}`, hace el volcado previo (si ya existe la base de datos), descarga las imágenes **por *digest***, ejecuta el `migrator` con la imagen nueva, levanta `api` y `frontend`, espera a que estén `healthy`,
    comprueba `/auth/session` por el loopback con el `Host` permitido y publica los paquetes del agente. Deja un registro en `/var/lib/itmas3/deploy.log`.
+   Si `api` y `frontend` quedan `healthy` pero la comprobación de `/auth/session` falla (código 4), casi siempre es el `.env` sin completar: con `APP_ALLOWED_HOSTS=localhost` el *health check* pasa y la API responde 400 al `Host` público. Completa el `.env` (§12.4) y repite el despliegue.
 4. **Ensayo antes del DNS** (SPEC-0009 CA-12, CA-13): despliega dos etiquetas y prueba `sudo ./scripts/deploy.sh rollback`. Para simular un fallo **antes del `migrator`**, pon temporalmente una contraseña errónea en `APP_DB_MIGRATOR_PASSWORD` del `.env`: el despliegue
    termina con código 3 y la versión que atiende no se toca. Para uno **después del `migrator`**, deja vacío `ENTRA_CLIENT_ID` (la API no arranca en `Production`): termina con código 4 y no se revierte nada. Restaura el `.env` en los dos casos.
 
@@ -639,7 +642,7 @@ Desde fuera del servidor:
 
 1. `https://itmas.sacservices.cloud/auth/session` devuelve `{"isAuthenticated":false,...}`.
 2. `https://itmas.sacservices.cloud/health` devuelve **404** (los *health checks* no se exponen).
-3. Inicia sesión. Con `AADSTS50011`, revisa las Redirect URIs y que la imagen de `frontend` sea posterior a ADR-0018.
+3. Inicia sesión. Con `AADSTS50011`, revisa las Redirect URIs de la plataforma **Web** en la aplicación cuyo *Client ID* está en `ENTRA_CLIENT_ID` (no en otra, como la de desarrollo) y que la imagen de `frontend` sea posterior a ADR-0018.
 4. Tu cuenta pasa a Root y aparece **Administración**. Después quita `AUTHZ_BOOTSTRAP_ROOT_OIDS` del `.env` y vuelve a ejecutar `sudo ./scripts/deploy.sh <la misma etiqueta>` (recrea `api` con el `.env` nuevo; no cambia la versión anterior guardada para `rollback`).
 5. **IP real y cabeceras (ADR-0018):** enrola un equipo y comprueba en **Inventario** que la IP de conexión es la del cliente, no una `172.x`.
    Después, desde fuera: `curl -i -X POST https://itmas.sacservices.cloud/api/v1/device-enrollments -H 'Authorization: Enrollment codigo-invalido' -H 'X-Forwarded-For: 1.2.3.4' -H 'Content-Type: application/json' -d '{}'`
@@ -711,7 +714,7 @@ Para una versión nueva: etiqueta, aprobación del entorno y `sudo ./scripts/dep
 ### 12.12 Mantener y comprobar el host
 
 - `sudo ./scripts/harden-host.sh check` y `sudo ./scripts/install-host-tasks.sh check` comparan lo instalado con `deploy/**` **de la etiqueta desplegada** y verifican cada control (`ufw` con solo 22, 80 y 443, SSH sin contraseña, `fail2ban`, actualizaciones solo de seguridad, Docker 28 o posterior, rotación de logs,
-  permisos y propietario de los secretos, `age` y `rclone`, y que `host.conf` está completo). Ejecútalos tras cualquier cambio manual.
+  permisos y propietario de los secretos, `age` y `rclone`, Caddy 2.7.2 o posterior, y que `host.conf` está completo). Ejecútalos tras cualquier cambio manual.
 - Rol responsable de los parches: la persona administradora. Ubuntu se parchea solo (sin reinicio: reinicia en una ventana acordada cuando `check-host.sh` avise); Caddy y Docker, a mano cada 7 días como máximo.
 - Rota el token de lectura de GHCR cuando caduque y repite `docker login` como `root`. Verifica cada trimestre la restauración (§12.9).
 
