@@ -34,6 +34,7 @@ Cada archivo `agents/<nombre>.md` empieza con un bloque YAML legible por máquin
 | `database/**` | database | security |
 | `frontend/src/**` | frontend | security (auth, interceptores) |
 | `frontend/nginx/**` | frontend | security (CSP, cabeceras, proxy) |
+| `frontend/public/fonts/**` (fuentes autoalojadas, ADR-0021) | frontend | security (procedencia y licencias de terceros) |
 | `frontend/public/manual/**` (manual de uso) | architecture | agente del área del proceso descrito; security (es público) |
 | `agent/**` | device-agent | security (privilegios, credenciales), backend (contrato) |
 | `backend/tests/**`, `frontend/src/**/*.spec.ts` | testing | agente del código probado |
@@ -51,7 +52,7 @@ Cada archivo `agents/<nombre>.md` empieza con un bloque YAML legible por máquin
 |---|---|
 | [architecture](architecture.md) | Coherencia arquitectónica, specs, ADRs, plan de implementación, documentación e infraestructura. |
 | [backend](backend.md) | Dominio, casos de uso, API y adaptadores .NET. |
-| [frontend](frontend.md) | SPA Angular con Material 3 y configuración del servidor web. |
+| [frontend](frontend.md) | SPA Angular con Angular Material y la identidad visual de ITMas, y configuración del servidor web. |
 | [database](database.md) | Modelo de persistencia, migraciones, roles y privilegios de PostgreSQL. |
 | [security](security.md) | Autenticación, autorización, secretos, amenazas y controles. |
 | [device-agent](device-agent.md) | Agente de dispositivo multiplataforma (inventario), su contrato y su empaquetado. |

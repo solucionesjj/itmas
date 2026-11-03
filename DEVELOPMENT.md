@@ -188,7 +188,8 @@ Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json
   nunca se desactiva NuGet Audit ni se baja su nivel. Para comprobarlo sin la caché de restauración, compila una
   copia limpia: `git archive HEAD -- . ':!frontend' | tar -x -C <carpeta-vacía>` y `dotnet build` en `backend/`.
 - **Frontend:** TypeScript `strict`, componentes standalone, signals, Prettier (`.prettierrc`), un componente
-  por archivo, sin estilos que sobrescriban Material.
+  por archivo. La identidad visual vive solo en la capa de tema (`styles.scss` y `src/styles/**`); fuera de ella, los
+  estilos son de layout y cumplen la constitución §6.3 (ADR-0021).
 - **Commits:** referencian el ID de la spec, p. ej. `SPEC-0001: add user list endpoint` (varios IDs:
   `SPEC-0000, SPEC-0001: …`; un ADR: `ADR-0016: …`). Las correcciones menores sin spec que permite la constitución
   §11.6 usan `minor: <motivo>`. El hook `commit-msg` lo comprueba (ver §10).

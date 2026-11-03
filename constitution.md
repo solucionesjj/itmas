@@ -1,6 +1,6 @@
 # Constitución del proyecto
 
-**Versión:** 3.0.0 · **Vigente desde:** 2026-10-26 · **Origen:** [SPEC-0000](specs/architecture/SPEC-0000-application-foundation.md)
+**Versión:** 4.0.0 · **Vigente desde:** 2026-11-03 · **Origen:** [SPEC-0000](specs/architecture/SPEC-0000-application-foundation.md)
 
 Esta constitución es la política técnica permanente del proyecto. Toda especificación, plan, cambio de código,
 configuración o documentación (hecho por personas o por agentes de IA) debe cumplirla.
@@ -86,11 +86,21 @@ son bases de datos de ITMas y se rigen por §13.
 ## §6. Frontend
 
 1. Angular (versión estable soportada) con componentes standalone, signals y rutas con carga diferida por feature.
-2. La UI DEBE usar **Angular Material siguiendo Material Design 3 estándar**: componentes oficiales siempre que exista
-   uno adecuado; paletas, tipografía, densidad y elevaciones por defecto del tema definido en `styles.scss`.
-3. NO DEBE crearse un sistema de diseño propio ni sobrescribir tokens, colores, tipografías o el comportamiento de
-   los componentes Material. El CSS de componentes se limita a layout y usa variables `--mat-sys-*`.
-4. Los temas claro y oscuro DEBEN seguir funcionando para toda pantalla nueva.
+2. La UI DEBE usar **Angular Material**, con componentes oficiales siempre que exista uno adecuado, sobre un **único
+   tema Material 3** definido en la capa de tema (`frontend/src/styles.scss` y `frontend/src/styles/**`). Ese tema
+   aplica la identidad visual de ITMas (ADR-0021): paletas, tipografía, forma, superficies y fondos.
+3. La identidad visual se define **solo en la capa de tema**, mediante las API de tema de Angular Material
+   (`mat.theme`, `mat.theme-overrides`, `mat.<componente>-overrides`) y los tokens `--itmas-*` y clases `itmas-*` que
+   declara. NO DEBE alterarse el comportamiento ni la accesibilidad de los componentes Material. Fuera de la capa de
+   tema, el CSS de componentes (hojas y estilos en línea) se limita a layout:
+   - NO DEBE usar selectores de clases que añadan Angular Material o el CDK (`.mat-*`, `.mdc-*`, `.cdk-*`).
+   - NO DEBE usar `::ng-deep` ni `ViewEncapsulation.None`, salvo las excepciones que enumera ADR-0021.
+   - NO DEBE declarar variables `--mat-*` o `--itmas-*` ni incluir mixins `mat.*`.
+   - En color, fondo, color de borde, sombra, filtro, radio de esquina y tipografía solo admite `var(--mat-sys-*)`,
+     `var(--itmas-*)`, `inherit`, `currentColor`, `transparent`, `none` o `0`.
+4. Los temas claro y oscuro DEBEN funcionar en toda pantalla, con contraste WCAG 2.2 AA en ambos. Las animaciones
+   DEBEN respetar `prefers-reduced-motion`, y las transparencias, `prefers-reduced-transparency` donde el navegador la
+   exponga.
 5. Estructura obligatoria: `core/` (singletons transversales), `auth/`, `layout/`, `shared/` (presentación
    reutilizable), `features/<feature>/` (una carpeta por área). `shared` y `core` NO DEBEN depender de `features`.
 6. Las llamadas HTTP DEBEN usar `HttpClient` con rutas relativas del mismo origen; los errores se gestionan con los
@@ -212,3 +222,4 @@ Esta sección aplica a los componentes de servidor. El agente de dispositivo se 
 | 1.3.0 | 2026-10-11 | MINOR: nueva §13.6, auditoría de solo lectura de motores de bases de datos desde el agente; §13.4 remite a ella (ADR-0014). PATCH: §5 regula la persistencia de la aplicación (SPEC-0005). |
 | 2.0.0 | 2026-10-11 | MAJOR: §13.6 admite, por conexión y por elección expresa del administrador del equipo, aceptar un certificado no válido en las conexiones a motores; el cifrado sigue siendo obligatorio y §13.3 no cambia (ADR-0015). |
 | 3.0.0 | 2026-10-26 | MAJOR: §8.1 se limita a los servicios de Compose; nuevo §8.7 para el borde de red de producción y las operaciones del host, con reglas de definición, puertos, protecciones, software expuesto, credenciales y copias (ADR-0019). |
+| 4.0.0 | 2026-11-03 | MAJOR: §6.2 y §6.3 admiten una identidad visual propia de ITMas en la capa de tema (paletas, tipografía, forma, superficies y fondos) mediante las API de tema de Angular Material, tokens `--itmas-*` y clases `itmas-*`, sin alterar el comportamiento ni la accesibilidad de sus componentes; fuera de la capa, el CSS de componentes sigue siendo de layout, con reglas comprobables. §6.4 exige WCAG 2.2 AA en ambos esquemas en toda pantalla y respetar `prefers-reduced-motion` y `prefers-reduced-transparency` (ADR-0021). |

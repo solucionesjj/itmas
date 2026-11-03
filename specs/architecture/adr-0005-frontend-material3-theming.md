@@ -9,6 +9,11 @@ related: [SPEC-0000]
 
 # ADR-0005 — Frontend Angular + Material 3 sin sistema de diseño propio
 
+> **Reemplazado en parte por [ADR-0021](adr-0021-itmas-visual-identity.md) (2026-11-03, constitución 4.0.0)** en las
+> paletas, la tipografía, la regla «sin sistema de diseño propio» y la carga de fuentes desde Google Fonts. Sigue vigente
+> en lo demás: un único tema con `light-dark()`, `ThemeService`, Material Symbols Outlined como conjunto de iconos y la
+> estructura de carpetas. Hasta implementar SPEC-0010, el tema y las fuentes siguen como describe este ADR.
+
 ## Contexto
 Se exige Angular Material siguiendo Material Design 3 estándar, sin personalizar colores, tipografía, elevaciones
 ni componentes, con temas claro y oscuro seleccionables y un mecanismo preparado para evolucionar.

@@ -34,7 +34,9 @@ Este repositorio evoluciona mediante **Specification-Driven Development**. Antes
   Todo permiso usado se declara en el catálogo (`IPermissionDefinitionProvider`). No se usan roles.
 - Nunca secretos en el repositorio, en el frontend, en logs ni en la línea de comandos. Nunca leer ni modificar `.env`.
 - Nada de lógica de negocio en controllers; nada de EF Core fuera de `Infrastructure`.
-- Angular Material estándar: no sobrescribir tokens, colores ni tipografías.
+- La identidad visual vive solo en la capa de tema (`frontend/src/styles.scss` y `frontend/src/styles/**`). Fuera de
+  ella, CSS de layout con `--mat-sys-*`/`--itmas-*`, sin clases internas de Material ni valores literales de color,
+  sombra o tipografía (constitución §6.3, ADR-0021).
 - La documentación se actualiza en el mismo cambio. Commits con el ID de la spec (`SPEC-NNNN: …`); `minor: <motivo>`
   solo para las correcciones menores de §11.6. El hook `commit-msg` lo comprueba; actívalo con
   `./scripts/install-git-hooks.sh`.
