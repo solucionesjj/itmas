@@ -78,9 +78,14 @@ describe('Self-hosted fonts provenance (SPEC-0010 CA-18)', () => {
       expect(url, url).toMatch(/^\/fonts\/[a-z-]+\/[A-Za-z0-9._-]+\.woff2$/);
       expect(existsSync(join(root, 'public', url)), url).toBe(true);
     }
-    const faces = theme.match(/@font-face\s*\{/g) ?? [];
+    // Every face declares its display: `swap` for the text (Poppins), `block` for the icons, whose fallback would show their names.
+    const faces = [...theme.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((match) => match[1]);
     expect(faces.length).toBeGreaterThan(1);
-    expect((theme.match(/font-display:\s*swap;/g) ?? []).length).toBe(faces.length);
+    for (const face of faces) {
+      const family = /font-family:\s*'([^']+)'/.exec(face)?.[1];
+      const display = /font-display:\s*([a-z]+);/.exec(face)?.[1];
+      expect(display, family).toBe(family === 'Material Symbols Outlined' ? 'block' : 'swap');
+    }
   });
 });
 

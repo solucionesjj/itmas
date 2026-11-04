@@ -159,7 +159,8 @@ funcionalidad, los permisos, las rutas ni los textos de los procesos.
 - **RNF-3 Rendimiento.**
   - `backdrop-filter` solo en las superficies de fondo (barra lateral, barra superior y tarjetas), nunca en filas ni elementos anidados.
   - El presupuesto inicial de `angular.json` no supera el aviso (550 kB).
-  - Las fuentes se cargan con `font-display: swap`. Los iconos usan una instancia estática, no el archivo variable completo.
+  - Poppins se carga con `font-display: swap`. Los iconos usan una instancia estática, no el archivo variable completo, con `font-display: block`, para
+    que no se vean sus nombres como texto mientras cargan (Q-17).
 - **RNF-4 CSP y terceros.**
   - La CSP no se relaja: el cambio de `frontend/nginx/security-headers.inc.template` solo retira `https://fonts.googleapis.com` de `style-src` y
     `https://fonts.gstatic.com` de `font-src`, que queda en `'self'`.
@@ -513,7 +514,7 @@ revisa que ningún proceso describa colores o posiciones que cambien.
       - comentarios y espacios dentro de `url(…)` y de cadenas, `@import 'https://…'` e `image-set(…)`;
       - el naranja en forma `rgb()`.
     - T-10: `layout-safety.spec.ts` no distingue mayúsculas de minúsculas.
-    - T-11: no admite archivos sueltos en `public/fonts/` y exige un `font-display: swap` por cada `@font-face`.
+    - T-11: no admite archivos sueltos en `public/fonts/` y exige `font-display` en cada `@font-face` (`swap` en Poppins y `block` en los iconos, Q-17).
     - T-13: los avisos usan `STALE_STATUS` y `UNAVAILABLE_STATUS` en lugar de literales.
     - T-12: CA-6 y CA-15 siguen verificados por simulación.
   - **Fuera de esta spec:** `features/agenda/agenda-safety.spec.ts` (SPEC-0006) tiene el mismo hueco de mayúsculas que T-10. Se propone corregirlo en un
@@ -572,6 +573,7 @@ revisa que ningún proceso describa colores o posiciones que cambien.
 | Q-14 | Contraste de los tonos aprobados (2026-11-03, tras la verificación de CA-3) | **Oscurecer el atenuado claro y aclarar el atenuado y el informativo oscuros**; velo oscuro en el elemento activo de la barra lateral. | §11.2: atenuado `#5B6270` / `#B4BAC5` e informativo oscuro `#8EC3FF`, que reemplazan a los de Q-6 y Q-10. El primer valor oscuro (`#A8AFBB`) se aclaró a `#B4BAC5` tras la segunda auditoría: daba 4,25:1 sobre el vidrio anidado del informe del equipo. El peor caso medido es 4,62:1. |
 | Q-15 | Alcance de las plantillas y orden de tabulación (2026-11-03, durante la implementación y tras la revisión de `architecture`) | **Aplicar las clases `itmas-*` en las plantillas de features** (listas en tarjeta de vidrio, tablas, pares dato–valor y botones) y **mantener el nuevo orden de tabulación del *shell***: navegación y después barra superior. | §11.1 amplía los archivos; RNF-6 recoge el orden de tabulación. |
 | Q-16 | Pantallas sin datos locales (2026-11-03, tras `/sdd-validate`) | **Aceptarlas como riesgo residual**: detalle y edición de política y de actividad (con los diálogos de completar y cancelar), instancia y cuenta SQL y el diálogo del código de enrolamiento no se recorrieron, porque el entorno local no tiene esos datos y no se crearon. | CA-3, CA-11 y CA-13 se dan por cubiertos en las 22 rutas alcanzables; estas pantallas usan los mismos componentes, tokens y superficies. |
+| Q-17 | Carga de la fuente de iconos (2026-11-03, tras publicar `v1.1.1`) | **`font-display: block` para Material Symbols**: con `swap`, en la primera visita se veían un instante los nombres de los iconos («hub», «login») como texto. Poppins mantiene `swap`. | RNF-3; `_fonts.scss` y `fonts-provenance.spec.ts`, que exige `swap` en Poppins y `block` en los iconos. |
 
 ### 19.2 Preguntas abiertas
 Ninguna.

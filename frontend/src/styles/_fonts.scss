@@ -13,12 +13,13 @@
   }
 }
 
-// One static instance (FILL 0, GRAD 0, opsz 24): the full variable font weighs several MB (ADR-0005, RNF-3).
+// One static instance (FILL 0, GRAD 0, opsz 24): the full variable font weighs several MB (ADR-0005, RNF-3). `block`, not `swap`:
+// a fallback font would show the ligature names (`hub`, `login`) as text until the icons load; the text faces above keep `swap`.
 @font-face {
   font-family: 'Material Symbols Outlined';
   font-style: normal;
   font-weight: 400;
-  font-display: swap;
+  font-display: block;
   src: url('/fonts/material-symbols/material-symbols-outlined-400.woff2') format('woff2');
 }
 
