@@ -1,5 +1,5 @@
 #!/bin/sh
-# Hardens the production host (SPEC-0009 RF-7 to RF-12, RF-30; constitution 8.7). Idempotent; run as root on Ubuntu 24.04.
+# Hardens the production host (SPEC-0009 RF-7 to RF-12, RF-30; constitution 8.7). Idempotent; run as root on Ubuntu 26.04 LTS.
 #   sudo scripts/harden-host.sh apply [--confirm-ssh-key]   install and configure ufw, fail2ban, unattended-upgrades, the Docker
 #                                                         log rotation and, with --confirm-ssh-key, SSH with keys only
 #   sudo scripts/harden-host.sh check                       compare what is installed with deploy/** and verify each control

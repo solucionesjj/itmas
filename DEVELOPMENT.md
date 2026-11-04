@@ -462,7 +462,7 @@ identificador del evento, el código y el `request-id` de Graph (solo si es un G
 
 ## 12. Publicación en un servidor Linux (ADR-0018, SPEC-0009)
 
-Procedimiento para publicar ITMas en **un único servidor Ubuntu 24.04 con IP pública** (AWS EC2 `x86_64`: el CI construye `linux/amd64`), con Docker Compose y un proxy TLS en el host
+Procedimiento para publicar ITMas en **un único servidor Ubuntu 26.04 LTS con IP pública** (AWS EC2 `x86_64`: el CI construye `linux/amd64`), con Docker Compose y un proxy TLS en el host
 (Caddy, [ADR-0018](specs/architecture/adr-0018-host-tls-reverse-proxy.md)). Las imágenes las publica GitHub Actions en GHCR al empujar una etiqueta y
 una persona las despliega con `scripts/deploy.sh` ([ADR-0020](specs/architecture/adr-0020-continuous-deployment-ghcr.md)). El proxy, las copias, el
 monitoreo y el endurecimiento viven en el host, fuera de Compose, y se rigen por el §8.7 de la constitución ([ADR-0019](specs/architecture/adr-0019-host-edge-operations-outside-compose.md)).
@@ -735,7 +735,7 @@ Resumen de cómo se comprueba en el servidor cada criterio que no cubre una prue
 | 3 | `sudo ./scripts/check-host.sh` con la última copia renombrada: llega el aviso al correo. |
 | 4 | `restore-db.sh` (§12.9). |
 | 5, 27 | Escaneo externo de 22, 80, 443 y de UDP (también por IPv6); `sudo docker ps`; `ss -ltnp`; `aws ec2 describe-security-groups`; `docker version`; prueba de `169.254.169.254` desde un contenedor (`docker run --rm curlimages/curl -m 3 http://169.254.169.254/latest/meta-data/` debe agotar el tiempo). |
-| 6, 7 | `ssh -o PubkeyAuthentication=no <usuario>@<servidor>` y `ssh root@<servidor>` rechazados; fallos repetidos desde una IP de prueba y `sudo fail2ban-client status sshd`; `sudo unattended-upgrade --dry-run -d`. |
+| 6, 7 | `ssh -o PubkeyAuthentication=no <usuario>@<servidor>` y `ssh root@<servidor>` rechazados; fallos repetidos desde una IP de prueba **con un usuario inexistente** (fail2ban no cuenta una clave rechazada de un usuario válido) y `sudo fail2ban-client status sshd`; `sudo unattended-upgrade --dry-run -d`. |
 | 8, 9 | `docker info --format '{{.LoggingDriver}}'`; reinicio del servidor (§12.7, paso 8). |
 | 10 | Una etiqueta sobre un commit con una prueba rota, o con una vulnerabilidad alta sembrada en un repositorio de ensayo, no publica imágenes; la que pasa espera la aprobación. |
 | 11 a 13 | Ensayo de §12.5, paso 4. |

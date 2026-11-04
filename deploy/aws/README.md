@@ -5,7 +5,7 @@ Los crea quien administra AWS; este repositorio solo guarda las plantillas, **si
 
 | Recurso | Propiedad exigida | Plantilla |
 |---|---|---|
-| Instancia EC2 | Ubuntu 24.04 LTS, **`x86_64`** (el CI construye `linux/amd64`); **IMDSv2 obligatorio con *hop limit* 1**; el rol de instancia solo puede **añadir** objetos al prefijo de las copias | `instance-role-policy.json.template` |
+| Instancia EC2 | Ubuntu 26.04 LTS, **`x86_64`** (el CI construye `linux/amd64`); **IMDSv2 obligatorio con *hop limit* 1**; el rol de instancia solo puede **añadir** objetos al prefijo de las copias | `instance-role-policy.json.template` |
 | Volumen EBS | **Cifrado** (se marca al crear el volumen) | — |
 | *Security group* | Entrada **solo** 22/tcp, 80/tcp y 443/tcp (los mismos puertos que `ufw`), también en IPv6 | — |
 | Bucket de destino, **en otra cuenta** | Versionado y *Object Lock* con retención por defecto de 30 días; **propietario del bucket forzado** (`BucketOwnerEnforced`, sin ACL); cifrado por defecto **SSE-S3** (no SSE-KMS: exigiría dar permisos de la clave al rol de otra cuenta); *Block Public Access*; política que permite `PutObject` solo al rol de la instancia y le niega leer, listar y borrar; vencimiento a los 30 días | `bucket-policy.json.template`, `lifecycle.json.template` |

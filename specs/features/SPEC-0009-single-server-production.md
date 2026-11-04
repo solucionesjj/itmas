@@ -31,7 +31,7 @@ ADR-0018 (`Accepted`) fijó el TLS: un proxy inverso en el host (Caddy como refe
 en `127.0.0.1`. DEVELOPMENT.md §12 describe cómo publicar a mano y declara dos límites que esta spec cierra: **no incluye automatización** y **sus
 comandos no se han ejecutado todavía en el servidor real**. Lo que hay hoy, comprobado en el repositorio el 2026-10-24:
 
-- **El servidor** es una instancia de **AWS EC2 con Ubuntu 24.04 LTS** (respuesta del solicitante, 2026-10-25): el *security group*, los *snapshots* y el
+- **El servidor** es una instancia de **AWS EC2 con Ubuntu 26.04 LTS** (respuesta del solicitante, 2026-10-25, con 24.04; cambiada a 26.04 el 2026-10-30, §19.8): el *security group*, los *snapshots* y el
   cifrado del volumen EBS están disponibles.
 - **Las imágenes se construyen en el servidor** (`docker compose up -d --build`; `docker-compose.yml` usa `build:` e imágenes `itmas3/*:local`).
   No hay registro de imágenes, ni CI (SPEC-0007 §2 lo difirió, P-7), ni carpeta `.github/`.
@@ -323,7 +323,7 @@ Los crea quien administra AWS (C-1), no esta spec: la spec los enumera y verific
 
 | Recurso | Propiedad exigida | Se verifica en |
 |---|---|---|
-| Instancia EC2 | Ubuntu 24.04 LTS; IMDSv2 obligatorio con *hop limit* 1; rol de instancia con permiso de **solo añadir** objetos (`s3:PutObject`) al prefijo de copias del bucket de destino | CA-27, CA-2 |
+| Instancia EC2 | Ubuntu 26.04 LTS; IMDSv2 obligatorio con *hop limit* 1; rol de instancia con permiso de **solo añadir** objetos (`s3:PutObject`) al prefijo de copias del bucket de destino | CA-27, CA-2 |
 | Volumen EBS | Cifrado | CA-19 |
 | *Security group* | Entrada solo 22/tcp, 80/tcp y 443/tcp | CA-5 |
 | Bucket de destino (otra cuenta) | Versionado y *Object Lock*; política que permite `PutObject` solo al rol de instancia y no concede al servidor leer ni borrar; vencimiento a los 30 días por regla de ciclo de vida | CA-1, CA-2 |
@@ -473,7 +473,10 @@ La 13 está **en curso**: `v1.0.1` está publicada en producción desde el 2026-
   - **Caddy:** se instaló al principio el paquete de Ubuntu (2.6.2), que no envía la cabecera HSTS del `Caddyfile` (el prefijo `>` es de la 2.7.2 en adelante, comprobado adaptando el `Caddyfile` con las imágenes oficiales 2.6.2, 2.6.4, 2.7.2 a 2.8.4). La API seguía enviando la suya (30 días) y la SPA ninguna. `install-host-tasks.sh check` no lo detectaba: comparaba los archivos, no la versión.
     Tras reinstalarlo desde el repositorio oficial la cabecera de Caddy sale en las dos rutas (abajo), y la comprobación exige ahora la 2.7.2 o posterior (RF-27).
   - **Comprobado desde fuera** (2026-10-30): `/auth/session` responde `200` con `isAuthenticated: false`; `/health` da `404`, y también `/%68ealth`, `//health`, `/./health` y `/api/..%2fhealth` (CA-26); certificado de Let's Encrypt; sin `Server`, `Via` ni `Alt-Svc`; sin registro `AAAA`; una sola `Strict-Transport-Security` con `max-age=300` en la SPA y en la API (CA-24, parte externa). El inicio de sesión funciona.
-  - **Diferencia con la spec:** los repositorios de Ubuntu del servidor son los de `resolute` (**26.04**), no los de la 24.04 de §2 y Q-8. Pendiente de decidir (§19.8).
+  - **Ubuntu 26.04:** los repositorios del servidor eran los de `resolute` (**26.04**), no los de la 24.04 de §2 y Q-8. El solicitante eligió 26.04 el 2026-10-30 (§19.8).
+    Comprobado en un contenedor `ubuntu:26.04` (26.04.1, con uutils coreutils 0.10, `dash`, `mawk`, apt 3.2, OpenSSH 10.2, fail2ban 1.1.0 y `age` 1.2.1): `test-commit-msg-hook.sh` 54, `test-host-tasks.sh` 173, `test-deploy.sh` 167 y `test-backup.sh` 86 sin la parte con Docker
+    (las diferencias con el equipo de trabajo son las comprobaciones que se saltan como `root` y esa parte); `sshd -t` acepta `deploy/ssh/` y `sshd -T` da contraseñas, teclado interactivo y `root` desactivados; `apt-config` lee `deploy/apt/` (solo `resolute-security` y las de ESM, sin reinicio automático) y `unattended-upgrade --dry-run` termina en 0;
+    `fail2ban-client -t` acepta `deploy/fail2ban/`, y su filtro `sshd` reconoce el proceso `sshd-session` de OpenSSH 10 en el journal (un usuario inexistente cuenta como fallo; una clave rechazada de un usuario válido no, como en el modo normal de siempre).
   - Pruebas de este cambio: `./scripts/test-host-tasks.sh` 175 de 175 (11 nuevas sobre la versión de Caddy; las 3 mutaciones del control se detectan) y ShellCheck 0.9.0 con la orden del CI sin avisos.
 - **No verificado (necesita AWS o el servidor real; lo confirma la persona administradora):** CA-1, CA-2 (credencial solo de añadir y `rclone` contra S3), CA-4 (restauración del primer volcado real), CA-5 a CA-9, CA-12 (fallo antes del `migrator`) y el ensayo de `rollback` (necesita una segunda versión), CA-14 (revisión del log de los *workflows*), CA-15 (sumas de los paquetes descargados), CA-16 a CA-18 (avisos), CA-19, CA-20 y CA-22 (IP real y `EDGE_TRUSTED_PROXY_FROM`),
   CA-23 en el servidor, CA-27, CA-28 y CA-29 (huella de Caddy). Las opciones de `ProtectSystem` de las unidades de systemd y `rclone` con `--s3-no-head` contra un bucket con *Object Lock* quedan por confirmar en el servidor.
@@ -495,7 +498,7 @@ La 13 está **en curso**: `v1.0.1` está publicada en producción desde el 2026-
 | Q-5 | **Una sola persona** administra y custodia; **copia sellada** de la clave y del `.env` fuera de línea. | RF-6, R-2. |
 | Q-6 | SSH **abierto**, solo clave y `fail2ban`. | RF-7, R-1. |
 | Q-7 | Solo seguridad, **sin reinicio automático**, con aviso de `reboot-required`. | RF-10, RF-23. |
-| Q-8 | **Script `sh` idempotente**; servidor en **AWS EC2** con **Ubuntu 24.04 LTS**. | RF-12, §2. |
+| Q-8 | **Script `sh` idempotente**; servidor en **AWS EC2** con **Ubuntu 24.04 LTS** (cambiada a **26.04 LTS** el 2026-10-30, §19.8). | RF-12, §2. |
 | Q-9 | **GitHub Container Registry**. | RF-14. |
 | Q-10 | `npm audit`, NuGet Audit y **escaneo de imágenes**, bloqueando alta/crítica con corrección. | RF-13. |
 | Q-11 | **Una persona ejecuta `deploy.sh`** por SSH; el CI no accede al servidor. | RF-16, RF-18, RNF-2, §14.1. |
@@ -585,7 +588,8 @@ originan los riesgos residuales R-1 a R-4 de §14.4. Las compuertas de §16.2 se
 - **Servicio externo de monitoreo** (dato pendiente de §19.5): **Healthchecks.io** recibe los latidos del host (una URL y `/fail` con el motivo, el protocolo que ya usan los scripts; su código es BSD-3-Clause) y **UptimeRobot** hace la sonda HTTP de `/auth/session`.
   Los eligió el solicitante; queda la revisión de `security` de la elección (constitución §12.5). Las URLs y las cuentas no van al repositorio.
 - **Caddy 2.7.2 o posterior del repositorio oficial** (RF-27): el paquete de Ubuntu se instaló primero y dejó el sitio sin la HSTS de Caddy; `install-host-tasks.sh check` lo exige ahora.
-- **Pendiente de decidir: Ubuntu 26.04 en lugar de 24.04** (Q-8). Se acepta, actualizando §2, Q-8 y DEVELOPMENT.md §12 y repitiendo en 26.04 lo que depende de la distribución (`unattended-upgrades` solo de seguridad y su ejecución en seco, las versiones de `age` y `rclone`, Docker 28 o posterior), o se reinstala con 24.04.
+- **Ubuntu 26.04 LTS en lugar de 24.04** (Q-8): el servidor ya la tenía y el solicitante la **eligió el 2026-10-30**. Se actualizaron §2, Q-8, §10.6, DEVELOPMENT.md §12 y `deploy/aws/README.md`. Las suites de los scripts y la configuración de `sshd`, `unattended-upgrades` y `fail2ban` se comprobaron en un contenedor `ubuntu:26.04` (§18).
+  En el servidor quedan las comprobaciones de CA-6 a CA-8, CA-27 y CA-28 (`harden-host.sh check`, `unattended-upgrade --dry-run`, un baneo real de `fail2ban`, Docker 28 o posterior) y las de `rclone` de CA-1 y CA-2. El CI sigue en `ubuntu-24.04`, con GNU coreutils.
 - **Pendiente:** las verificaciones del servidor que §18 lista como no verificadas, la revisión de `frontend` y `device-agent`, y subir HSTS a 86 400 s cuando el sitio esté confirmado y a 31 536 000 s tras la primera renovación real del certificado.
 
 ### 19.9 Instalación de Trivy en el CI (2026-11-03)
