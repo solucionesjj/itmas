@@ -296,7 +296,7 @@ Herramientas nuevas (versiones y licencias comprobadas el 2026-10-26; el motivo 
 | `age` | Cifrado asimétrico de las copias | BSD-3-Clause | Activo (v1.3.2 en el origen; en el servidor, la del paquete de Ubuntu) | 2026-10-26 |
 | `rclone` | Copia al bucket con el rol de instancia | MIT | Activo (v1.75.2 comprobada; `install-host-tasks.sh check` verifica las opciones que se usan) | 2026-10-26 |
 | Caddy | Proxy TLS del host | Apache-2.0 | Activo (v2.11.7); repositorio oficial con huella comprobada | ADR-0018 |
-| Trivy (`trivy-action`) | Escaneo de las imágenes antes de publicar | Apache-2.0 | Activo (acción v0.36.0 fijada por SHA) | 2026-10-26 |
+| Trivy (`trivy-action`) | Escaneo de las imágenes antes de publicar | Apache-2.0 | Activo (acción v0.36.0 fijada por SHA; binario 0.70.0 de la release de GitHub, fijado por SHA-256 en `release.yml`, §19.9) | 2026-10-26 |
 | `fail2ban` | Protección de `sshd` | GPL (paquete de Ubuntu, sin enlazar con nada del proyecto) | Activo | Q-7 |
 | ShellCheck | Análisis estático de los scripts en CI | GPL-3.0 (herramienta de CI, no se distribuye) | Activo; está en la imagen del *runner* | 2026-10-27 |
 | Acciones de GitHub (`checkout`, `setup-node`, `setup-dotnet`, `upload-artifact`, `download-artifact`, `docker/login-action`, `setup-buildx-action`, `build-push-action`) | CI/CD | MIT o Apache-2.0 | Activas; fijadas por SHA de commit y actualizadas con Dependabot | 2026-10-26 |
@@ -587,3 +587,27 @@ originan los riesgos residuales R-1 a R-4 de §14.4. Las compuertas de §16.2 se
 - **Caddy 2.7.2 o posterior del repositorio oficial** (RF-27): el paquete de Ubuntu se instaló primero y dejó el sitio sin la HSTS de Caddy; `install-host-tasks.sh check` lo exige ahora.
 - **Pendiente de decidir: Ubuntu 26.04 en lugar de 24.04** (Q-8). Se acepta, actualizando §2, Q-8 y DEVELOPMENT.md §12 y repitiendo en 26.04 lo que depende de la distribución (`unattended-upgrades` solo de seguridad y su ejecución en seco, las versiones de `age` y `rclone`, Docker 28 o posterior), o se reinstala con 24.04.
 - **Pendiente:** las verificaciones del servidor que §18 lista como no verificadas, la revisión de `frontend` y `device-agent`, y subir HSTS a 86 400 s cuando el sitio esté confirmado y a 31 536 000 s tras la primera renovación real del certificado.
+
+### 19.9 Instalación de Trivy en el CI (2026-11-03)
+- **Incidente:** el *workflow* `Release` de `v1.1.0` (SPEC-0010) falló en «Scan api» antes de publicar nada: no llegó nada a GHCR ni al servidor, y producción
+  siguió en `v1.0.1`. `aquasecurity/setup-trivy` ejecuta el `contrib/install.sh` de Trivy, que descarga el binario desde `get.trivy.dev`, y ese dominio
+  dejó de resolver (`NXDOMAIN`, también en 1.1.1.1): `curl` terminó con código 6.
+- **Cambio** (`.github/workflows/release.yml`):
+  - Un paso «Install Trivy» descarga `trivy_0.70.0_Linux-64bit.tar.gz` de la release de GitHub, solo por HTTPS (`--proto '=https' --tlsv1.2`).
+  - Lo comprueba con la SHA-256 fijada en el *workflow* (`8b4376d5d6befe5c24d503f10ff136d9e0c49f9127a4279fd110b727929a5aa9`), que coincide con
+    `trivy_0.70.0_checksums.txt` y con el *digest* que da la API de GitHub.
+  - Extrae solo el binario y lo añade al `PATH`. Los tres escaneos usan `skip-setup-trivy: true`.
+  - No cambian la versión, la severidad, `ignore-unfixed`, el código de salida ni el origen de la base de datos de vulnerabilidades.
+  - El trabajo deja de pasar el `GITHUB_TOKEN` a setup-trivy.
+- **Revisión de `security` (independiente, 2026-11-03): aceptable con cambios**, sin hallazgos críticos ni altos. No hace falta ADR ni enmienda: se
+  mantienen ADR-0020 (decisión 2) y la constitución §8.7(e) y §3.9.
+  - S-1: esta fila y esta sección.
+  - S-3: fecha del comentario.
+  - S-4: restricción del protocolo de `curl`.
+  - S-2 queda **pendiente**: verificar las firmas sigstore de la release (`*.sigstore.json`) con `cosign verify-blob`, comprobando el emisor OIDC de GitHub
+    Actions y la identidad del *workflow* de release de `aquasecurity/trivy`. No se hizo porque `cosign` no está instalado en el equipo.
+- **Actualizar Trivy:** Dependabot ya no lo actualiza. Hay que cambiar juntas la versión y la suma de `release.yml`, tomándolas de `checksums.txt` de la
+  release y verificando antes su firma sigstore, y anotarlo aquí. En cada PR de Dependabot de `trivy-action`, revisar también el `version` por defecto de la
+  acción.
+- **Publicación:** la etiqueta `v1.1.0` no se mueve (`deploy.sh` no acepta etiquetas movidas). SPEC-0010 se publica como `v1.1.1`, sobre el *commit* que
+  incluye este cambio.
