@@ -28,6 +28,7 @@ import {
   engineLabel,
   sqlLabel,
   tlsStatus,
+  UNAVAILABLE_STATUS,
   unavailableMessage,
 } from '../data/sql-audit-labels';
 import { SqlInstanceDetail } from '../data/sql-audit.models';
@@ -102,9 +103,8 @@ export class InstancePage {
           ]
         : []),
       ...instance.unavailable.map((item) => ({
+        ...UNAVAILABLE_STATUS,
         label: unavailableMessage(item),
-        icon: 'warning',
-        tone: 'tertiary' as const,
       })),
     ];
   });

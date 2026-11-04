@@ -1,5 +1,6 @@
 import { summaryOf } from '../data/agenda-fixtures';
 import { AgendaState } from '../data/agenda-state';
+import { EventStatus } from '../data/agenda.models';
 import {
   CalendarEventProps,
   agendaView,
@@ -118,16 +119,23 @@ describe('an activity as an event of the calendar (CA-32, CA-33)', () => {
     });
   });
 
-  it('takes the colours from roles of the Material theme, not from colours of its own (§6.3)', () => {
-    for (const status of ['draft', 'scheduled', 'completed', 'cancelled'] as const) {
+  // SPEC-0010 RF-8 and CA-14: the containers of the activities take the tones of the states, tokens of the theme layer (§6.3).
+  it('takes the colours from the tones of the states, not from colours of its own (§6.3)', () => {
+    const tones = {
+      draft: 'neutral',
+      scheduled: 'info',
+      completed: 'positive',
+      cancelled: 'neutral',
+    };
+    for (const [status, tone] of Object.entries(tones) as [EventStatus, string][]) {
       const input = toCalendarEvent(summaryOf({ status }));
 
-      expect(input.color).toMatch(/^var\(--mat-sys-[a-z-]+\)$/);
-      expect(input.contrastColor).toMatch(/^var\(--mat-sys-[a-z-]+\)$/);
+      expect(input.color, status).toBe(`var(--itmas-tone-${tone}-bg)`);
+      expect(input.contrastColor, status).toBe(`var(--itmas-tone-${tone})`);
     }
-    expect(toCalendarEvent(summaryOf({ isOverdue: true })).color).toBe(
-      'var(--mat-sys-error-container)',
-    );
+    const overdue = toCalendarEvent(summaryOf({ status: 'scheduled', isOverdue: true }));
+    expect(overdue.color).toBe('var(--itmas-tone-risk-bg)');
+    expect(overdue.contrastColor).toBe('var(--itmas-tone-risk)');
   });
 
   it('gives the accessible name of the event: title, type, state and when', () => {

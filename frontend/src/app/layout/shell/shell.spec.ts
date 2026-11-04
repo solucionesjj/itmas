@@ -1,8 +1,11 @@
-import { signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { AuthService } from '../../auth/services/auth-service';
 import { Shell } from './shell';
+
+@Component({ template: '' })
+class Blank {}
 
 describe('Shell navigation', () => {
   const permissions = signal<readonly string[]>([]);
@@ -12,7 +15,10 @@ describe('Shell navigation', () => {
     TestBed.configureTestingModule({
       imports: [Shell],
       providers: [
-        provideRouter([]),
+        provideRouter([
+          { path: 'home', component: Blank },
+          { path: 'manual', component: Blank },
+        ]),
         {
           provide: AuthService,
           useValue: {
@@ -54,5 +60,34 @@ describe('Shell navigation', () => {
     permissions.set(['sql-audit.read', 'devices.read']);
 
     expect(await labels()).toEqual(['Inicio', 'Equipos', 'Instancias', 'Manual de uso']);
+  });
+
+  // SPEC-0010 CA-4 and RF-3: the active item carries the orange indicator and `aria-current="page"`; the others carry neither.
+  it('marks the active item with aria-current="page" and the indicator', async () => {
+    const fixture = TestBed.createComponent(Shell);
+    await TestBed.inject(Router).navigateByUrl('/home');
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const items = [
+      ...(fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>(
+        'mat-nav-list a',
+      ),
+    ];
+    const active = items.filter((item) => item.getAttribute('aria-current') === 'page');
+    expect(active.map((item) => item.textContent?.trim())).toEqual(['homeInicio']);
+    expect(active[0].classList).toContain('itmas-nav-active');
+    expect(
+      items
+        .filter((item) => item !== active[0])
+        .some((item) => item.classList.contains('itmas-nav-active')),
+    ).toBe(false);
+  });
+
+  it('shows the logo in the navigation island', async () => {
+    const fixture = TestBed.createComponent(Shell);
+    await fixture.whenStable();
+    const island = (fixture.nativeElement as HTMLElement).querySelector('.itmas-glass-dark');
+    expect(island?.querySelector('app-logo')?.textContent?.trim()).toBe('hubITMas');
   });
 });

@@ -286,8 +286,10 @@ export function accessElement(item: SqlAccessItem): string {
   return item.account ? `${text} de ${accountName(item.account)}` : text;
 }
 
-/** MD3 colour roles allowed for states (§11.1). Applied to the icon and the text only. */
-export type StatusTone = 'error' | 'tertiary' | 'primary' | 'on-surface-variant' | 'outline';
+/** Tones of the states (SPEC-0010 RF-8), painted by the theme layer as tinted labels. */
+import type { StatusTone } from '../../../shared/models/status-tone';
+
+export type { StatusTone };
 
 /** A state rendered as icon + text: its meaning never depends on colour alone (RNF-7, CA-18). */
 export interface StatusPresentation {
@@ -297,17 +299,17 @@ export interface StatusPresentation {
 }
 
 const RISK: Record<RiskLevel, StatusPresentation> = {
-  critical: { label: 'Crítico', icon: 'error', tone: 'error' },
-  high: { label: 'Alto', icon: 'warning', tone: 'tertiary' },
-  general: { label: 'General', icon: 'info', tone: 'on-surface-variant' },
-  denied: { label: 'Denegado', icon: 'block', tone: 'on-surface-variant' },
+  critical: { label: 'Crítico', icon: 'error', tone: 'risk' },
+  high: { label: 'Alto', icon: 'warning', tone: 'warning' },
+  general: { label: 'General', icon: 'info', tone: 'neutral' },
+  denied: { label: 'Denegado', icon: 'block', tone: 'neutral' },
 };
 
 const VALIDATION: Record<ValidationStatus, StatusPresentation> = {
-  valid: { label: 'Válido', icon: 'check_circle', tone: 'primary' },
-  pending: { label: 'Pendiente', icon: 'pending', tone: 'on-surface-variant' },
-  changed: { label: 'Cambió desde la validación', icon: 'change_circle', tone: 'tertiary' },
-  removed: { label: 'Eliminado del motor', icon: 'remove_circle_outline', tone: 'outline' },
+  valid: { label: 'Válido', icon: 'check_circle', tone: 'positive' },
+  pending: { label: 'Pendiente', icon: 'pending', tone: 'neutral' },
+  changed: { label: 'Cambió desde la validación', icon: 'change_circle', tone: 'warning' },
+  removed: { label: 'Eliminado del motor', icon: 'remove_circle_outline', tone: 'neutral' },
 };
 
 export function riskStatus(risk: RiskLevel): StatusPresentation {
@@ -320,24 +322,24 @@ export function validationStatus(status: ValidationStatus): StatusPresentation {
 
 export function tlsStatus(tls: TlsMode): StatusPresentation | null {
   return tls === 'unverified'
-    ? { label: 'Certificado sin verificar', icon: 'gpp_maybe', tone: 'tertiary' }
+    ? { label: 'Certificado sin verificar', icon: 'gpp_maybe', tone: 'warning' }
     : null;
 }
 
 export const UNAVAILABLE_STATUS: StatusPresentation = {
   label: 'Datos no disponibles',
   icon: 'warning',
-  tone: 'tertiary',
+  tone: 'warning',
 };
 
 export const STALE_STATUS: StatusPresentation = {
   label: 'Sin actualizar',
   icon: 'warning',
-  tone: 'tertiary',
+  tone: 'warning',
 };
 
 export const DELETED_DEVICE_STATUS: StatusPresentation = {
   label: 'Equipo eliminado',
   icon: 'delete',
-  tone: 'on-surface-variant',
+  tone: 'neutral',
 };

@@ -1,3 +1,4 @@
+import { StatusTone } from '../../../shared/models/status-tone';
 import { longDate, monthName, parseLocal } from './agenda-time';
 import {
   CompletionResult,
@@ -11,23 +12,23 @@ import {
 } from './agenda.models';
 
 /**
- * A state as icon + text (SPEC-0006 RNF-2, §11): the Material 3 colour role (`tone`) is applied to both and the meaning is
- * always carried by the text, never by the colour alone.
+ * A state as icon + text (SPEC-0006 RNF-2, §11) on a tinted label of its tone (SPEC-0010 RF-8); the meaning is always carried
+ * by the text, never by the colour alone.
  */
 export interface StatusPresentation {
   readonly icon: string;
   readonly label: string;
-  readonly tone: 'primary' | 'tertiary' | 'error' | 'on-surface-variant' | 'outline';
+  readonly tone: StatusTone;
 }
 
 const STATUS: Record<EventStatus, StatusPresentation> = {
-  draft: { icon: 'edit_note', label: 'Borrador', tone: 'on-surface-variant' },
-  scheduled: { icon: 'event_available', label: 'Programada', tone: 'primary' },
-  completed: { icon: 'check_circle', label: 'Completada', tone: 'tertiary' },
-  cancelled: { icon: 'cancel', label: 'Cancelada', tone: 'outline' },
+  draft: { icon: 'edit_note', label: 'Borrador', tone: 'neutral' },
+  scheduled: { icon: 'event_available', label: 'Programada', tone: 'info' },
+  completed: { icon: 'check_circle', label: 'Completada', tone: 'positive' },
+  cancelled: { icon: 'cancel', label: 'Cancelada', tone: 'neutral' },
 };
 
-const OVERDUE: StatusPresentation = { icon: 'warning', label: 'Vencida', tone: 'error' };
+const OVERDUE: StatusPresentation = { icon: 'warning', label: 'Vencida', tone: 'risk' };
 
 /** "Vencida" is not a state but a mark (RF-8): it is shown together with the state, not instead of it. */
 export function statusPresentation(status: EventStatus): StatusPresentation {
@@ -39,10 +40,10 @@ export const overduePresentation = (): StatusPresentation => OVERDUE;
 export const statusLabel = (status: EventStatus): string => STATUS[status].label;
 
 const OUTLOOK: Record<OutlookStatus, StatusPresentation> = {
-  'not-published': { icon: 'event_busy', label: 'No publicado', tone: 'on-surface-variant' },
-  pending: { icon: 'sync', label: 'Pendiente', tone: 'tertiary' },
-  published: { icon: 'mark_email_read', label: 'Publicado', tone: 'primary' },
-  error: { icon: 'error', label: 'Error', tone: 'error' },
+  'not-published': { icon: 'event_busy', label: 'No publicado', tone: 'neutral' },
+  pending: { icon: 'sync', label: 'Pendiente', tone: 'warning' },
+  published: { icon: 'mark_email_read', label: 'Publicado', tone: 'positive' },
+  error: { icon: 'error', label: 'Error', tone: 'risk' },
 };
 
 export function outlookPresentation(status: OutlookStatus): StatusPresentation {

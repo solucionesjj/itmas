@@ -1,3 +1,4 @@
+import { StatusTone } from '../../../shared/models/status-tone';
 import { DeviceOwner, DeviceStatus, DeviceType } from './inventory.models';
 
 /** Spanish labels of the normalized values of the inventory (SPEC-0003 RF-18). Unknown values are shown as received. */
@@ -55,6 +56,15 @@ export function label(kind: LabelKind, value: string | null | undefined): string
 export const typeLabel = (type: DeviceType): string => label('type', type);
 
 export const statusLabel = (status: DeviceStatus): string => label('status', status);
+
+/** Tone of a device state (SPEC-0010 RF-8): a pending enrolment is a warning; an unknown state is neutral. */
+const STATUS_TONES: Record<DeviceStatus, StatusTone> = {
+  active: 'positive',
+  pending: 'warning',
+  deleted: 'neutral',
+};
+
+export const statusTone = (status: DeviceStatus): StatusTone => STATUS_TONES[status] ?? 'neutral';
 
 /** Text of the "Usuario asociado" column (RF-12): collaborator name, else e-mail, else the definition's wording. */
 export function ownerLabel(owner: DeviceOwner | null): string {

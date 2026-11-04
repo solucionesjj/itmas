@@ -152,7 +152,7 @@ Código fuente → Configuración (appsettings, sin secretos) → Variables de e
 | CSRF | Cookie `SameSite=Strict` + cabecera `X-CSRF` obligatoria en métodos mutantes de `/api` + validación de `Origin`. |
 | CORS | Cerrado por defecto (mismo origen vía proxy). Solo se abre con `Cors:AllowedOrigins` explícito. |
 | Cabeceras API | `X-Content-Type-Options`, `X-Frame-Options: DENY`, `CSP: default-src 'none'`, `Referrer-Policy: no-referrer`, `Cross-Origin-Resource-Policy`, `Permissions-Policy`, `Cache-Control: no-store`. Sin cabecera `Server`. |
-| Cabeceras SPA (nginx) | CSP estricta (`script-src 'self'`, `frame-ancestors 'none'`, `form-action` limitado a Entra ID), `nosniff`, `DENY`, `COOP`. `server_tokens off`. |
+| Cabeceras SPA (nginx) | CSP estricta (`script-src 'self'`, `font-src 'self'`, `frame-ancestors 'none'`, `form-action` limitado a Entra ID), `nosniff`, `DENY`, `COOP`. `server_tokens off`. Ningún tercero en la CSP: las fuentes (Poppins y Material Symbols) se sirven desde el propio origen con procedencia y sumas comprobadas (SPEC-0010 RF-15, `fonts-provenance.spec.ts`), nunca como `data:`. |
 | Rate limiting | 300 req/min por usuario (o IP si anónimo); 20/min por IP en `/auth/login`; por credencial de equipo, 12 inventarios/h y 120 instantáneas SQL/h; 60 operaciones/h, globales en el proceso y contadas después de autorizar, a programar, cancelar, sincronizar y modificar lo programado de la agenda. `429` + `Retry-After`. |
 | Concurrencia | Políticas con `ETag`/`If-Match` (`412` si cambió, `428` si falta); cambios de autorización serializados en la base de datos. |
 | Host / proxy | `AllowedHosts` restringido; `X-Forwarded-*` solo se aceptan desde la subred del proxy. |

@@ -60,9 +60,9 @@
 @if (failed()) {
   <div class="error-state" role="alert">
     <app-sql-status
-      [status]="{ label: 'No se pudieron cargar las cuentas.', icon: 'error', tone: 'error' }"
+      [status]="{ label: 'No se pudieron cargar las cuentas.', icon: 'error', tone: 'risk' }"
     />
-    <button mat-stroked-button (click)="retry()">
+    <button class="itmas-glass-button" mat-stroked-button (click)="retry()">
       <mat-icon>refresh</mat-icon>
       Reintentar
     </button>
@@ -70,6 +70,7 @@
 } @else {
   <div class="table-container">
     <table
+      class="itmas-table"
       mat-table
       matSort
       matSortActive="name"

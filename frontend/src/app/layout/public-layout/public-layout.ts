@@ -5,18 +5,21 @@ import { MatToolbar } from '@angular/material/toolbar';
 import { RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from '../../auth/services/auth-service';
 import { APP_CONFIG } from '../../core/config/app-config';
+import { Logo } from '../../shared/components/logo/logo';
 import { ThemeToggle } from '../theme-toggle/theme-toggle';
 
 /**
- * Frame of the public pages (user manual, SPEC-0004): no session required. Offers the way into the application, or
+ * Frame of the public pages (user manual, SPEC-0004): no session required. Brand background and an opaque card around the
+ * content (SPEC-0010 RF-9). Offers the way into the application, or
  * back to it, using the session state the SPA already loads at start-up.
  */
 @Component({
   selector: 'app-public-layout',
-  imports: [MatToolbar, MatButton, MatIcon, RouterLink, RouterOutlet, ThemeToggle],
+  imports: [MatToolbar, MatButton, MatIcon, RouterLink, RouterOutlet, ThemeToggle, Logo],
+  host: { class: 'itmas-brand-background' },
   template: `
-    <mat-toolbar class="top-app-bar">
-      <a class="app-name" routerLink="/manual">{{ appName }}</a>
+    <mat-toolbar class="top-app-bar itmas-bar">
+      <a class="app-name" routerLink="/manual"><app-logo /></a>
       <span class="spacer"></span>
       <app-theme-toggle />
       @if (auth.isAuthenticated()) {
@@ -32,7 +35,9 @@ import { ThemeToggle } from '../theme-toggle/theme-toggle';
       }
     </mat-toolbar>
     <main class="content">
-      <router-outlet />
+      <div class="page itmas-opaque-card itmas-enter">
+        <router-outlet />
+      </div>
     </main>
   `,
   styles: `
@@ -43,9 +48,12 @@ import { ThemeToggle } from '../theme-toggle/theme-toggle';
     }
     .top-app-bar {
       position: sticky;
-      top: 0;
+      top: 12px;
       z-index: 2;
       gap: 8px;
+      box-sizing: border-box;
+      width: auto;
+      margin: 12px 12px 0;
     }
     .app-name {
       color: inherit;
@@ -55,8 +63,19 @@ import { ThemeToggle } from '../theme-toggle/theme-toggle';
       flex: 1 1 auto;
     }
     .content {
-      padding: 24px 16px;
+      padding: 24px 12px;
       box-sizing: border-box;
+    }
+    .page {
+      box-sizing: border-box;
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 24px 32px;
+    }
+    @media (max-width: 599px) {
+      .page {
+        padding: 16px;
+      }
     }
   `,
 })

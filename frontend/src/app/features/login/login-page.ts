@@ -8,10 +8,12 @@ import { StatusMessage } from '../../shared/components/status-message/status-mes
 
 @Component({
   selector: 'app-login-page',
+  // Brand background of the public pages (SPEC-0010 RF-9); texts, actions and the redirection to Entra ID do not change.
+  host: { class: 'itmas-brand-background' },
   imports: [MatButton, MatIcon, RouterLink, StatusMessage],
   template: `
-    <app-status-message icon="lock" [title]="appName" [description]="message()">
-      <button actions mat-flat-button (click)="signIn()">
+    <app-status-message icon="lock" brand [title]="appName" [description]="message()">
+      <button class="itmas-cta" actions mat-flat-button (click)="signIn()">
         <mat-icon>login</mat-icon>
         Iniciar sesión con Microsoft
       </button>

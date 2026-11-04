@@ -5,7 +5,7 @@
  */
 export const environment = {
   production: true,
-  appName: 'ITMAS3',
+  appName: 'ITMas',
   apiBaseUrl: '/api',
   authBaseUrl: '/auth',
 };

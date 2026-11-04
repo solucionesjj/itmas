@@ -19,12 +19,12 @@
       }}
     </span>
     @if (failed === 'error') {
-      <button mat-stroked-button type="button" (click)="reload()">
+      <button class="itmas-glass-button" mat-stroked-button type="button" (click)="reload()">
         <mat-icon>refresh</mat-icon>
         Reintentar
       </button>
     }
-    <a mat-stroked-button routerLink="/agenda">Volver a la agenda</a>
+    <a class="itmas-glass-button" mat-stroked-button routerLink="/agenda">Volver a la agenda</a>
   </div>
 }
 
@@ -36,13 +36,18 @@
 
   <div class="actions">
     @if (canEdit()) {
-      <a mat-stroked-button [routerLink]="['/agenda/events', ev.id, 'edit']">
+      <a
+        class="itmas-glass-button"
+        mat-stroked-button
+        [routerLink]="['/agenda/events', ev.id, 'edit']"
+      >
         <mat-icon>edit</mat-icon>
         Editar
       </a>
     }
     @if (canEditSeries()) {
       <a
+        class="itmas-glass-button"
         mat-stroked-button
         [routerLink]="['/agenda/events', ev.id, 'edit']"
         [queryParams]="{ scope: 'series' }"
@@ -52,7 +57,7 @@
       </a>
     }
     @if (canSchedule()) {
-      <button mat-flat-button type="button" (click)="schedule(ev)">
+      <button class="itmas-cta" mat-flat-button type="button" (click)="schedule(ev)">
         <mat-icon>event_available</mat-icon>
         Programar
       </button>
@@ -61,26 +66,32 @@
       <span
         [matTooltip]="hasStarted() ? '' : 'Solo se puede registrar desde el inicio programado.'"
       >
-        <button mat-flat-button type="button" [disabled]="!hasStarted()" (click)="complete(ev)">
+        <button
+          class="itmas-cta"
+          mat-flat-button
+          type="button"
+          [disabled]="!hasStarted()"
+          (click)="complete(ev)"
+        >
           <mat-icon>task_alt</mat-icon>
           Registrar ejecución
         </button>
       </span>
     }
     @if (canEditCompletion()) {
-      <button mat-stroked-button type="button" (click)="complete(ev)">
+      <button class="itmas-glass-button" mat-stroked-button type="button" (click)="complete(ev)">
         <mat-icon>edit_note</mat-icon>
         Editar notas y evidencia
       </button>
     }
     @if (canCancel()) {
-      <button mat-stroked-button type="button" (click)="cancel(ev)">
+      <button class="itmas-glass-button" mat-stroked-button type="button" (click)="cancel(ev)">
         <mat-icon>event_busy</mat-icon>
         Cancelar actividad
       </button>
     }
     @if (canSync()) {
-      <button mat-stroked-button type="button" (click)="sync(ev)">
+      <button class="itmas-glass-button" mat-stroked-button type="button" (click)="sync(ev)">
         <mat-icon>sync</mat-icon>
         Sincronizar de nuevo
       </button>
@@ -99,7 +110,7 @@
     <mat-card appearance="outlined">
       <mat-card-header><mat-card-title>Datos</mat-card-title></mat-card-header>
       <mat-card-content>
-        <dl class="facts">
+        <dl class="facts itmas-inner">
           <dt>Tipo</dt>
           <dd>
             {{ ev.type.name }}
@@ -168,7 +179,12 @@
             <p class="error" role="alert">{{ message }}</p>
           }
           <p class="supporting-text">Los cambios se guardan al instante.</p>
-          <button mat-stroked-button type="button" (click)="doneEditingTags()">
+          <button
+            class="itmas-glass-button"
+            mat-stroked-button
+            type="button"
+            (click)="doneEditingTags()"
+          >
             <mat-icon>check</mat-icon>
             Listo
           </button>
@@ -192,7 +208,12 @@
             <p class="supporting-text">Sin etiquetas</p>
           }
           @if (canEditTags()) {
-            <button mat-stroked-button type="button" (click)="editTags()">
+            <button
+              class="itmas-glass-button"
+              mat-stroked-button
+              type="button"
+              (click)="editTags()"
+            >
               <mat-icon>{{ ev.tags.length > 0 ? 'edit' : 'add' }}</mat-icon>
               {{ ev.tags.length > 0 ? 'Editar etiquetas' : 'Añadir etiquetas' }}
             </button>
@@ -210,7 +231,7 @@
             <span>Outlook no configurado: programar solo cambia el estado de la actividad.</span>
           </p>
         }
-        <dl class="facts">
+        <dl class="facts itmas-inner">
           <dt>Estado</dt>
           <dd><app-outlook-status [status]="ev.outlook.status" /></dd>
           @if (ev.outlook.statusAt) {
@@ -230,6 +251,7 @@
         </dl>
         @if (ev.outlook.webLink && safeHref(ev.outlook.webLink); as href) {
           <a
+            class="itmas-glass-button"
             mat-stroked-button
             [href]="href"
             target="_blank"
@@ -247,7 +269,7 @@
       <mat-card appearance="outlined">
         <mat-card-header><mat-card-title>Ejecución</mat-card-title></mat-card-header>
         <mat-card-content>
-          <dl class="facts">
+          <dl class="facts itmas-inner">
             <dt>Resultado</dt>
             <dd>{{ resultText(completion.result) }}</dd>
             <dt>Fecha y hora reales</dt>
@@ -290,7 +312,7 @@
     <mat-card appearance="outlined">
       <mat-card-header><mat-card-title>Registro</mat-card-title></mat-card-header>
       <mat-card-content>
-        <dl class="facts">
+        <dl class="facts itmas-inner">
           <dt>Creada</dt>
           <dd>
             {{ instant(ev.createdAt) }}

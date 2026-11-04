@@ -52,7 +52,7 @@ Detalle completo en [ARCHITECTURE.md](ARCHITECTURE.md) y [SECURITY.md](SECURITY.
 
 | Capa | Tecnología | Versión |
 |---|---|---|
-| Frontend | Angular, Angular Material (Material Design 3), TypeScript, Vitest | 22.2 / 22.2 / 6.0 |
+| Frontend | Angular, Angular Material (Material 3 con la identidad visual de ITMas, ADR-0021), TypeScript, Vitest | 22.2 / 22.2 / 6.0 |
 | Calendarios de la agenda | FullCalendar (solo complementos estándar, ADR-0017) | 7.1 |
 | Runtime de build frontend | Node.js LTS | 24 |
 | Servidor web / proxy | nginx (imagen *unprivileged*) | stable |

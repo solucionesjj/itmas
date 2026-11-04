@@ -22,9 +22,9 @@
 } @else if (failed()) {
   <div class="error-state" role="alert">
     <app-sql-status
-      [status]="{ label: 'No se pudo cargar la instancia.', icon: 'error', tone: 'error' }"
+      [status]="{ label: 'No se pudo cargar la instancia.', icon: 'error', tone: 'risk' }"
     />
-    <button mat-stroked-button (click)="retry()">
+    <button class="itmas-glass-button" mat-stroked-button (click)="retry()">
       <mat-icon>refresh</mat-icon>
       Reintentar
     </button>
@@ -52,7 +52,7 @@
 
   <mat-card appearance="outlined">
     <mat-card-content>
-      <dl class="facts">
+      <dl class="facts itmas-inner">
         <dt>Motor</dt>
         <dd>
           {{ engineLabel(instance.engine, instance.version) }}
@@ -88,7 +88,7 @@
               [status]="{
                 label: instance.pendingCriticalCount + ' críticos',
                 icon: 'error',
-                tone: 'error',
+                tone: 'risk',
               }"
             />
           }
@@ -113,7 +113,7 @@
         <mat-panel-title>Bases de datos ({{ instance.databases.length }})</mat-panel-title>
       </mat-expansion-panel-header>
       <ng-template matExpansionPanelContent>
-        <dl class="facts">
+        <dl class="facts itmas-inner">
           @for (database of instance.databases; track database.name) {
             <dt>{{ database.name }}</dt>
             <dd>
@@ -129,7 +129,7 @@
   }
 
   <mat-tab-group
-    class="tabs"
+    class="tabs card-section itmas-glass-card"
     [selectedIndex]="selectedTab()"
     (selectedIndexChange)="onTabChange($event)"
     mat-stretch-tabs="false"

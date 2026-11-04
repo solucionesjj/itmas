@@ -43,7 +43,12 @@ export interface AssignPolicyDialogData {
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button mat-dialog-close>Cancelar</button>
-      <button mat-flat-button [disabled]="!selected()" [mat-dialog-close]="selected()">
+      <button
+        class="itmas-cta"
+        mat-flat-button
+        [disabled]="!selected()"
+        [mat-dialog-close]="selected()"
+      >
         Asignar
       </button>
     </mat-dialog-actions>

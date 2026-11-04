@@ -1,4 +1,11 @@
-import { countryName, label, ownerLabel, statusLabel, typeLabel } from './inventory-labels';
+import {
+  countryName,
+  label,
+  ownerLabel,
+  statusLabel,
+  statusTone,
+  typeLabel,
+} from './inventory-labels';
 
 describe('inventory labels', () => {
   it('translates the normalized values', () => {
@@ -24,5 +31,14 @@ describe('inventory labels', () => {
   it('names countries in Spanish', () => {
     expect(countryName('CO')).toBe('Colombia');
     expect(countryName(null)).toBeNull();
+  });
+});
+
+// SPEC-0010 CA-14 and RF-8: the tone of every device state; a pending enrolment is a warning, never positive or informative.
+describe('device state tones (SPEC-0010 CA-14)', () => {
+  it('assigns the tones of RF-8', () => {
+    expect(statusTone('active')).toBe('positive');
+    expect(statusTone('pending')).toBe('warning');
+    expect(statusTone('deleted')).toBe('neutral');
   });
 });

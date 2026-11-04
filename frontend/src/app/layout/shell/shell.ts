@@ -17,11 +17,15 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { map } from 'rxjs';
 import { AuthService } from '../../auth/services/auth-service';
 import { APP_CONFIG } from '../../core/config/app-config';
+import { Logo } from '../../shared/components/logo/logo';
 import { NAVIGATION } from '../navigation/navigation-items';
 import { ThemeToggle } from '../theme-toggle/theme-toggle';
 import { UserMenu } from '../user-menu/user-menu';
 
-/** Authenticated application frame: top app bar, navigation drawer and content outlet. */
+/**
+ * Authenticated application frame (SPEC-0010 RF-3, RF-4): product background, navigation island with the logo, metallic top bar
+ * and content outlet.
+ */
 @Component({
   selector: 'app-shell',
   imports: [
@@ -42,6 +46,7 @@ import { UserMenu } from '../user-menu/user-menu';
     RouterLinkActive,
     ThemeToggle,
     UserMenu,
+    Logo,
   ],
   templateUrl: './shell.html',
   styleUrl: './shell.scss',

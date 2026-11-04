@@ -1,7 +1,16 @@
-// Material Design 3 theme using the default Angular Material palettes, typography and density.
-// Light and dark schemes come from the same theme: `mat.theme` emits `light-dark()` values that follow
-// the active `color-scheme`. Do not override Material tokens here (constitution §6).
+// Theme layer of ITMas (constitution §6.2 and §6.3, ADR-0021, SPEC-0010): the only place where the visual identity lives.
+// A single Material 3 theme with palettes generated from the brand (`_theme-colors.scss`, by `ng generate
+// @angular/material:theme-color`), Poppins and density 0. Light and dark schemes come from the same theme: `mat.theme` and
+// the `--itmas-*` tokens emit `light-dark()` values that follow the active `color-scheme` (ThemeService sets [data-theme]).
+// Components outside this layer only read `--mat-sys-*` and `--itmas-*` and apply the `itmas-*` classes (styles-guard.spec.ts).
 @use '@angular/material' as mat;
+@use './styles/theme-colors' as colors;
+@use './styles/tokens';
+@use './styles/fonts';
+@use './styles/material-overrides' as overrides;
+@use './styles/surfaces';
+@use './styles/backgrounds';
+@use './styles/motion';
 
 html {
   height: 100%;
@@ -11,13 +20,21 @@ html {
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        primary: colors.$primary-palette,
+        tertiary: colors.$tertiary-palette,
       ),
-      typography: Roboto,
+      typography: (
+        plain-family: tokens.$font-family,
+        brand-family: tokens.$font-family,
+        bold-weight: 700,
+        medium-weight: 500,
+        // Body text in Poppins 300 (RF-6); fields are 400 (`_material-overrides.scss`).
+        regular-weight: 300,
+      ),
       density: 0,
     )
   );
+  @include overrides.theme;
 
   &[data-theme='light'] {
     color-scheme: light;
@@ -34,4 +51,9 @@ body {
   font: var(--mat-sys-body-medium);
   margin: 0;
   height: 100%;
+}
+
+// Page titles in the primary colour (RF-6); their weight comes from the headline roles.
+h1 {
+  color: var(--mat-sys-primary);
 }

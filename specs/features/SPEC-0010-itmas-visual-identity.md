@@ -2,7 +2,7 @@
 id: SPEC-0010
 title: Identidad visual de ITMas
 type: feature
-status: Approved
+status: Implemented
 owner: jmartinez
 created: 2026-11-03
 approved-by: jmartinez (2026-11-03)
@@ -168,7 +168,8 @@ funcionalidad, los permisos, las rutas ni los textos de los procesos.
 - **RNF-5 Mantenibilidad.**
   - Solo las API públicas de *theming* de Angular Material.
   - El CSS de componentes cumple §6.3 (constitución 4.0.0), con las excepciones de encapsulación que enumera ADR-0021.
-- **RNF-6 Accesibilidad de componentes.** No cambian el foco visible, el orden de tabulación, los roles ARIA ni los nombres accesibles.
+- **RNF-6 Accesibilidad de componentes.** No cambian el foco visible, los roles ARIA ni los nombres accesibles. El orden de tabulación solo cambia en el
+  *shell*: la barra superior pasa a la columna del contenido, así que el foco recorre primero la navegación y después la barra (Q-15).
 
 ## 6. Reglas de negocio
 No hay reglas de dominio. El significado que transmite cada estado (RF-8) lo decidió el solicitante (Q-11).
@@ -273,6 +274,8 @@ No hay reglas de dominio. El significado que transmite cada estado (RF-8) lo dec
   - `frontend/src/index.html`: se retiran las hojas y los `preconnect` de Google Fonts, y el `<title>` pasa a «ITMas».
 - **CSP:** `frontend/nginx/security-headers.inc.template` (solo retira orígenes, RNF-4).
 - **Layout:** `layout/shell/*`, `layout/public-layout/*`, `layout/user-menu/*` y `layout/theme-toggle/*` (solo aspecto). El logotipo, en `layout/` o en `shared/`.
+- **Plantillas de features (Q-15):** las páginas de listas, detalles y formularios y sus diálogos, solo para aplicar clases `itmas-*` y envoltorios
+  (tarjeta de las listas, `itmas-table`, `itmas-inner`, `itmas-cta`, `itmas-glass-button`), sin cambiar textos, lógica ni roles.
 - **Páginas públicas:** `features/login/login-page.ts`, `features/errors/*` y `shared/components/status-message/*`.
 - **Estados (RF-8):**
   - `features/sql-audit/data/sql-audit-labels.ts` y `features/sql-audit/components/{sql-status,risk-chip}.ts`.
@@ -296,20 +299,22 @@ No hay reglas de dominio. El significado que transmite cada estado (RF-8) lo dec
 | `--itmas-glass-dark` | `#002D6B → #004AAD → #1270D6` (135°) con un velo blanco del 6 al 2 % | Igual | Barra lateral; sombra interior naranja al 20 % en el borde inferior |
 | `--itmas-bar` | Blanco del 82 al 78 %; `blur(50px) saturate(180%)` | Blanco del 10 al 6 % | Barra superior |
 | `--itmas-inner` (fondo / borde) | `rgba(255,255,255,.28)` / `rgba(255,255,255,.30)` | `rgba(255,255,255,.05)` / `rgba(255,255,255,.08)` | Elementos anidados |
-| `--itmas-cta` | `linear-gradient(135deg, #004AAD, #1270D6)` | Igual | Botón principal (RF-7) y avatar |
+| `--itmas-cta` | `linear-gradient(135deg, #004AAD, #1270D6)` | Igual | Botón principal (RF-7) y recuadro del logotipo |
 | `--itmas-meter` | `#004AAD` sobre `rgba(0,74,173,.10)` | `#3BB6FF` sobre `rgba(255,255,255,.10)` | Barras de uso (color sólido por token) |
 | `--itmas-accent-detail` | `linear-gradient(180deg, #F2982A, #FA9241)` | Igual | Solo el indicador activo y el punto del logotipo |
 | `--itmas-font-mono`, `--itmas-icon-size-*` | Familia monoespaciada de hoy; 18 y 48 px | Igual | RF-13 |
 | Tono positivo (texto / fondo) | `#166534` / `rgba(34,197,94,.15)` | `#86EFAC` / `rgba(34,197,94,.15)` | RF-8 |
 | Tono de advertencia | `#854D0E` / `rgba(234,179,8,.15)` | `#FDE047` / `rgba(234,179,8,.15)` | RF-8 |
 | Tono de riesgo | `#B91C1C` / `rgba(239,68,68,.15)` | `#FCA5A5` / `rgba(239,68,68,.15)` | RF-8 |
-| Tono informativo | `#004AAD` / `rgba(59,130,246,.10)` | `#78B6FF` / `rgba(59,130,246,.15)` | RF-8 |
+| Tono informativo | `#004AAD` / `rgba(59,130,246,.10)` | `#8EC3FF` / `rgba(59,130,246,.15)` (antes `#78B6FF`, §19.1 Q-14) | RF-8 |
 | Tono neutro | Rol `on-surface-variant` / rol `surface-container-high` | Igual (roles) | RF-8 |
-| Neutros | Texto `#1C1C1E`, atenuado `#6B7280`, líneas `#E5E7EB` | Texto `#F5F7FA`, atenuado `#9CA3AF`, líneas `rgba(255,255,255,.08)` | `on-surface`, `on-surface-variant`, `outline-variant` (RF-1) |
+| Neutros | Texto `#1C1C1E`, atenuado `#5B6270` (antes `#6B7280`, Q-14), líneas `#E5E7EB` | Texto `#F5F7FA`, atenuado `#B4BAC5` (antes `#9CA3AF`, Q-14), líneas `rgba(255,255,255,.08)` | `on-surface`, `on-surface-variant`, `outline-variant` (RF-1) |
 | Paneles opacos | Roles `surface-container*` de la paleta generada | Igual | RF-5 |
 
 - **Radios:** 6 px (estados), 8 px (botones y campos), 12 px (anidados), 16 px (tarjetas) y 20 px (barras).
 - **Tonos de texto de los estados:** son más oscuros en claro y más claros en oscuro que los de partida, para alcanzar 4,5:1 sobre su fondo tintado.
+- **Elemento activo de la barra lateral:** su velo es negro al 16 % (`secondary-container` dentro del vidrio oscuro), no blanco: con velo blanco, el texto blanco
+  quedaba por debajo de 4,5:1 en la parte clara del degradado (Q-14).
 
 ## 12. Cambios de backend
 | Método | Ruta | Permiso | Request | Response | Errores |
@@ -354,7 +359,7 @@ Ninguno.
 | CA-1, CA-3, CA-5, CA-6, CA-9, CA-10, CA-13, CA-15 | Verificación en el navegador | Lista de comprobación en ambos esquemas: todas las rutas y sus diálogos, a 375 px, con las preferencias de movimiento y transparencia emuladas y en vista de impresión. Contraste medido con las herramientas del navegador (Q-9). |
 | CA-2, CA-11 | Verificación en el navegador | Compilación de producción servida por nginx: `index.html` compilado, red sin peticiones a Google, consola sin violaciones de CSP, presupuesto de `npm run build` y diff de `security-headers.inc.template`. |
 | CA-4 | frontend (unit) | `layout/shell/shell.spec.ts`: el elemento activo lleva `aria-current="page"` y el indicador. |
-| CA-7 | frontend (unit) | Pruebas actuales de `ThemeService` y del menú de tema, sin cambios de aserción. |
+| CA-7 | frontend (unit) y verificación en el navegador | Pruebas actuales de `ThemeService`, sin cambios de aserción; el menú «Cambiar tema», en el navegador. |
 | CA-8 | frontend (unit) | Nueva guarda `styles-guard.spec.ts`: recorre hojas y `styles` en línea de `frontend/src/app/**` y la capa de tema, con la lista de excepciones de ADR-0021. |
 | CA-12 | frontend (unit) | `npm test -- --watch=false` y `npm run build`. |
 | CA-14 | frontend (unit) | Pruebas de `sql-audit-labels.ts`, `agenda-labels.ts`, el estado de los equipos y `calendar-model.ts` con la asignación de RF-8. |
@@ -386,10 +391,165 @@ revisa que ningún proceso describa colores o posiciones que cambien.
 | `usar-el-manual` | Se revisa: menú lateral, botón de ayuda de la barra superior y opción **Imprimir** (RF-14, CA-15). | — | `/manual` |
 
 ## 18. Trazabilidad (al implementar)
-- Commits/PRs: …
-- Archivos principales: …
-- Pruebas: …
-- Manual de uso actualizado: …
+- **Commits/PRs:** `SPEC-0010: apply the ITMas visual identity on the Material theme layer and self-host the fonts` (2026-11-03, en `main`). La spec pasa a `Implemented` el 2026-11-03, tras la segunda ejecución de `/sdd-validate`, con las revisiones obligatorias hechas y el residual Q-16 aceptado.
+- **Archivos principales:**
+  - **Capa de tema:** `frontend/src/styles.scss` y `frontend/src/styles/` (`_theme-colors.scss`, generado por el esquemático con
+    `#004AAD`/`#1893F8`; `_tokens.scss`, `_material-overrides.scss`, `_surfaces.scss`, `_backgrounds.scss`, `_motion.scss` y `_fonts.scss`).
+  - **Fuentes (RF-15):** `frontend/public/fonts/poppins/` (5 pesos, `OFL.txt`, `SOURCE.md`) y `frontend/public/fonts/material-symbols/` (instancia
+    estática de peso 400, `LICENSE`, `SOURCE.md`). `frontend/src/index.html` sin Google Fonts y con `<title>ITMas</title>`;
+    `frontend/src/environments/*` con `appName: 'ITMas'`.
+  - **CSP (RNF-4):** `frontend/nginx/security-headers.inc.template`, solo sin `https://fonts.googleapis.com` ni `https://fonts.gstatic.com`.
+  - **Layout y páginas públicas:** `layout/shell/*` (islas, fondo de producto, `ariaCurrentWhenActive` y `itmas-nav-active`),
+    `layout/public-layout/public-layout.ts`, `shared/components/logo/logo.ts` (nuevo), `shared/components/status-message/status-message.ts`
+    (tarjeta opaca y modo `brand`), `features/login/login-page.ts` y `features/errors/*`.
+  - **Estados (RF-8):** `shared/models/status-tone.ts` (nuevo), `sql-audit-labels.ts`, `sql-status.ts`, `risk-chip.ts`, `agenda-labels.ts`,
+    `status-indicator.ts`, `event-status-chips.ts`, `warning-list.ts`, `calendar-model.ts`, `inventory-labels.ts` y `devices-page.*`; los
+    estados en línea de las páginas de auditoría SQL y de tipos de actividad.
+  - **Migración tipográfica (RF-13):** los archivos de RF-13 (son 10: `enrollment-code-dialog.ts` aparece dos veces en la lista de 11). La guarda encontró además 5 radios literales (`device-report-page.scss`,
+    `sql-audit-page.scss`, `manual-page.scss`, `audit-event-dialog.ts`, `enrollment-code-dialog.ts`), que pasan a `--mat-sys-corner-*`.
+- **Desviaciones y decisiones al implementar (2026-11-03):**
+  - **Plantillas de features (decisión del solicitante).** §8, RF-5 y RF-6 piden clases `itmas-*` en elementos que §11.1 y la tarea 5 no listaban.
+    El solicitante decidió aplicarlas: las listas (equipos, registros, instancias, agenda, tipos, usuarios, políticas, permisos y auditoría)
+    envuelven filtros, tabla y paginador en `.itmas-glass-card`; las secciones de la política y las pestañas de instancia y usuario también; las tablas
+    llevan `itmas-table`, los pares dato–valor `itmas-inner`, `mat-flat-button` `itmas-cta` y `mat-stroked-button` `itmas-glass-button`. Solo
+    atributos y envoltorios: no cambian textos, lógica ni roles.
+  - **`mat-card` por su selector de elemento.** El desenfoque y la elevación al pasar el cursor de las tarjetas se aplican en la capa de tema con el
+    selector público `mat-card` (no una clase interna); su color, borde, radio y sombra salen de `mat.card-overrides`.
+  - **Poppins:** un archivo por peso con los subconjuntos latino y latino extendido juntos (no dos por peso): menos `@font-face` en la hoja inicial.
+  - **Presupuesto (RNF-3):** 549,91 kB iniciales al cerrar (aviso en 550 kB; antes 534,42). Para caber: colores de los tokens en hexadecimal, sin prefijo
+    `-webkit-backdrop-filter` (un navegador sin `backdrop-filter` sin prefijo recibe la alternativa opaca de RNF-2), y sin *overrides* iguales a los
+    valores por defecto. Queda muy poco margen: la siguiente regla global que crezca lo superará.
+    **Seguimiento (revisión de `architecture`, A-2):** antes de la próxima spec que añada peso a la carga inicial, cargar de forma diferida las hojas
+    globales de FullCalendar (unos 21,8 kB en bruto; mitigación prevista en ADR-0017). No se sube el umbral de `angular.json` sin una nota de ADR.
+  - **Sin avatar.** El menú de la cuenta conserva su icono, como hoy; `--itmas-cta` se usa en el botón principal y en el recuadro del logotipo.
+  - **Logotipo** en `shared/components/logo/` (lo usan el *shell* y `status-message`); la guarda de CA-17 cubre también esa carpeta.
+- **Pruebas:**
+  - Nuevas: `frontend/src/app/styles-guard.spec.ts` (CA-8), `frontend/src/app/layout/layout-safety.spec.ts` (CA-17) y
+    `frontend/src/app/fonts-provenance.spec.ts` (CA-18).
+  - Ampliadas: `manual-consistency.spec.ts` (CA-16), `shell.spec.ts` (CA-4), `sql-audit-labels.spec.ts`, `agenda-labels.spec.ts`,
+    `inventory-labels.spec.ts` y `calendar-model.spec.ts` (CA-14; solo cambian aserciones de presentación de tonos, CA-12).
+  - `npm test -- --watch=false`: 58 archivos y 626 pruebas en verde (594 antes de endurecer las guardas tras la revisión de `testing`);
+    `npm run build` sin avisos de presupuesto; Prettier limpio. `cd backend && dotnet test`: 1193 pruebas en verde (el backend no cambia).
+  - Contraste calculado de los pares de §11.2 sobre el vidrio (sin orbes): todos ≥ 4,5:1 (el menor, el texto atenuado claro, 4,75:1; blanco sobre
+    `#1270D6`, 4,87:1).
+- **Verificación en el navegador (2026-11-03, `docker compose up --build`, nginx en `localhost:8088`):**
+  - **Hecho:** CA-1 (`--mat-sys-primary` es `rgb(0, 74, 173)` en claro y `rgb(176, 198, 255)`, tono 80, en oscuro; cuerpo Poppins 300). CA-2 y
+    CA-11 en las páginas públicas: `index.html` sin Google Fonts, ninguna petición a otros orígenes, fuentes servidas como `font/woff2` desde el
+    propio origen, CSP servida sin los dos orígenes y consola sin violaciones. CA-10: inicio de sesión, manual y página no encontrada con el fondo
+    de marca y tarjeta opaca; `returnUrl` se conserva. CA-13 en las páginas públicas (sin desplazamiento horizontal a 375 px).
+  - **Hecho con sesión** (tras renovar el *client secret* local de Entra ID, que fallaba con `AADSTS7000215`, ajeno a esta spec): CA-4 (barra
+    lateral de 240 px a 12 px del borde, barra superior de 56 px, indicador naranja de 3 × 20 px y `aria-current="page"`); listas en tarjeta de
+    vidrio con cabeceras en mayúsculas, en claro y en oscuro; estados de los equipos como etiquetas tintadas de radio 6 px (Activo, tono positivo);
+    CA-5 en el diálogo «Nuevo equipo» (superficie opaca, sin desenfoque, radio de 16 px; el botón «Crear» deshabilitado conserva el aspecto de
+    Material); CA-9 en la vista Mes en oscuro; CA-13 en Equipos (sin desplazamiento horizontal a 375 px y barra lateral superpuesta). El peso 400
+    de los iconos casa con Poppins.
+  - **Comprobaciones del navegador del 2026-11-03 (después de `/sdd-validate`):**
+    - **CA-11, hecho:** en las 13 rutas autenticadas y del manual no hay ningún evento `securitypolicyviolation`, ningún recurso de otro origen ni
+      errores en la consola. Se cargan Poppins 300 a 700 y Material Symbols 400 desde el propio origen.
+    - **CA-6, hecho por simulación:** el panel no emula las preferencias, así que se inyectaron como reglas normales los bloques
+      `@media (prefers-reduced-motion: reduce)` y `(prefers-reduced-transparency: reduce)` de la hoja compilada. Con el primero no queda ninguna
+      animación (orbes ni entrada). Con el segundo, tarjetas, `mat-card` y barra pasan a opacas (`surface-container-lowest`) y sin desenfoque.
+    - **CA-15, hecho por simulación** (con un hallazgo menor ya corregido, ver abajo) (bloque `@media print` inyectado, en tema oscuro): el esquema pasa a claro y el texto se
+      imprime oscuro sobre blanco, sin fondos de producto ni de marca, sin barra y sin vidrio. **Queda la sombra `level2` de la tarjeta opaca del
+      manual**: la regla de impresión que la quitaba salió al recortar bytes para el presupuesto.
+    - **CA-3, falló en la primera pasada (corregido, ver abajo).** Auditor de contraste en las 13 rutas, en ambos esquemas, y en los diálogos «Nuevo equipo» y evento de auditoría. Compone los
+      fondos semitransparentes sobre el peor caso de la página: los dos extremos del degradado y el orbe azul detrás, como pide RNF-1. Las rutas
+      del manual y los diálogos en oscuro cumplen. No cumplen:
+      - **(A) Texto atenuado claro (`#6B7280`, Q-10)** directamente sobre el fondo de página: 4,40:1 sobre `#F6F5F1` sin orbe y 3,64:1 con el orbe
+        azul. Afecta al texto de apoyo de todas las páginas.
+      - **(B) El mismo color sobre el vidrio con el orbe detrás:** 4,33:1 (cabeceras de tabla, etiquetas de los campos, texto secundario,
+        etiquetas de los *chips*).
+      - **(C) El mismo color sobre `surface-container`:** 4,15:1 (el JSON del diálogo de auditoría). Ocurre igual sobre `surface-container-high`
+        (avisos de auditoría SQL y del informe del equipo).
+      - **(D) Oscuro, sobre el vidrio con el orbe detrás:** texto atenuado `#9CA3AF` a 4,25:1 y tono informativo `#78B6FF` a 4,31:1.
+      - **(E) Elemento activo de la barra lateral:** el blanco sobre el velo blanco del 16 % queda entre 3,9 y 4,3:1 en el extremo derecho del
+        elemento cuando está en la mitad inferior del degradado, por ejemplo con ventanas bajas.
+      - **Con superficies opacas** (`prefers-reduced-transparency`) solo quedaban (A) y (E).
+      - (A) a (D) dependían de los tonos aprobados en Q-6 y Q-10: el solicitante los cambió en Q-14.
+    - **CA-7:** lo cubre `theme-service.spec.ts`. En el navegador se vio que todo cambia sin recargar al fijar `<html data-theme>`, que es lo que
+      hace `ThemeService`, pero no se pulsó el menú «Cambiar tema». Observación: §15 cita pruebas del menú de tema que no existen.
+    - **Correcciones (decisión Q-14 del solicitante, 2026-11-03):**
+      - Texto atenuado `#5B6270` en claro y `#B4BAC5` en oscuro (primero `#A8AFBB`), tono informativo oscuro `#8EC3FF` y velo negro al 16 % en el elemento activo de la
+        barra lateral (`_material-overrides.scss` y `_tokens.scss`).
+      - La segunda pasada encontró los números de los días de otro mes de FullCalendar, que pintaba `--fc-classic-faint-foreground` con el rol
+        `outline` (4,24:1). Ahora usan `on-surface-variant` (`agenda-calendar.scss`).
+      - La impresión vuelve a quitar la sombra de la tarjeta opaca (`_motion.scss`).
+    - **Resultado tras las correcciones: CA-3 cumple.**
+      - Se auditaron 1835 elementos por esquema en las 14 rutas, en claro y en oscuro, y los dos diálogos en ambos esquemas: ninguno por debajo
+        de su umbral.
+      - Con transparencia reducida tampoco hay ninguno.
+      - Único aviso del auditor: la barra de las páginas públicas en oscuro, porque el modelo supone el extremo claro del degradado de marca. Es un
+        falso positivo: la barra está fija arriba, sobre el extremo oscuro (`#002D6B`), con unos 9:1 en el texto y 4,9:1 en el icono.
+      - CA-15: la vista de impresión queda sin sombra, sin fondo y en esquema claro.
+      - Build: 549,89 kB iniciales en ese momento, sin aviso.
+- **Revisiones obligatorias (2026-11-03, independientes y de solo lectura, un agente por rol):**
+  - **`security`: aceptable.** Sin hallazgos críticos, altos ni medios. Comprobó que la CSP solo retira orígenes, las sumas y licencias de las fuentes,
+    la ausencia de *Reserved Font Name*, el renderizado sin `innerHTML` y la higiene del repositorio público. Checklist: `.env` ignorado, búsqueda de
+    secretos limpia y `npm audit --omit=dev` con 0 vulnerabilidades. Hallazgos y su tratamiento:
+    - S-1: nueva prueba «No third party serves fonts or styles» en `fonts-provenance.spec.ts`, sobre la CSP de nginx y sobre `index.html`.
+    - S-2: `optimization.fonts: false` en `angular.json`.
+    - S-3: tono neutro por defecto en `calendar-model.ts`.
+    - S-4: verificado aparte. Las tablas `name` de los 6 WOFF2, leídas con el `fontTools` de `SOURCE.md`, solo tienen el copyright, la familia y la
+      versión de origen, sin rutas ni nombres de equipo.
+    - S-5 (que una segunda persona reproduzca la transformación): **pendiente, recomendado en la próxima actualización de las fuentes.**
+    - S-6: informativo.
+  - **`architecture`: aceptable con cambios.** Hallazgos y su tratamiento:
+    - A-1: orden de tabulación, registrado como Q-15, y RNF-6 ajustado.
+    - A-2: seguimiento del presupuesto, anotado arriba.
+    - A-3: nota de implementación en ADR-0021, y lista permitida de elementos (`mat-card`) en la guarda.
+    - A-4: las tarjetas dentro de `.itmas-glass-card` ya no desenfocan dos veces.
+    - A-5: Q-15 y ampliación de §11.1.
+    - A-6: comentario en el mixin `on-glass-dark`.
+    - A-8: restos de texto corregidos (avatar, cifras, recuento de RF-13, ADR-0005 y la lista de *overrides* de ADR-0021).
+    - A-7, A-9 y A-10: informativos.
+  - **`testing`: aceptable con cambios.** Hallazgos y su tratamiento:
+    - T-1 y T-2: verificaciones completadas (ver abajo).
+    - T-3: §15 corregido.
+    - T-4 a T-9: `styles-guard.spec.ts` reescrita como funciones puras y probada con 35 violaciones conocidas. Detecta:
+      - los alias `>>>` y `/deep/` de `::ng-deep`, y cualquier `encapsulation:`;
+      - interpolación SCSS, propiedades anidadas, `@extend`, `@use`/`@import` que no sean `sass:` y selectores `[class*=mat-]`;
+      - `styles: [...]`, `<style>`, `style='…'`, `[attr.style]` y `style` en `host`;
+      - más propiedades de color y tipografía, y la gramática de colores aplicada a las variables `--fc-*`;
+      - comentarios y espacios dentro de `url(…)` y de cadenas, `@import 'https://…'` e `image-set(…)`;
+      - el naranja en forma `rgb()`.
+    - T-10: `layout-safety.spec.ts` no distingue mayúsculas de minúsculas.
+    - T-11: no admite archivos sueltos en `public/fonts/` y exige un `font-display: swap` por cada `@font-face`.
+    - T-13: los avisos usan `STALE_STATUS` y `UNAVAILABLE_STATUS` en lugar de literales.
+    - T-12: CA-6 y CA-15 siguen verificados por simulación.
+  - **Fuera de esta spec:** `features/agenda/agenda-safety.spec.ts` (SPEC-0006) tiene el mismo hueco de mayúsculas que T-10. Se propone corregirlo en un
+    commit `minor:` aparte.
+- **Verificación en el navegador tras las revisiones (2026-11-03, imagen reconstruida con `docker compose up --build -d frontend`):**
+  - **CA-3:**
+    - El auditor de contraste recorrió 22 rutas en claro y en oscuro: inicio; equipos con sus registros y su último informe; instancias SQL; agenda en
+      lista, Año, Mes y Semana; nueva actividad; nueva serie; tipos; usuarios y detalle de usuario; políticas y nueva política; permisos; auditoría;
+      manual e `iniciar-sesion`; acceso denegado; y página no encontrada.
+    - Son 2427 elementos por esquema y ninguno queda por debajo de su umbral. La segunda pasada encontró las etiquetas de los pares dato–valor del
+      informe en oscuro (4,25:1); el atenuado oscuro se aclaró a `#B4BAC5` (Q-14).
+    - Diálogos: «Nuevo equipo», evento de auditoría, editar tipo, editar permiso, asignar política y confirmación de eliminar. Esta última se cerró
+      con «Cancelar»; se comprobó que no se eliminó nada.
+  - **CA-5:** menú de acciones, lista de selección, *tooltip* y esos diálogos: todos opacos (`surface-container*`, `inverse-surface`), sin
+    desenfoque y con el contraste correcto en ambos esquemas.
+  - **CA-7:** con el menú «Cambiar tema», «Oscuro» se aplica sin recargar, se guarda en `itmas3.theme` y se conserva al recargar. Después se dejó
+    «Según el sistema».
+  - **CA-9:** Año, Mes y Semana cumplen el contraste en ambos esquemas, con el esquema cambiado en caliente.
+  - **CA-10:** se añade `/forbidden`, con fondo de marca y tarjeta opaca.
+  - **CA-13:** las 22 rutas a 375 px no tienen desplazamiento horizontal (página ni contenido), y la barra lateral está en modo superpuesto.
+  - **No alcanzables sin crear datos** (en el entorno local no hay políticas, actividades ni instancias SQL, y no se crearon):
+    - detalle y edición de política;
+    - detalle y edición de actividad, con sus diálogos de completar y cancelar;
+    - instancia y cuenta SQL;
+    - el diálogo del código de enrolamiento, que regenera el código.
+    Usan los mismos componentes, tokens y superficies que las pantallas auditadas.
+    **Riesgo residual aceptado por el solicitante el 2026-11-03 (Q-16)**, después de la segunda ejecución de `/sdd-validate`. Se revisarán cuando
+    haya datos.
+  - **CA-11 en el resto de rutas alcanzables (2026-11-03):** el detector de `securitypolicyviolation` también recorrió los informes del equipo, nueva
+    actividad, nueva serie, detalle de usuario, nueva política, acceso denegado, página no encontrada y un proceso del manual. No hubo ninguna
+    violación ni ningún recurso de otro origen. El único error de la consola fue un 400 de una petición de sondeo hecha a mano durante la verificación
+    (`agenda-events?year=…`), no de la aplicación.
+  - **Fuera de la tabla de `AGENTS.md`:** `git check-ignore .env`, la búsqueda de secretos y `npm audit` constan solo como resultado de la revisión de
+    `security` (arriba), porque `/sdd-validate` no puede ejecutarlos.
+- **Manual de uso actualizado:** revisados `iniciar-sesion` y `usar-el-manual`: siguen siendo correctos (barra superior, menú lateral, «Cambiar tema»,
+  botón de ayuda e **Imprimir** no cambian) y ningún proceso describe colores o posiciones que cambien. Sin cambios en `frontend/public/manual/`.
 
 ## 19. Decisiones y preguntas abiertas
 
@@ -409,6 +569,9 @@ revisa que ningún proceso describa colores o posiciones que cambien.
 | Q-11 | Tono de cada estado | **Aprobada** la tabla propuesta. | RF-8 y CA-14. |
 | Q-12 | Primario | **`#004AAD` exacto** en claro y tono 80 en oscuro. | RF-1 y CA-1. |
 | Q-13 | Ruta de la página y etiqueta de sección | **No** en esta spec. | RF-3 y RF-6. |
+| Q-14 | Contraste de los tonos aprobados (2026-11-03, tras la verificación de CA-3) | **Oscurecer el atenuado claro y aclarar el atenuado y el informativo oscuros**; velo oscuro en el elemento activo de la barra lateral. | §11.2: atenuado `#5B6270` / `#B4BAC5` e informativo oscuro `#8EC3FF`, que reemplazan a los de Q-6 y Q-10. El primer valor oscuro (`#A8AFBB`) se aclaró a `#B4BAC5` tras la segunda auditoría: daba 4,25:1 sobre el vidrio anidado del informe del equipo. El peor caso medido es 4,62:1. |
+| Q-15 | Alcance de las plantillas y orden de tabulación (2026-11-03, durante la implementación y tras la revisión de `architecture`) | **Aplicar las clases `itmas-*` en las plantillas de features** (listas en tarjeta de vidrio, tablas, pares dato–valor y botones) y **mantener el nuevo orden de tabulación del *shell***: navegación y después barra superior. | §11.1 amplía los archivos; RNF-6 recoge el orden de tabulación. |
+| Q-16 | Pantallas sin datos locales (2026-11-03, tras `/sdd-validate`) | **Aceptarlas como riesgo residual**: detalle y edición de política y de actividad (con los diálogos de completar y cancelar), instancia y cuenta SQL y el diálogo del código de enrolamiento no se recorrieron, porque el entorno local no tiene esos datos y no se crearon. | CA-3, CA-11 y CA-13 se dan por cubiertos en las 22 rutas alcanzables; estas pantallas usan los mismos componentes, tokens y superficies. |
 
 ### 19.2 Preguntas abiertas
 Ninguna.

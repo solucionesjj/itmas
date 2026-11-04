@@ -140,13 +140,14 @@ table {
   align-items: center;
   gap: 4px;
   font: var(--mat-sys-body-small);
-  color: var(--mat-sys-tertiary);
+  // Warnings take the warning tone, never the informative one (SPEC-0010 RF-8).
+  color: var(--itmas-tone-warning);
 }
 
 .warning mat-icon {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
+  font-size: var(--itmas-icon-size-sm);
+  width: var(--itmas-icon-size-sm);
+  height: var(--itmas-icon-size-sm);
 }
 
 .actions-cell {
@@ -189,4 +190,14 @@ table {
   color: var(--mat-sys-error);
   font: var(--mat-sys-body-medium);
   margin: 8px 0;
+}
+
+// The glass card of the lists and of the sections of a detail (SPEC-0010 §8, RF-5): its look comes from `.itmas-glass-card`.
+.list-card {
+  margin-top: 16px;
+  padding: 8px 16px 0;
+}
+
+.card-section {
+  padding: 8px 16px 16px;
 }

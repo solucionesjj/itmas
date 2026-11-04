@@ -106,10 +106,10 @@ import { SqlValidation, ValidationOutcome } from '../data/sql-validation';
                 ? 'No se pudieron cargar los permisos.'
                 : 'No se pudieron cargar los roles.',
             icon: 'error',
-            tone: 'error',
+            tone: 'risk',
           }"
         />
-        <button mat-stroked-button (click)="retry()">
+        <button class="itmas-glass-button" mat-stroked-button (click)="retry()">
           <mat-icon>refresh</mat-icon>
           Reintentar
         </button>

@@ -79,7 +79,12 @@ const DUPLICATE_NAME = 'Ya existe un equipo con este nombre.';
       }
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close [disabled]="saving()">Cancelar</button>
-        <button mat-flat-button type="submit" [disabled]="form.invalid || saving()">
+        <button
+          class="itmas-cta"
+          mat-flat-button
+          type="submit"
+          [disabled]="form.invalid || saving()"
+        >
           {{ data.mode === 'create' ? 'Crear' : 'Guardar' }}
         </button>
       </mat-dialog-actions>

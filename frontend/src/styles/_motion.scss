@@ -1,0 +1,113 @@
+// Motion, preferences and print of the ITMas identity (SPEC-0010 RF-12, RF-14, RNF-2, ADR-0021 point 6). Only `transform`,
+// `opacity`, `box-shadow` and `filter` are animated.
+@use './material-overrides' as overrides;
+
+// --- Entrance of the content: 12 px up and fade in, 0.4 s, staggered every 0.08 s. `.itmas-enter` is the routed content area;
+// the pieces of each page (its children's children) enter one after the other.
+@keyframes itmas-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.itmas-enter > * > * {
+  animation: itmas-enter 0.4s ease-out both;
+
+  @for $index from 1 through 6 {
+    &:nth-child(#{$index}) {
+      animation-delay: #{($index - 1) * 0.08}s;
+    }
+  }
+
+  &:nth-child(n + 7) {
+    animation-delay: 0.48s;
+  }
+}
+
+// --- Hover: cards and buttons rise 1 px and widen their shadow.
+mat-card,
+.itmas-glass-card,
+.itmas-cta,
+.itmas-glass-button {
+  transition:
+    transform 0.2s ease-out,
+    box-shadow 0.2s ease-out;
+}
+
+mat-card:hover,
+.itmas-glass-card:hover {
+  @include overrides.raised-card;
+  transform: translateY(-1px);
+}
+
+.itmas-glass-card:hover {
+  box-shadow: var(--itmas-glass-card-shadow-raised);
+}
+
+.itmas-cta:not(:disabled, [aria-disabled='true']):hover,
+.itmas-glass-button:not(:disabled, [aria-disabled='true']):hover {
+  transform: translateY(-1px);
+  box-shadow: var(--mat-sys-level2);
+}
+
+// --- Reduced motion (RNF-2, CA-6): no moving orbs, no entrance, no lift.
+@media (prefers-reduced-motion: reduce) {
+  .itmas-orb,
+  .itmas-enter > * > * {
+    animation: none;
+  }
+
+  mat-card,
+  .itmas-glass-card,
+  .itmas-cta,
+  .itmas-glass-button {
+    transition: none;
+  }
+}
+
+// --- Print (RF-14, CA-15): no backgrounds, orbs or glass; dark text on white.
+@media print {
+  html,
+  html[data-theme='dark'] {
+    color-scheme: light;
+  }
+
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .itmas-product-background {
+    display: none;
+  }
+
+  .itmas-brand-background {
+    background: none;
+  }
+
+  .itmas-opaque-card {
+    box-shadow: none;
+  }
+
+  html {
+    --itmas-glass-card: transparent;
+    --itmas-glass-card-shadow: none;
+    --itmas-glass-card-filter: none;
+    --itmas-glass-dark: none;
+    --itmas-glass-dark-shadow: none;
+    --itmas-bar: transparent;
+    --itmas-bar-filter: none;
+    --itmas-inner: transparent;
+    --itmas-opaque-card: transparent;
+  }
+
+  .itmas-enter > * > * {
+    animation: none;
+  }
+}

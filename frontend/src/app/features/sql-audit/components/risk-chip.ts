@@ -10,7 +10,7 @@ import { SqlStatus } from './sql-status';
   imports: [MatChipsModule, SqlStatus],
   template: `
     <mat-chip-set [attr.aria-label]="'Riesgo: ' + text()">
-      <mat-chip [disableRipple]="true">
+      <mat-chip class="itmas-status-chip" [disableRipple]="true">
         <app-sql-status [status]="status()" />
         @if (inherited()) {
           <span class="inherited"> (heredado)</span>

@@ -69,7 +69,12 @@ export interface CancelDialogData {
       }
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close [disabled]="saving()">Volver</button>
-        <button mat-flat-button type="submit" [disabled]="reason.invalid || saving()">
+        <button
+          class="itmas-cta"
+          mat-flat-button
+          type="submit"
+          [disabled]="reason.invalid || saving()"
+        >
           Cancelar actividad
         </button>
       </mat-dialog-actions>

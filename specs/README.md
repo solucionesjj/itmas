@@ -62,7 +62,7 @@ specs/
 | [SPEC-0007](features/SPEC-0007-sdd-tooling.md) | Skills y guardas para el flujo SDD | Implemented |
 | [SPEC-0008](features/SPEC-0008-outlook-activation.md) | Activación de Outlook para la agenda de infraestructura | Draft |
 | [SPEC-0009](features/SPEC-0009-single-server-production.md) | Producción en un único servidor Ubuntu con IP pública | In Progress |
-| [SPEC-0010](features/SPEC-0010-itmas-visual-identity.md) | Identidad visual de ITMas | Approved |
+| [SPEC-0010](features/SPEC-0010-itmas-visual-identity.md) | Identidad visual de ITMas | Implemented |
 | [ADR-0001](architecture/adr-0001-clean-architecture.md) | Clean Architecture en 4 proyectos | Accepted |
 | [ADR-0002](architecture/adr-0002-authentication-bff.md) | Autenticación BFF con Microsoft Entra ID | Accepted |
 | [ADR-0003](architecture/adr-0003-authorization-default-deny.md) | Autorización *default deny* basada en permisos | Accepted |

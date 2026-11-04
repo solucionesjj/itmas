@@ -57,7 +57,7 @@ type IndexState =
       @case ('error') {
         <div class="error-state" role="alert">
           <span>No se pudo cargar el manual.</span>
-          <button mat-stroked-button (click)="retry()">
+          <button class="itmas-glass-button" mat-stroked-button (click)="retry()">
             <mat-icon>refresh</mat-icon>
             Reintentar
           </button>

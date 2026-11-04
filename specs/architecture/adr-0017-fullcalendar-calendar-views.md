@@ -120,6 +120,14 @@ Fuerzas en juego:
   - Si el presupuesto inicial se agota, cargar las hojas de FullCalendar de forma diferida (estilos con `inject: false` y carga explícita).
   - Si el título del mes en una columna importa, ofrecer un acceso propio al mes en la vista Año.
 
+## Nota (SPEC-0010, 2026-11-03)
+Con la identidad visual de ITMas ([ADR-0021](adr-0021-itmas-visual-identity.md)), la integración no cambia: las variables `--fc-*` siguen
+asignadas a roles `--mat-sys-*`. Lo único que cambia son los **colores de las actividades** (`calendar-model.ts`): sus contenedores toman los
+tonos de los estados de SPEC-0010 RF-8 (`--itmas-tone-*`: Borrador y Cancelada neutros, Programada informativo, Completada positivo y Vencida de
+riesgo) en lugar de los contenedores `primary`, `tertiary` y `error`. Además, `--fc-classic-faint-foreground` (números de los días de otro
+mes) pasa del rol `outline` a `on-surface-variant`, porque `outline` no llegaba a 4,5:1 con la nueva paleta (SPEC-0010 CA-3). Con Poppins puede notarse algo más que `theme.css` fija tamaños de letra
+propios (limitación aceptada arriba).
+
 ## Impacto en la constitución
 Ninguno. §6.2 pide el componente oficial «siempre que exista uno adecuado» y Angular Material no tiene un calendario de eventos; §6.3 se
 respeta porque solo se mapean variables a `--mat-sys-*`; §12.5 se cumple con la justificación de este ADR (licencia MIT, mantenimiento

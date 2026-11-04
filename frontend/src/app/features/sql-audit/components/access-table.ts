@@ -72,6 +72,7 @@ export interface AccessToggle {
   template: `
     <div class="table-container">
       <table
+        class="itmas-table"
         mat-table
         matSort
         [matSortDisabled]="!sortable()"

@@ -51,7 +51,7 @@ comprobar el origen en Linux). El modelo de confianza real es que cualquier proc
 
 El CI no tiene ninguna credencial hacia el servidor. `harden-host.sh check` e `install-host-tasks.sh check` comparan lo instalado con `deploy/**`.
 
-## 2. Frontend (Angular 22 + Angular Material / Material Design 3)
+## 2. Frontend (Angular 22 + Angular Material con la identidad visual de ITMas)
 
 Aplicación *standalone*, *zoneless*, con signals y carga diferida de rutas.
 
@@ -70,13 +70,14 @@ frontend/src/app/
 │   ├── interceptors/        sessionExpiryInterceptor (401 → re-login)
 │   └── models/              SessionState, UserProfile
 ├── layout/                  Marco de la aplicación autenticada
-│   ├── shell/               Top app bar + navigation drawer + <router-outlet>
-│   ├── public-layout/       Marco de las páginas públicas (manual): barra con tema e "Iniciar sesión"
+│   ├── shell/               Fondo de producto + isla de navegación con el logotipo + barra superior + <router-outlet>
+│   ├── public-layout/       Marco de las páginas públicas (manual): fondo de marca, barra con tema e "Iniciar sesión"
 │   ├── navigation/          NAVIGATION_ITEMS (punto de extensión)
 │   ├── theme-toggle/        Selector Claro / Oscuro / Sistema
 │   └── user-menu/           Cuenta y cierre de sesión
 ├── shared/                  Componentes de presentación reutilizables (sin estado global)
-│   ├── components/          status-message, confirm-dialog
+│   ├── components/          status-message, confirm-dialog, logo (logotipo tipográfico)
+│   ├── models/              status-tone (tonos de los estados, SPEC-0010 RF-8)
 │   └── pipes/               bytes (tamaños en unidades binarias)
 ├── features/                Una carpeta por área funcional, cargada de forma diferida
 │   ├── home/  login/  errors/
@@ -101,16 +102,32 @@ frontend/src/app/
 `httpErrorInterceptor` normaliza errores a `ApiError` (Problem Details) y notifica los errores no recuperables →
 `sessionExpiryInterceptor` convierte un `401` de `/api` en "sesión expirada" y redirige a `/login`.
 
-**Temas.** `styles.scss` define un único tema M3 (`mat.theme` con paletas por defecto `azure`/`blue`, Roboto,
-densidad 0). `mat.theme` emite valores `light-dark()`; `html { color-scheme: light dark }` sigue al sistema y
-`ThemeService` fija `light` o `dark` con `<html data-theme>`. No hay tokens ni componentes personalizados.
+**Temas e identidad visual** ([ADR-0021](specs/architecture/adr-0021-itmas-visual-identity.md), [SPEC-0010](specs/features/SPEC-0010-itmas-visual-identity.md)).
+La identidad de ITMas vive solo en la **capa de tema**: `styles.scss` y sus parciales de `src/styles/`.
+- `_theme-colors.scss`: paletas generadas con `ng generate @angular/material:theme-color` desde `#004AAD` (primaria) y `#1893F8`
+  (terciaria). `styles.scss` define un único `mat.theme` con ellas, Poppins (300 a 700) y densidad 0.
+- `_material-overrides.scss`: `mat.theme-overrides` (primario `#004AAD` exacto en claro y tono 80 en oscuro, neutros y pesos de los
+  títulos) y `mat.<componente>-overrides` (tarjeta, *sidenav*, barra, tabla, botones, campos, diálogo, paginador y barra de progreso).
+- `_tokens.scss`: los tokens `--itmas-*` (vidrio, degradados, sombras, tonos de los estados, radios, iconos), todos con `light-dark()`,
+  y su alternativa opaca con `prefers-reduced-transparency` o sin `backdrop-filter`.
+- `_surfaces.scss`, `_backgrounds.scss` y `_motion.scss`: las clases `itmas-*` (vidrio de tarjeta, vidrio oscuro, barra metálica, elemento
+  anidado, botón principal, etiquetas de estado, logotipo, fondos de producto y de marca), el movimiento, `prefers-reduced-motion` y la
+  impresión. Solo fijan lo que Material no expone como token, sin `!important` ni clases internas de Material.
+- `_fonts.scss`: Poppins y una instancia estática de Material Symbols Outlined, servidas desde `public/fonts/` (mismo origen) con su
+  licencia y su `SOURCE.md` de procedencia. Ya no se usa Google Fonts.
+
+`mat.theme` y los tokens emiten valores `light-dark()`; `html { color-scheme: light dark }` sigue al sistema y `ThemeService` fija
+`light` o `dark` con `<html data-theme>`. Fuera de la capa de tema, el CSS de los componentes es solo de layout (constitución §6.3): lo
+comprueba `styles-guard.spec.ts`, con las dos excepciones de encapsulación de ADR-0021 (el `::ng-deep` del manual y el
+`ViewEncapsulation.None` del calendario). Los estados (equipos, auditoría SQL y agenda) son etiquetas tintadas de cinco tonos
+(`shared/models/status-tone.ts`).
 
 **Calendarios de la agenda** ([ADR-0017](specs/architecture/adr-0017-fullcalendar-calendar-views.md)). Las vistas Año, Mes y
 Semana las dibuja FullCalendar 7 (solo complementos estándar, versiones exactas) en `features/agenda/calendar/`. La página de la
 agenda es la dueña del estado (vista, periodo y filtros, en la dirección) y del acceso a la API; `app-agenda-calendar` solo dibuja lo
 que recibe y avisa cuando FullCalendar cambia de vista por sí mismo. Se carga con `@defer` solo al elegir un calendario; sus dos
 hojas van en los estilos globales y el tema `classic` se somete a Material asignando sus variables a `--mat-sys-*` (no hay colores
-propios). Las fechas son las locales de la organización, sin pasar por la zona del navegador; el calendario es de solo lectura.
+propios). Las actividades toman los tonos de los estados (`--itmas-tone-*`, SPEC-0010 RF-8). Las fechas son las locales de la organización, sin pasar por la zona del navegador; el calendario es de solo lectura.
 
 **Manual de uso** ([ADR-0013](specs/architecture/adr-0013-user-manual.md)). Su contenido son archivos estáticos en
 `frontend/public/manual/` (`index.json` + un `.md` por proceso) que el build copia a `/manual/`. La ruta `/manual` es

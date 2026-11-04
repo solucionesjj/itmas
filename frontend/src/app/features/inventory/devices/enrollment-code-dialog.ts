@@ -36,6 +36,7 @@ export interface EnrollmentCodeDialogData {
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button
+        class="itmas-glass-button"
         mat-stroked-button
         type="button"
         [cdkCopyToClipboard]="data.code"
@@ -44,7 +45,7 @@ export interface EnrollmentCodeDialogData {
         <mat-icon>content_copy</mat-icon>
         Copiar código
       </button>
-      <button mat-flat-button type="button" mat-dialog-close>Listo</button>
+      <button class="itmas-cta" mat-flat-button type="button" mat-dialog-close>Listo</button>
     </mat-dialog-actions>
   `,
   styles: `
@@ -52,12 +53,12 @@ export interface EnrollmentCodeDialogData {
       max-width: 520px;
     }
     .code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      font-size: 1.5rem;
-      letter-spacing: 0.08em;
+      font-family: var(--itmas-font-mono);
+      font-size: var(--mat-sys-headline-small-size);
+      letter-spacing: var(--mat-sys-headline-small-tracking);
       text-align: center;
       padding: 16px;
-      border-radius: 8px;
+      border-radius: var(--mat-sys-corner-small);
       background: var(--mat-sys-surface-container-high);
       user-select: all;
       overflow-wrap: anywhere;

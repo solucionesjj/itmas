@@ -38,7 +38,9 @@ import { Permission, PermissionMetadata } from '../data/authorization.models';
       </mat-dialog-content>
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close>Cancelar</button>
-        <button mat-flat-button type="submit" [disabled]="form.invalid">Guardar</button>
+        <button class="itmas-cta" mat-flat-button type="submit" [disabled]="form.invalid">
+          Guardar
+        </button>
       </mat-dialog-actions>
     </form>
   `,

@@ -18,7 +18,7 @@
           : 'No se pudieron cargar los tipos de actividad.'
       }}
     </span>
-    <button mat-stroked-button type="button" (click)="reload()">
+    <button class="itmas-glass-button" mat-stroked-button type="button" (click)="reload()">
       <mat-icon>refresh</mat-icon>
       Reintentar
     </button>
@@ -35,7 +35,7 @@
         }
       </span>
     </p>
-    <a mat-stroked-button [routerLink]="backLink()">Volver al detalle</a>
+    <a class="itmas-glass-button" mat-stroked-button [routerLink]="backLink()">Volver al detalle</a>
   } @else if (needsPublish()) {
     <p class="notice" role="status">
       <mat-icon aria-hidden="true">lock</mat-icon>
@@ -44,7 +44,7 @@
         y cancelar actividades.
       </span>
     </p>
-    <a mat-stroked-button [routerLink]="backLink()">Volver al detalle</a>
+    <a class="itmas-glass-button" mat-stroked-button [routerLink]="backLink()">Volver al detalle</a>
   } @else {
     @if (seriesMode()) {
       <p class="notice" role="status">
@@ -87,12 +87,18 @@
     }
 
     <div class="actions">
-      <button mat-flat-button type="button" [disabled]="saving()" (click)="save()">
+      <button
+        class="itmas-cta"
+        mat-flat-button
+        type="button"
+        [disabled]="saving()"
+        (click)="save()"
+      >
         {{ saveLabel() }}
       </button>
       <a mat-button [routerLink]="backLink()">Cancelar</a>
       @if (conflict()) {
-        <button mat-stroked-button type="button" (click)="reload()">
+        <button class="itmas-glass-button" mat-stroked-button type="button" (click)="reload()">
           <mat-icon>refresh</mat-icon>
           Recargar datos
         </button>

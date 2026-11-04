@@ -12,7 +12,7 @@ related: [SPEC-0000]
 > **Reemplazado en parte por [ADR-0021](adr-0021-itmas-visual-identity.md) (2026-11-03, constitución 4.0.0)** en las
 > paletas, la tipografía, la regla «sin sistema de diseño propio» y la carga de fuentes desde Google Fonts. Sigue vigente
 > en lo demás: un único tema con `light-dark()`, `ThemeService`, Material Symbols Outlined como conjunto de iconos y la
-> estructura de carpetas. Hasta implementar SPEC-0010, el tema y las fuentes siguen como describe este ADR.
+> estructura de carpetas. SPEC-0010 (2026-11-03) implementó el reemplazo: el tema y las fuentes son los de ADR-0021.
 
 ## Contexto
 Se exige Angular Material siguiendo Material Design 3 estándar, sin personalizar colores, tipografía, elevaciones

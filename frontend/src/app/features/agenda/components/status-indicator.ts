@@ -1,49 +1,31 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { statusClasses } from '../../../shared/models/status-tone';
 import { StatusPresentation } from '../data/agenda-labels';
 
 /**
- * A state as icon + text (SPEC-0006 RNF-2, §11.1): the Material 3 colour role is applied to both, and the meaning is always
- * carried by the text, never by the colour alone.
+ * A state as icon + text (SPEC-0006 RNF-2, §11.1) on a tinted label of its tone (SPEC-0010 RF-8, painted by the theme layer);
+ * the meaning is always carried by the text, never by the colour alone.
  */
 @Component({
   selector: 'app-agenda-status',
   imports: [MatIconModule],
-  host: { '[class]': "'tone-' + status().tone" },
+  host: { '[class]': 'classes()' },
   template: `
     <mat-icon aria-hidden="true">{{ status().icon }}</mat-icon>
     <span>{{ status().label }}</span>
   `,
   styles: `
-    :host {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      vertical-align: middle;
-    }
     mat-icon {
       flex: none;
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
-    }
-    :host(.tone-error) {
-      color: var(--mat-sys-error);
-    }
-    :host(.tone-tertiary) {
-      color: var(--mat-sys-tertiary);
-    }
-    :host(.tone-primary) {
-      color: var(--mat-sys-primary);
-    }
-    :host(.tone-on-surface-variant) {
-      color: var(--mat-sys-on-surface-variant);
-    }
-    :host(.tone-outline) {
-      color: var(--mat-sys-outline);
+      font-size: var(--itmas-icon-size-sm);
+      width: var(--itmas-icon-size-sm);
+      height: var(--itmas-icon-size-sm);
     }
   `,
 })
 export class AgendaStatus {
   readonly status = input.required<StatusPresentation>();
+
+  protected readonly classes = computed(() => statusClasses(this.status().tone));
 }

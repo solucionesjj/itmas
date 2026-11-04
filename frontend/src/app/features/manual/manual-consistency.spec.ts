@@ -39,6 +39,13 @@ describe('User manual consistency', () => {
     expect(routes.filter((route) => !explained.has(route))).toEqual([]);
   });
 
+  // SPEC-0010 CA-16: Angular's sanitization keeps `class`, and the global `itmas-*` classes must never reach the manual from Markdown.
+  it('never carries class or style attributes in the Markdown', () => {
+    expect(
+      files.filter((file) => /\b(class|style)\s*=/i.test(readFileSync(join(folder, file), 'utf8'))),
+    ).toEqual([]);
+  });
+
   it('starts every process with its title and links only to existing processes', () => {
     const ids = new Set(index.processes.map((process) => process.id));
     for (const process of index.processes) {

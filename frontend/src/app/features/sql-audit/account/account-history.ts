@@ -37,10 +37,10 @@ import { Paged, SqlAccountHistoryEntry } from '../data/sql-audit.models';
           [status]="{
             label: 'No se pudo cargar el registro de cambios.',
             icon: 'error',
-            tone: 'error',
+            tone: 'risk',
           }"
         />
-        <button mat-stroked-button (click)="retry()">
+        <button class="itmas-glass-button" mat-stroked-button (click)="retry()">
           <mat-icon>refresh</mat-icon>
           Reintentar
         </button>
@@ -48,6 +48,7 @@ import { Paged, SqlAccountHistoryEntry } from '../data/sql-audit.models';
     } @else {
       <div class="table-container">
         <table
+          class="itmas-table"
           mat-table
           [dataSource]="result()?.items ?? []"
           aria-label="Registro de cambios y validaciones"

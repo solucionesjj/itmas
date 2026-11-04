@@ -89,7 +89,7 @@ export interface PersonFilterOption {
       (tagsChange)="patch({ tags: $event })"
     />
     @if (active()) {
-      <button mat-stroked-button type="button" class="clear" (click)="clear()">
+      <button mat-stroked-button type="button" class="clear itmas-glass-button" (click)="clear()">
         <mat-icon>filter_alt_off</mat-icon>
         Limpiar filtros
       </button>

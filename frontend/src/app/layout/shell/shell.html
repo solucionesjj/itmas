@@ -1,48 +1,64 @@
-<mat-toolbar class="top-app-bar">
-  <button mat-icon-button (click)="drawer.toggle()" aria-label="Mostrar u ocultar la navegación">
-    <mat-icon>menu</mat-icon>
-  </button>
-  <span class="app-name">{{ appName }}</span>
-  <span class="spacer"></span>
-  <a mat-icon-button routerLink="/manual" aria-label="Manual de uso" matTooltip="Manual de uso">
-    <mat-icon>help</mat-icon>
-  </a>
-  <app-theme-toggle />
-  <app-user-menu />
-</mat-toolbar>
+<!-- Product background (SPEC-0010 RF-4): decorative, behind everything. -->
+<div class="itmas-product-background" aria-hidden="true">
+  <span class="itmas-orb itmas-orb-1"></span>
+  <span class="itmas-orb itmas-orb-2"></span>
+  <span class="itmas-orb itmas-orb-3"></span>
+</div>
 
 <mat-sidenav-container class="container">
   <mat-sidenav
     #drawer
+    class="drawer"
     [mode]="isHandset() ? 'over' : 'side'"
     [opened]="!isHandset()"
     [attr.role]="'navigation'"
     aria-label="Navegación principal"
   >
-    <mat-nav-list>
-      @for (group of navigation(); track group.title) {
-        @if (group.title) {
-          <h3 matSubheader>{{ group.title }}</h3>
+    <div class="sidebar itmas-glass-dark">
+      <app-logo class="sidebar-logo" />
+      <mat-nav-list>
+        @for (group of navigation(); track group.title) {
+          @if (group.title) {
+            <h3 matSubheader>{{ group.title }}</h3>
+          }
+          @for (item of group.items; track item.route) {
+            <a
+              mat-list-item
+              [routerLink]="item.route"
+              routerLinkActive="itmas-nav-active"
+              ariaCurrentWhenActive="page"
+              #link="routerLinkActive"
+              [activated]="link.isActive"
+              (click)="isHandset() && drawer.close()"
+            >
+              <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+              <span matListItemTitle>{{ item.label }}</span>
+            </a>
+          }
         }
-        @for (item of group.items; track item.route) {
-          <a
-            mat-list-item
-            [routerLink]="item.route"
-            routerLinkActive
-            #link="routerLinkActive"
-            [activated]="link.isActive"
-            (click)="isHandset() && drawer.close()"
-          >
-            <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
-            <span matListItemTitle>{{ item.label }}</span>
-          </a>
-        }
-      }
-    </mat-nav-list>
+      </mat-nav-list>
+    </div>
   </mat-sidenav>
 
-  <mat-sidenav-content>
-    <main class="content">
+  <mat-sidenav-content class="main-column">
+    <mat-toolbar class="top-app-bar itmas-bar">
+      <button
+        mat-icon-button
+        (click)="drawer.toggle()"
+        aria-label="Mostrar u ocultar la navegación"
+      >
+        <mat-icon>menu</mat-icon>
+      </button>
+      <span class="app-name">{{ appName }}</span>
+      <span class="spacer"></span>
+      <a mat-icon-button routerLink="/manual" aria-label="Manual de uso" matTooltip="Manual de uso">
+        <mat-icon>help</mat-icon>
+      </a>
+      <app-theme-toggle />
+      <app-user-menu />
+    </mat-toolbar>
+
+    <main class="content itmas-enter">
       <router-outlet />
     </main>
   </mat-sidenav-content>

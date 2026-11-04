@@ -20,6 +20,8 @@
   grid-template-columns: max-content 1fr;
   gap: 8px 16px;
   margin: 0;
+  // A nested glass element (`.itmas-inner`, SPEC-0010 RF-5): the pairs keep their room inside it.
+  padding: 12px 16px;
 }
 
 .facts dt {
@@ -50,8 +52,8 @@
 }
 
 .code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.875em;
+  font-family: var(--itmas-font-mono);
+  font-size: var(--mat-sys-body-small-size);
 }
 
 .notice-inline {

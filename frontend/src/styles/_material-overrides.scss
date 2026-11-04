@@ -1,0 +1,162 @@
+// Angular Material overrides of the ITMas theme (SPEC-0010 RF-1, RF-5 to RF-7, ADR-0021). Only the public theming APIs:
+// `mat.theme-overrides` for system roles and `mat.<component>-overrides` for component tokens. No internal classes, no
+// `!important`. Tokens that need a gradient or a blur are completed by the `itmas-*` classes of `_surfaces.scss`.
+@use 'sass:map';
+@use '@angular/material' as mat;
+@use './theme-colors' as colors;
+
+@mixin theme() {
+  @include mat.theme-overrides(
+    (
+      // Exact brand blue in light; tone 80 of the same palette in dark (Q-12).
+      primary: light-dark(#004aad, map.get(colors.$primary-palette, 80)),
+      // Neutrals of the identity (Q-10).
+      on-surface: light-dark(#1c1c1e, #f5f7fa),
+      // Muted text darkened in light and lightened in dark from the mock-up's #6b7280/#9ca3af, so it reaches 4.5:1 on the page,
+      // on the glass with the orbs behind and on the `surface-container*` roles (SPEC-0010 CA-3, 2026-11-03).
+      on-surface-variant: light-dark(#5b6270, #b4bac5),
+      outline-variant: light-dark(#e5e7eb, rgba(255, 255, 255, 0.08)),
+      // Page titles in the highest weight of the scale (RF-6).
+      // The `font` shorthands carry the regular weight: they are rebuilt from the roles.
+      headline-medium-weight: 700,
+      headline-medium: 700 var(--mat-sys-headline-medium-size) /
+        var(--mat-sys-headline-medium-line-height) var(--mat-sys-headline-medium-font),
+      headline-small-weight: 700,
+      headline-small: 700 var(--mat-sys-headline-small-size) /
+        var(--mat-sys-headline-small-line-height) var(--mat-sys-headline-small-font)
+    )
+  );
+
+  // Cards and table containers: glass (RF-5). The blur and the hover lift are in `_surfaces.scss`.
+  $card-glass: (
+    elevated-container-color: var(--itmas-glass-card),
+    elevated-container-shape: var(--itmas-radius-card),
+    elevated-container-elevation: var(--itmas-glass-card-shadow),
+    outlined-container-color: var(--itmas-glass-card),
+    outlined-outline-color: var(--itmas-glass-card-border),
+    outlined-container-shape: var(--itmas-radius-card),
+    outlined-container-elevation: var(--itmas-glass-card-shadow),
+  );
+  @include mat.card-overrides($card-glass);
+
+  // Navigation drawer: transparent frame; the island inside it carries the dark glass (RF-3).
+  @include mat.sidenav-overrides(
+    (
+      container-background-color: transparent,
+      container-divider-color: transparent,
+      container-elevation-shadow: none,
+      container-shape: 0,
+      container-width: 252px,
+      content-background-color: transparent,
+    )
+  );
+
+  // Top bar: metallic gradient (the toolbar paints its container with the `background` shorthand), 56 px (RF-3).
+  @include mat.toolbar-overrides(
+    (
+      container-background-color: var(--itmas-bar),
+      standard-height: 56px,
+      mobile-height: 56px,
+      title-text-size: var(--mat-sys-title-medium-size),
+      title-text-weight: 600,
+    )
+  );
+
+  // Tables over glass; headers in the label-small role, 0.1 em tracking (RF-6). Upper case comes from `.itmas-table`.
+  @include mat.table-overrides(
+    (
+      background-color: transparent,
+      header-headline-color: var(--mat-sys-on-surface-variant),
+      header-headline-size: var(--mat-sys-label-small-size),
+      header-headline-weight: var(--mat-sys-label-small-weight),
+      header-headline-tracking: 0.1em,
+    )
+  );
+
+  // The paginator sits on the glass card of the lists.
+  @include mat.paginator-overrides(
+    (
+      container-background-color: transparent,
+    )
+  );
+
+  // Buttons and fields: 8 px (RF-7). The gradient of the main button comes from `.itmas-cta`.
+  @include mat.button-overrides(
+    (
+      filled-container-shape: var(--mat-sys-corner-small),
+      outlined-container-shape: var(--mat-sys-corner-small),
+      text-container-shape: var(--mat-sys-corner-small),
+      // The main button is brand blue with white text in both schemes (the dark scheme's primary is a light tone).
+      filled-container-color: light-dark(#004aad, #004aad),
+      filled-label-text-color: var(--itmas-on-cta),
+      filled-state-layer-color: var(--itmas-on-cta),
+      filled-ripple-color: color-mix(in srgb, var(--itmas-on-cta) 16%, transparent),
+    )
+  );
+
+  // Fields in Poppins 400 (RF-6); the body text is 300.
+  @include mat.form-field-overrides(
+    (
+      outlined-container-shape: var(--mat-sys-corner-small),
+      container-text-weight: 400,
+    )
+  );
+  @include mat.select-overrides(
+    (
+      trigger-text-weight: 400,
+    )
+  );
+
+  // Floating panels: opaque `surface-container*` roles with a shadow, never glass (RF-5, CA-5).
+  @include mat.dialog-overrides(
+    (
+      container-elevation-shadow: var(--mat-sys-level3),
+      container-shape: var(--itmas-radius-card),
+    )
+  );
+  // Menus, selection lists, autocomplete panels, tooltips and snack bars already use opaque roles by default
+  // (`surface-container`, `inverse-surface`): they are left as they are.
+
+  // Usage meters and loading bars: solid colour by token (A-5).
+  @include mat.progress-bar-overrides(
+    (
+      active-indicator-color: var(--itmas-meter),
+      track-color: var(--itmas-meter-track),
+    )
+  );
+}
+
+// Material roles inside the dark glass of the navigation: white text and icons, a translucent active indicator (RF-3). The orange
+// indicator of the active item is drawn by `.itmas-nav-active`. Only for content on the dark glass: a component with a `surface`
+// background placed there would get white text on white.
+@mixin on-glass-dark() {
+  @include mat.theme-overrides(
+    (
+      on-surface: #ffffff,
+      on-surface-variant: #ffffff,
+      // A dark veil: a white one left the white text of the active item under 4.5:1 low in the gradient (CA-3).
+      secondary-container: rgba(0, 0, 0, 0.16),
+      on-secondary-container: #ffffff,
+    )
+  );
+}
+
+// Opaque card of the public pages (RF-9): the content is never read through the brand background.
+@mixin opaque-card() {
+  @include mat.card-overrides(
+    (
+      outlined-container-color: var(--itmas-opaque-card),
+      elevated-container-color: var(--itmas-opaque-card),
+    )
+  );
+}
+
+// Raised card on hover (RF-12).
+@mixin raised-card() {
+  @include mat.card-overrides(
+    (
+      elevated-container-elevation: var(--itmas-glass-card-shadow-raised),
+      outlined-container-elevation: var(--itmas-glass-card-shadow-raised),
+    )
+  );
+}

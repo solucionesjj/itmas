@@ -51,8 +51,8 @@ tr.clickable {
 }
 
 .code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.875em;
+  font-family: var(--itmas-font-mono);
+  font-size: var(--mat-sys-body-small-size);
 }
 
 .empty {
@@ -62,4 +62,14 @@ tr.clickable {
 
 .section {
   margin-top: 24px;
+}
+
+// The glass card of the lists and of the sections of a detail (SPEC-0010 §8, RF-5): its look comes from `.itmas-glass-card`.
+.list-card {
+  margin-top: 16px;
+  padding: 8px 16px 0;
+}
+
+.card-section {
+  padding: 8px 16px 16px;
 }

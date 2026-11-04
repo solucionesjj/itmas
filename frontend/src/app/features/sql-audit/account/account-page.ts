@@ -19,6 +19,7 @@ import {
   destination,
   levelLabel,
   sqlLabel,
+  STALE_STATUS,
   tlsStatus,
   validationStatus,
   yesNo,
@@ -104,10 +105,9 @@ export class AccountPage {
     }
     if (account.stale) {
       notices.push({
+        ...STALE_STATUS,
         label:
           'No se pudo leer en la última recolección: los datos de esta cuenta pueden no estar actualizados.',
-        icon: 'warning',
-        tone: 'tertiary',
       });
     }
     const tls = tlsStatus(account.instance.tls);

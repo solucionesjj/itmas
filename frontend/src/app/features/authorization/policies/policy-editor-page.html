@@ -70,7 +70,7 @@
   }
 
   <div class="actions">
-    <button mat-flat-button type="submit" [disabled]="saving() || loading()">
+    <button class="itmas-cta" mat-flat-button type="submit" [disabled]="saving() || loading()">
       {{ isEditing() ? 'Guardar cambios' : 'Crear política' }}
     </button>
     <a mat-button [routerLink]="isEditing() ? ['/admin/policies', id()] : ['/admin/policies']"

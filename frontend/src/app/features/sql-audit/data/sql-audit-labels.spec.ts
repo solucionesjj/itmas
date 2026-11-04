@@ -11,8 +11,11 @@ import {
   riskStatus,
   securableKind,
   securablePath,
+  DELETED_DEVICE_STATUS,
   sqlLabel,
+  STALE_STATUS,
   tlsStatus,
+  UNAVAILABLE_STATUS,
   unavailableMessage,
   validationStatus,
   yesNo,
@@ -148,41 +151,42 @@ describe('SQL audit labels', () => {
 });
 
 describe('SQL audit state presentation (§11.1)', () => {
-  it('RF-14: gives each risk level its MD3 role, icon and text', () => {
-    expect(riskStatus('critical')).toEqual({ label: 'Crítico', icon: 'error', tone: 'error' });
-    expect(riskStatus('high')).toEqual({ label: 'Alto', icon: 'warning', tone: 'tertiary' });
+  // The tones are those of SPEC-0010 RF-8 (Q-11); icons and texts do not change.
+  it('RF-14: gives each risk level its tone, icon and text', () => {
+    expect(riskStatus('critical')).toEqual({ label: 'Crítico', icon: 'error', tone: 'risk' });
+    expect(riskStatus('high')).toEqual({ label: 'Alto', icon: 'warning', tone: 'warning' });
     expect(riskStatus('general')).toEqual({
       label: 'General',
       icon: 'info',
-      tone: 'on-surface-variant',
+      tone: 'neutral',
     });
     expect(riskStatus('denied')).toEqual({
       label: 'Denegado',
       icon: 'block',
-      tone: 'on-surface-variant',
+      tone: 'neutral',
     });
   });
 
-  it('RF-17: gives each validation state its MD3 role, icon and text', () => {
+  it('RF-17: gives each validation state its tone, icon and text', () => {
     expect(validationStatus('valid')).toEqual({
       label: 'Válido',
       icon: 'check_circle',
-      tone: 'primary',
+      tone: 'positive',
     });
     expect(validationStatus('pending')).toEqual({
       label: 'Pendiente',
       icon: 'pending',
-      tone: 'on-surface-variant',
+      tone: 'neutral',
     });
     expect(validationStatus('changed')).toEqual({
       label: 'Cambió desde la validación',
       icon: 'change_circle',
-      tone: 'tertiary',
+      tone: 'warning',
     });
     expect(validationStatus('removed')).toEqual({
       label: 'Eliminado del motor',
       icon: 'remove_circle_outline',
-      tone: 'outline',
+      tone: 'neutral',
     });
   });
 
@@ -190,9 +194,57 @@ describe('SQL audit state presentation (§11.1)', () => {
     expect(tlsStatus('unverified')).toEqual({
       label: 'Certificado sin verificar',
       icon: 'gpp_maybe',
-      tone: 'tertiary',
+      tone: 'warning',
     });
     expect(tlsStatus('verify')).toBeNull();
     expect(tlsStatus('pinned')).toBeNull();
+  });
+});
+
+// SPEC-0010 CA-14 and RF-8: the tone of every SQL audit state, and no risk or security warning in the positive or informative tone.
+describe('SQL audit state tones (SPEC-0010 CA-14)', () => {
+  it('assigns the tones of RF-8', () => {
+    const tones = {
+      Válido: validationStatus('valid').tone,
+      Alto: riskStatus('high').tone,
+      'Cambió desde la validación': validationStatus('changed').tone,
+      'Certificado sin verificar': tlsStatus('unverified')?.tone,
+      'Datos no disponibles': UNAVAILABLE_STATUS.tone,
+      'Sin actualizar': STALE_STATUS.tone,
+      Crítico: riskStatus('critical').tone,
+      General: riskStatus('general').tone,
+      Denegado: riskStatus('denied').tone,
+      'Pendiente (validación)': validationStatus('pending').tone,
+      'Eliminado del motor': validationStatus('removed').tone,
+      'Equipo eliminado': DELETED_DEVICE_STATUS.tone,
+    };
+    expect(tones).toEqual({
+      Válido: 'positive',
+      Alto: 'warning',
+      'Cambió desde la validación': 'warning',
+      'Certificado sin verificar': 'warning',
+      'Datos no disponibles': 'warning',
+      'Sin actualizar': 'warning',
+      Crítico: 'risk',
+      General: 'neutral',
+      Denegado: 'neutral',
+      'Pendiente (validación)': 'neutral',
+      'Eliminado del motor': 'neutral',
+      'Equipo eliminado': 'neutral',
+    });
+  });
+
+  it('never shows a risk or a security warning in the positive or the informative tone', () => {
+    const risksAndWarnings = [
+      riskStatus('critical'),
+      riskStatus('high'),
+      validationStatus('changed'),
+      tlsStatus('unverified')!,
+      UNAVAILABLE_STATUS,
+      STALE_STATUS,
+    ];
+    expect(risksAndWarnings.filter((state) => ['positive', 'info'].includes(state.tone))).toEqual(
+      [],
+    );
   });
 });

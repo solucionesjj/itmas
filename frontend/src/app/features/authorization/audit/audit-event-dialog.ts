@@ -42,10 +42,11 @@ import { AUDIT_ACTION_LABELS, AUDIT_RESULT_LABELS, AuditEvent } from '../data/au
     pre {
       white-space: pre-wrap;
       word-break: break-word;
-      font-size: 0.8125rem;
+      font-family: var(--itmas-font-mono);
+      font-size: var(--mat-sys-body-small-size);
       background: var(--mat-sys-surface-container);
       padding: 8px 12px;
-      border-radius: 8px;
+      border-radius: var(--mat-sys-corner-small);
     }
     dt {
       font: var(--mat-sys-label-medium);

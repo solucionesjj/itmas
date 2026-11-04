@@ -70,7 +70,7 @@ La maqueta dejó cuatro hallazgos:
      - Los neutros de texto y líneas se fijan con `mat.theme-overrides` (SPEC-0010 §11.2).
      - Ningún rol de Material se asigna al naranja, porque el terciario pinta contenedores y el naranja nunca rellena.
    - `mat.theme-overrides` para los roles de superficie, forma y tipografía, y `mat.<componente>-overrides` (tarjeta, *sidenav*, barra, tabla, campos, botones,
-     chips) para los tokens de cada componente.
+     chips, lista de selección, diálogo, paginador y barra de progreso) para los tokens de cada componente.
    - Tokens propios **`--itmas-*`** para lo que Material no modela: degradados, vidrio, sombras de varias capas, tonos de los estados y el detalle naranja.
      Cada color (incluidas las paradas de los degradados y los colores de las sombras) usa `light-dark()`. Los valores no cromáticos (desenfoque, desplazamiento
      de las sombras, radios) son comunes a ambos esquemas.
@@ -143,6 +143,14 @@ La maqueta dejó cuatro hallazgos:
 ### Versión: MAJOR 4.0.0
 §1.2 fija el nivel por el efecto. Quitar «NO DEBE crearse un sistema de diseño propio ni sobrescribir tokens, colores, tipografías» elimina una prohibición, así
 que corresponde MAJOR aunque §6.3 y §6.4 añadan reglas. Es el criterio de ADR-0015 y ADR-0019. Registrarla como MINOR infraclasificaría una relajación.
+
+## Nota de implementación (SPEC-0010, 2026-11-03)
+Aclaración, sin cambio de decisión (revisión de `architecture` de SPEC-0010, A-3):
+- La capa de tema puede seleccionar el **elemento** público de un componente de Material, nunca sus clases internas, solo para propiedades que no
+  ofrece ningún token. Hoy solo `mat-card`, para el desenfoque (`backdrop-filter`) y la elevación al pasar el cursor (`transform` y
+  `mat.card-overrides` acotado). `styles-guard.spec.ts` lo limita con una lista permitida.
+- Los mixins `mat.<componente>-overrides` y `mat.theme-overrides` también se acotan a clases `itmas-*` de la capa de tema (vidrio oscuro, tarjeta opaca,
+  marco de los estados). Declaran variables `--mat-*` solo dentro de la capa, mediante la API pública.
 
 ## Alternativas consideradas
 | Alternativa | A favor | En contra |

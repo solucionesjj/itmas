@@ -52,7 +52,7 @@ type ProcessState =
       @case ('error') {
         <div class="error-state" role="alert">
           <span>No se pudo cargar el proceso.</span>
-          <button mat-stroked-button (click)="retry()">
+          <button class="itmas-glass-button" mat-stroked-button (click)="retry()">
             <mat-icon>refresh</mat-icon>
             Reintentar
           </button>

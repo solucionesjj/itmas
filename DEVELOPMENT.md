@@ -189,7 +189,13 @@ Las pruebas usan Microsoft.Testing.Platform (configurado en `backend/global.json
   copia limpia: `git archive HEAD -- . ':!frontend' | tar -x -C <carpeta-vacía>` y `dotnet build` en `backend/`.
 - **Frontend:** TypeScript `strict`, componentes standalone, signals, Prettier (`.prettierrc`), un componente
   por archivo. La identidad visual vive solo en la capa de tema (`styles.scss` y `src/styles/**`); fuera de ella, los
-  estilos son de layout y cumplen la constitución §6.3 (ADR-0021).
+  estilos son de layout y cumplen la constitución §6.3 (ADR-0021), y las plantillas aplican las clases `itmas-*` a sus propios
+  elementos. `styles-guard.spec.ts` lo comprueba (hojas y `styles` en línea). Colores, sombras, radios y tipografía salen de
+  `var(--mat-sys-*)` o `var(--itmas-*)`; los estados usan `StatusTone` (`shared/models/status-tone.ts`). Las paletas se regeneran
+  con `npx ng generate @angular/material:theme-color --primary-color='#004AAD' --tertiary-color='#1893F8'
+  --include-high-contrast=false --directory=src/styles/ --is-scss=true` (desde `frontend/`, escribe `src/styles/_theme-colors.scss`).
+  Las fuentes de `public/fonts/` son de terceros: se actualizan con el procedimiento de su `SOURCE.md` y revisión de `security`.
+  La capa de tema cuenta para el presupuesto inicial de `angular.json` (aviso en 550 kB): compruébalo con `npm run build`.
 - **Commits:** referencian el ID de la spec, p. ej. `SPEC-0001: add user list endpoint` (varios IDs:
   `SPEC-0000, SPEC-0001: …`; un ADR: `ADR-0016: …`). Las correcciones menores sin spec que permite la constitución
   §11.6 usan `minor: <motivo>`. El hook `commit-msg` lo comprueba (ver §10).

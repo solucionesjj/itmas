@@ -1,0 +1,81 @@
+// Backgrounds of the ITMas identity (SPEC-0010 RF-4, RF-9). Decorative only: `aria-hidden` in the templates and never under
+// text without a card in between.
+
+// --- Product background of the authenticated screens (RF-4): page gradient with a very soft noise, and three blurred orbs.
+.itmas-product-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--itmas-page-background);
+}
+
+.itmas-orb {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+// Sizes, blur and cycles of §11.2: 700/600/500 px, 80/90/100 px, 45/55/60 s.
+.itmas-orb-1 {
+  width: 700px;
+  height: 700px;
+  top: -260px;
+  right: -200px;
+  background: var(--itmas-orb-1);
+  filter: blur(80px);
+  animation: itmas-orb-1 45s ease-in-out infinite alternate;
+}
+
+.itmas-orb-2 {
+  width: 600px;
+  height: 600px;
+  bottom: -240px;
+  left: -160px;
+  background: var(--itmas-orb-2);
+  filter: blur(90px);
+  animation: itmas-orb-2 55s ease-in-out infinite alternate;
+}
+
+.itmas-orb-3 {
+  width: 500px;
+  height: 500px;
+  top: 40%;
+  left: 45%;
+  background: var(--itmas-orb-3);
+  filter: blur(100px);
+  animation: itmas-orb-3 60s ease-in-out infinite alternate;
+}
+
+@keyframes itmas-orb-1 {
+  to {
+    transform: translate(-120px, 140px) scale(1.08);
+  }
+}
+
+@keyframes itmas-orb-2 {
+  to {
+    transform: translate(160px, -120px) scale(1.1);
+  }
+}
+
+@keyframes itmas-orb-3 {
+  to {
+    transform: translate(-180px, -90px) scale(0.92);
+  }
+}
+
+// --- Brand background of the public pages (RF-9): vertical blue gradient with white waves and nodes at 8–20 %, asymmetric.
+// Inline SVG images (`img-src 'self' data:`); same in both schemes because the content sits on an opaque card.
+$_waves-and-nodes: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900' preserveAspectRatio='none' fill='none' stroke='%23fff'%3E%3Cpath d='M0 640C260 560 420 760 720 660S1180 520 1440 600' stroke-opacity='.2'/%3E%3Cpath d='M0 730C320 650 500 850 780 750S1210 640 1440 720' stroke-opacity='.1'/%3E%3Cpath d='M1080 120l150 90-60 150 160-30M140 180l120 70' stroke-opacity='.12'/%3E%3Cg fill='%23fff' fill-opacity='.16' stroke='none'%3E%3Ccircle cx='1080' cy='120' r='4'/%3E%3Ccircle cx='1230' cy='210' r='6'/%3E%3Ccircle cx='1330' cy='330' r='4'/%3E%3Ccircle cx='260' cy='250' r='5'/%3E%3C/g%3E%3C/svg%3E";
+
+.itmas-brand-background {
+  background-color: #004aad;
+  background-image: url($_waves-and-nodes), var(--itmas-brand-background);
+  background-size:
+    100% 100%,
+    auto;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}

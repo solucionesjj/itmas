@@ -49,12 +49,12 @@ export class TypesPage {
 
   protected readonly durationText = durationLabel;
   protected readonly reminderText = reminderLabel;
-  protected readonly active = { icon: 'check_circle', label: 'Activo', tone: 'primary' } as const;
-  protected readonly inactive = { icon: 'block', label: 'Inactivo', tone: 'outline' } as const;
+  protected readonly active = { icon: 'check_circle', label: 'Activo', tone: 'positive' } as const;
+  protected readonly inactive = { icon: 'block', label: 'Inactivo', tone: 'neutral' } as const;
   protected readonly freeze = {
     icon: 'ac_unit',
     label: 'Congelamiento',
-    tone: 'tertiary',
+    tone: 'info',
   } as const;
 
   constructor() {

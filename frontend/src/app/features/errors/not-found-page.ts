@@ -5,6 +5,7 @@ import { StatusMessage } from '../../shared/components/status-message/status-mes
 
 @Component({
   selector: 'app-not-found-page',
+  host: { class: 'itmas-brand-background' },
   imports: [MatButton, RouterLink, StatusMessage],
   template: `
     <app-status-message

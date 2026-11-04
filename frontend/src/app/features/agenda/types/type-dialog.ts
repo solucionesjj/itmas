@@ -111,7 +111,7 @@ const integer = (control: { value: unknown }) =>
       }
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close [disabled]="saving()">Cancelar</button>
-        <button mat-flat-button type="submit" [disabled]="saving()">
+        <button class="itmas-cta" mat-flat-button type="submit" [disabled]="saving()">
           {{ editing ? 'Guardar' : 'Crear tipo' }}
         </button>
       </mat-dialog-actions>

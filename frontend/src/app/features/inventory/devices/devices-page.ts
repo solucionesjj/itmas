@@ -35,11 +35,13 @@ import { problemMessage } from '../../../core/models/problem-message';
 import { NotificationService } from '../../../core/services/notification-service';
 import { confirm } from '../../../shared/components/confirm-dialog/confirm-dialog';
 import { InventoryApi } from '../data/inventory-api';
-import { ownerLabel, statusLabel, typeLabel } from '../data/inventory-labels';
+import { statusClasses } from '../../../shared/models/status-tone';
+import { ownerLabel, statusLabel, statusTone, typeLabel } from '../data/inventory-labels';
 import {
   DeviceCreated,
   DeviceListItem,
   DeviceSort,
+  DeviceStatus,
   DeviceStatusFilter,
   DeviceType,
   Paged,
@@ -105,6 +107,9 @@ export class DevicesPage {
 
   protected readonly typeLabel = typeLabel;
   protected readonly statusLabel = statusLabel;
+  /** Tinted label of the state, with a dot (SPEC-0010 RF-8): a closed mapping, never built from data. */
+  protected readonly statusClass = (status: DeviceStatus): string =>
+    `${statusClasses(statusTone(status))} itmas-status-dot`;
   protected readonly ownerLabel = ownerLabel;
 
   /** Filters at their defaults: an empty result then means there are no devices at all (§8.3). */

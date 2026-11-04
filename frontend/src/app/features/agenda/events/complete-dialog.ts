@@ -108,6 +108,7 @@ export interface CompleteDialogData {
             </div>
           }
           <button
+            class="itmas-glass-button"
             mat-stroked-button
             type="button"
             [disabled]="links.length >= maxLinks"
@@ -131,7 +132,12 @@ export interface CompleteDialogData {
       }
       <mat-dialog-actions align="end">
         <button mat-button type="button" mat-dialog-close [disabled]="saving()">Cancelar</button>
-        <button mat-flat-button type="submit" [disabled]="form.invalid || saving()">
+        <button
+          class="itmas-cta"
+          mat-flat-button
+          type="submit"
+          [disabled]="form.invalid || saving()"
+        >
           {{ editing ? 'Guardar' : 'Registrar' }}
         </button>
       </mat-dialog-actions>

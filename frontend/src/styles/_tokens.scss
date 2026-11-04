@@ -1,0 +1,173 @@
+// ITMas design tokens (SPEC-0010 §11.2, ADR-0021): what Angular Material does not model. Every colour, including the stops of
+// the gradients and the colours of the shadows, uses `light-dark()`, so both schemes come from the same declaration and follow
+// the active `color-scheme` (ThemeService sets `<html data-theme>`). Non-chromatic values are common to both schemes.
+// Components only read these tokens (`var(--itmas-*)`); they never declare them (constitution §6.3).
+
+@use 'sass:color';
+@use 'sass:list';
+@use 'sass:math';
+@use 'sass:string';
+
+/// Short hexadecimal form of a colour (`#rrggbbaa` when translucent): custom properties are not minified, and the theme layer
+/// counts towards the initial budget (RNF-3). Same value as the `rgba()` written in the source.
+@function _hex($colour) {
+  $digits: '0123456789abcdef';
+  $result: '#';
+  $channels: (
+    math.round(color.channel($colour, 'red', $space: rgb)),
+    math.round(color.channel($colour, 'green', $space: rgb)),
+    math.round(color.channel($colour, 'blue', $space: rgb))
+  );
+  @if color.alpha($colour) < 1 {
+    $channels: list.append($channels, math.round(color.alpha($colour) * 255));
+  }
+  @each $channel in $channels {
+    $result: $result +
+      string.slice(
+        $digits,
+        math.div($channel - $channel % 16, 16) + 1,
+        math.div($channel - $channel % 16, 16) + 1
+      ) +
+      string.slice($digits, $channel % 16 + 1, $channel % 16 + 1);
+  }
+  @return string.unquote($result);
+}
+
+/// A colour for both schemes; the dark value defaults to the light one when the identity uses the same colour in both.
+@function ld($light, $dark: $light) {
+  @return light-dark(_hex($light), _hex($dark));
+}
+
+$font-family: (Poppins, sans-serif);
+
+$_blue: #004aad;
+$_blue-deep: #002d6b;
+// Gradients that carry text end in #1270d6 (about 4.9:1 with white) and never in #1893f8 (3.2:1), RNF-1.
+$_blue-end: #1270d6;
+$_orange: #f2982a;
+$_orange-end: #fa9241;
+
+@mixin _opaque-glass {
+  --itmas-glass-card: var(--mat-sys-surface-container-lowest);
+  --itmas-glass-card-border: var(--mat-sys-outline-variant);
+  --itmas-glass-card-filter: none;
+  --itmas-bar: var(--mat-sys-surface-container-lowest);
+  --itmas-bar-border: var(--mat-sys-outline-variant);
+  --itmas-bar-filter: none;
+  --itmas-inner: var(--mat-sys-surface-container-low);
+  --itmas-inner-border: var(--mat-sys-outline-variant);
+}
+
+html {
+  // Typography and icons (RF-13).
+  --itmas-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --itmas-icon-size-sm: 18px;
+  --itmas-icon-size-lg: 48px;
+
+  // Radii: 6 px states, 8 px buttons and fields (Material corner-small), 12 px nested, 16 px cards, 20 px bars.
+  --itmas-radius-status: 6px;
+  --itmas-radius-inner: 12px;
+  --itmas-radius-card: 16px;
+  --itmas-radius-bar: 20px;
+
+  // Product background (RF-4): page gradient with a blue glow top right and an orange one bottom left.
+  --itmas-page-background:
+    var(--itmas-noise),
+    radial-gradient(
+      circle at 100% 0%,
+      #{ld(rgba(0, 74, 173, 0.05), rgba(24, 147, 248, 0.16))},
+      transparent 55%
+    ),
+    radial-gradient(
+      circle at 0% 100%,
+      #{ld(rgba(242, 152, 42, 0.04), rgba(242, 152, 42, 0.06))},
+      transparent 50%
+    ),
+    linear-gradient(180deg, #{ld(#fafaf7, #001c47)}, #{ld(#f6f5f1, #00122e)});
+  --itmas-orb-1: #{ld(rgba(0, 74, 173, 0.12), rgba(24, 147, 248, 0.18))};
+  --itmas-orb-2: #{ld(rgba(47, 159, 207, 0.1), rgba(47, 145, 207, 0.14))};
+  --itmas-orb-3: #{ld(rgba(242, 152, 42, 0.08), rgba(242, 152, 42, 0.07))};
+  // Very soft noise: an inline SVG image, allowed by `img-src 'self' data:` (§14.2). Fonts are never `data:`.
+  --itmas-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
+
+  // Brand background of the public pages (RF-9): vertical blue gradient; the waves and nodes are drawn by `_backgrounds.scss`.
+  --itmas-brand-background: linear-gradient(
+    180deg,
+    #{ld($_blue-deep)},
+    #{ld($_blue)} 55%,
+    #{ld($_blue-end)}
+  );
+
+  // Card glass (RF-5).
+  --itmas-glass-card: #{ld(rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.06))};
+  --itmas-glass-card-border: #{ld(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.1))};
+  // Two outer layers and two inner ones (a top highlight and a hairline).
+  --itmas-glass-card-insets:
+    inset 0 1px 0 #{ld(rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.08))},
+    inset 0 0 0 1px #{ld(rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.04))};
+  --itmas-glass-card-shadow:
+    0 2px 12px #{ld(rgba(0, 40, 120, 0.06), rgba(0, 8, 30, 0.3))},
+    0 6px 24px #{ld(rgba(0, 40, 120, 0.04), rgba(0, 8, 30, 0.25))}, var(--itmas-glass-card-insets);
+  --itmas-glass-card-shadow-raised:
+    0 4px 16px #{ld(rgba(0, 40, 120, 0.09), rgba(0, 8, 30, 0.36))},
+    0 10px 32px #{ld(rgba(0, 40, 120, 0.06), rgba(0, 8, 30, 0.3))}, var(--itmas-glass-card-insets);
+  --itmas-glass-card-filter: blur(36px) saturate(150%);
+
+  // Dark glass of the navigation (RF-3): brand gradient under a white veil, orange inner shadow on the bottom edge.
+  --itmas-glass-dark:
+    linear-gradient(180deg, #{ld(rgba(255, 255, 255, 0.06))}, #{ld(rgba(255, 255, 255, 0.02))}),
+    linear-gradient(135deg, #{ld($_blue-deep)}, #{ld($_blue)}, #{ld($_blue-end)});
+  --itmas-glass-dark-shadow:
+    inset 0 -2px 0 #{ld(rgba(242, 152, 42, 0.2))},
+    0 6px 24px #{ld(rgba(0, 40, 120, 0.18), rgba(0, 8, 30, 0.4))};
+  --itmas-on-glass-dark: #{ld(#ffffff)};
+
+  // Metallic top bar (RF-3).
+  --itmas-bar: linear-gradient(
+    180deg,
+    #{ld(rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.1))},
+    #{ld(rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.06))}
+  );
+  --itmas-bar-border: #{ld(rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.1))};
+  --itmas-bar-filter: blur(50px) saturate(180%);
+
+  // Nested elements (RF-5): no backdrop filter (RNF-3).
+  --itmas-inner: #{ld(rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.05))};
+  --itmas-inner-border: #{ld(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.08))};
+
+  // Opaque card of the public pages (RF-9) and opaque fallback of the glass (RNF-2).
+  --itmas-opaque-card: var(--mat-sys-surface-container-lowest);
+
+  // Main call to action (RF-7) and the box of the logo.
+  --itmas-cta: linear-gradient(135deg, #{ld($_blue)}, #{ld($_blue-end)});
+  --itmas-on-cta: #{ld(#ffffff)};
+
+  // Usage meters (solid colour by token: the progress bar paints its indicator with internal classes, A-5).
+  --itmas-meter: #{ld($_blue, #3bb6ff)};
+  --itmas-meter-track: #{ld(rgba(0, 74, 173, 0.1), rgba(255, 255, 255, 0.1))};
+
+  // The orange is only a detail: the active navigation indicator and the dot of the logo (never a fill, never a Material role).
+  --itmas-accent-detail: linear-gradient(180deg, #{ld($_orange)}, #{ld($_orange-end)});
+
+  // Tones of the states (RF-8). The text colours are darker in light and lighter in dark than the starting ones, so they reach
+  // 4.5:1 on their own tinted background.
+  --itmas-tone-positive: #{ld(#166534, #86efac)};
+  --itmas-tone-positive-bg: #{ld(rgba(34, 197, 94, 0.15))};
+  --itmas-tone-warning: #{ld(#854d0e, #fde047)};
+  --itmas-tone-warning-bg: #{ld(rgba(234, 179, 8, 0.15))};
+  --itmas-tone-risk: #{ld(#b91c1c, #fca5a5)};
+  --itmas-tone-risk-bg: #{ld(rgba(239, 68, 68, 0.15))};
+  --itmas-tone-info: #{ld($_blue, #8ec3ff)};
+  --itmas-tone-info-bg: #{ld(rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.15))};
+  --itmas-tone-neutral: var(--mat-sys-on-surface-variant);
+  --itmas-tone-neutral-bg: var(--mat-sys-surface-container-high);
+
+  // Glass becomes opaque when transparency should be reduced or `backdrop-filter` is not supported (RNF-2, CA-6).
+  @media (prefers-reduced-transparency: reduce) {
+    @include _opaque-glass;
+  }
+
+  @supports not (backdrop-filter: blur(1px)) {
+    @include _opaque-glass;
+  }
+}

@@ -1,0 +1,174 @@
+// Surface classes of the ITMas identity (SPEC-0010 RF-2 to RF-8, RF-10, ADR-0021). Templates apply them to their own elements.
+// They only set what Material does not expose as a token (gradients, `backdrop-filter`, multi-layer shadows, backgrounds),
+// never use `!important`, keep Material's states (`:disabled`, focus, selection) and never select internal classes of Material.
+// `mat-card` is selected by its element name (the component's public selector) to add the blur and the hover lift that no
+// token offers.
+@use '@angular/material' as mat;
+@use './material-overrides' as overrides;
+
+// --- Card glass (RF-5): blur on background surfaces only, never on rows or nested elements (RNF-3).
+.itmas-glass-card,
+mat-card {
+  backdrop-filter: var(--itmas-glass-card-filter);
+}
+
+.itmas-glass-card {
+  background-color: var(--itmas-glass-card);
+  border: 1px solid var(--itmas-glass-card-border);
+  border-radius: var(--itmas-radius-card);
+  box-shadow: var(--itmas-glass-card-shadow);
+}
+
+// --- Opaque card (RF-9): public pages and the content they wrap.
+.itmas-opaque-card {
+  @include overrides.opaque-card;
+  background-color: var(--itmas-opaque-card);
+  border-radius: var(--itmas-radius-card);
+  box-shadow: var(--mat-sys-level2);
+}
+
+// The opaque card never blurs what is behind it, and a card inside another glass surface is not blurred twice (RNF-3).
+mat-card.itmas-opaque-card,
+.itmas-opaque-card mat-card,
+.itmas-glass-card mat-card {
+  backdrop-filter: none;
+}
+
+// --- Dark glass of the navigation (RF-3).
+.itmas-glass-dark {
+  @include overrides.on-glass-dark;
+  background: var(--itmas-glass-dark);
+  color: var(--itmas-on-glass-dark);
+  border-radius: var(--itmas-radius-bar);
+  box-shadow: var(--itmas-glass-dark-shadow);
+  backdrop-filter: var(--itmas-glass-card-filter);
+}
+
+// Active navigation item: an orange 3 × 20 px indicator on the left (the item also carries `aria-current="page"`).
+.itmas-nav-active {
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    top: 50%;
+    width: 3px;
+    height: 20px;
+    margin-top: -10px;
+    border-radius: 0 3px 3px 0;
+    background: var(--itmas-accent-detail);
+  }
+}
+
+// --- Metallic top bar (RF-3). Its gradient comes from the toolbar token.
+.itmas-bar {
+  border: 1px solid var(--itmas-bar-border);
+  border-radius: var(--itmas-radius-bar);
+  box-shadow: var(--itmas-glass-card-shadow);
+  backdrop-filter: var(--itmas-bar-filter);
+}
+
+// --- Nested elements (RF-5): data–value pairs and interfaces. No blur (RNF-3).
+.itmas-inner {
+  background-color: var(--itmas-inner);
+  border: 1px solid var(--itmas-inner-border);
+  border-radius: var(--itmas-radius-inner);
+}
+
+// --- Tables: upper-case headers (RF-6); size, weight and tracking come from `mat.table-overrides`.
+.itmas-table th {
+  text-transform: uppercase;
+}
+
+// --- Buttons (RF-7). The gradient sits on top of Material's container colour, only while the button is enabled, so the
+// disabled look stays Material's.
+.itmas-cta:not(:disabled, [aria-disabled='true']) {
+  background-image: var(--itmas-cta);
+}
+
+.itmas-glass-button:not(:disabled, [aria-disabled='true']) {
+  background-color: var(--itmas-glass-card);
+}
+
+// --- Tinted state labels (RF-8): 6 px radius, icon or dot, and text. The colour is never the only signal.
+.itmas-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--itmas-radius-status);
+  font: var(--mat-sys-label-medium);
+  line-height: 20px;
+  vertical-align: middle;
+  background-color: var(--itmas-tone-bg, transparent);
+}
+
+// Text only (an icon next to a value, a legend): the tone without the tinted background.
+.itmas-status.itmas-tone-text {
+  background: none;
+  padding: 0;
+}
+
+@each $tone in (positive, warning, risk, info, neutral) {
+  .itmas-tone-#{$tone} {
+    color: var(--itmas-tone-#{$tone});
+    --itmas-tone-bg: var(--itmas-tone-#{$tone}-bg);
+  }
+}
+
+// A chip that holds a state label is only a frame: the label inside carries the tint (the chip keeps its structure and roles).
+.itmas-status-chip {
+  @include mat.chips-overrides(
+    (
+      outline-width: 0,
+    )
+  );
+}
+
+// A dot for the labels that have no icon.
+.itmas-status-dot::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+}
+
+// --- Logo (RF-10): typographic «ITMas» in Poppins 600, an orange dot and a `mat-icon` in a box. Template only.
+.itmas-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.itmas-logo-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--itmas-cta);
+  color: var(--itmas-on-cta);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+
+  .itmas-glass-dark & {
+    background: rgba(255, 255, 255, 0.14);
+  }
+}
+
+.itmas-logo-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-inline-start: 2px;
+  border-radius: 50%;
+  background: var(--itmas-accent-detail);
+  align-self: flex-end;
+  margin-bottom: 3px;
+}

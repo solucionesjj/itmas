@@ -1,4 +1,5 @@
 import type { EventInput } from '@fullcalendar/angular';
+import type { StatusTone } from '../../../shared/models/status-tone';
 import { statusPresentation, overduePresentation } from '../data/agenda-labels';
 import { AgendaState, CalendarView } from '../data/agenda-state';
 import { addDays, dateOf, toDateString, whenLabel } from '../data/agenda-time';
@@ -67,31 +68,27 @@ export function anchorDate(state: Pick<AgendaState, 'view' | 'year' | 'month' | 
 }
 
 /**
- * The colours of a state, as roles of the Material 3 theme: the calendar takes them from the theme, so the light and dark schemes
- * keep working (§6.3). The colour reinforces the meaning; the state is always also written (icon and text, RNF-10).
+ * The colours of a state: the containers of the activities take the tones of the states (SPEC-0010 RF-8, ADR-0017 note), tokens of
+ * the theme layer, so the light and dark schemes keep working (§6.3). The colour reinforces the meaning; the state is always also
+ * written (icon and text, RNF-10).
  */
-const STATE_COLORS: Record<EventStatus | 'overdue', { color: string; contrastColor: string }> = {
-  draft: {
-    color: 'var(--mat-sys-surface-container-high)',
-    contrastColor: 'var(--mat-sys-on-surface-variant)',
-  },
-  scheduled: {
-    color: 'var(--mat-sys-primary-container)',
-    contrastColor: 'var(--mat-sys-on-primary-container)',
-  },
-  completed: {
-    color: 'var(--mat-sys-tertiary-container)',
-    contrastColor: 'var(--mat-sys-on-tertiary-container)',
-  },
-  cancelled: {
-    color: 'var(--mat-sys-surface-container-highest)',
-    contrastColor: 'var(--mat-sys-on-surface-variant)',
-  },
-  overdue: {
-    color: 'var(--mat-sys-error-container)',
-    contrastColor: 'var(--mat-sys-on-error-container)',
-  },
+const STATE_TONES: Record<EventStatus | 'overdue', StatusTone> = {
+  draft: 'neutral',
+  scheduled: 'info',
+  completed: 'positive',
+  cancelled: 'neutral',
+  overdue: 'risk',
 };
+
+/** Background and text colour of an activity of the given state, as `--itmas-tone-*` tokens. */
+export function stateColors(state: EventStatus | 'overdue'): {
+  color: string;
+  contrastColor: string;
+} {
+  // An unknown state (a newer API) is neutral, like the inventory states.
+  const tone = STATE_TONES[state] ?? 'neutral';
+  return { color: `var(--itmas-tone-${tone}-bg)`, contrastColor: `var(--itmas-tone-${tone})` };
+}
 
 /** What the template of an event of the calendar needs, kept in `extendedProps`. */
 export interface CalendarEventProps {
@@ -112,7 +109,7 @@ export interface CalendarEventProps {
  */
 export function toCalendarEvent(event: EventSummary): EventInput {
   const status = statusPresentation(event.status);
-  const colors = STATE_COLORS[event.isOverdue ? 'overdue' : event.status];
+  const colors = stateColors(event.isOverdue ? 'overdue' : event.status);
   const props: CalendarEventProps = {
     status: event.status,
     statusIcon: event.isOverdue ? overduePresentation().icon : status.icon,

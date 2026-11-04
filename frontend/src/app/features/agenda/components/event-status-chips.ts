@@ -10,11 +10,11 @@ import { AgendaStatus } from './status-indicator';
   imports: [MatChipsModule, AgendaStatus],
   template: `
     <mat-chip-set [attr.aria-label]="'Estado: ' + text()">
-      <mat-chip [disableRipple]="true">
+      <mat-chip class="itmas-status-chip" [disableRipple]="true">
         <app-agenda-status [status]="state()" />
       </mat-chip>
       @if (overdue()) {
-        <mat-chip [disableRipple]="true">
+        <mat-chip class="itmas-status-chip" [disableRipple]="true">
           <app-agenda-status [status]="overdueState" />
         </mat-chip>
       }

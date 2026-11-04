@@ -17,7 +17,7 @@
 @if (loadFailed()) {
   <div class="error-state" role="alert">
     <span class="supporting-text">No se pudieron cargar los tipos de actividad.</span>
-    <button mat-stroked-button type="button" (click)="loadTypes()">
+    <button class="itmas-glass-button" mat-stroked-button type="button" (click)="loadTypes()">
       <mat-icon>refresh</mat-icon>
       Reintentar
     </button>
@@ -153,11 +153,18 @@
   }
 
   <div class="actions">
-    <button mat-stroked-button type="button" [disabled]="working()" (click)="runPreview()">
+    <button
+      class="itmas-glass-button"
+      mat-stroked-button
+      type="button"
+      [disabled]="working()"
+      (click)="runPreview()"
+    >
       <mat-icon>preview</mat-icon>
       Vista previa
     </button>
     <button
+      class="itmas-cta"
       mat-flat-button
       type="button"
       [disabled]="working() || !previewIsCurrent()"
@@ -192,7 +199,12 @@
         }
       </p>
       <div class="table-container">
-        <table mat-table [dataSource]="occurrences" aria-label="Fechas de la serie">
+        <table
+          class="itmas-table"
+          mat-table
+          [dataSource]="occurrences"
+          aria-label="Fechas de la serie"
+        >
           <ng-container matColumnDef="number">
             <th mat-header-cell *matHeaderCellDef>N.º</th>
             <td mat-cell *matCellDef="let occurrence; let index = index">{{ index + 1 }}</td>

@@ -149,3 +149,35 @@ describe('ruleLabel (RN-12)', () => {
     expect(ruleLabel(pattern({ unit: 'week', count: 1 }))).toBe('Cada semana, 1 ocurrencia');
   });
 });
+
+// SPEC-0010 CA-14 and RF-8: the tone of every agenda state; "Vencida" and an Outlook error are risks, never positive or informative.
+describe('agenda state tones (SPEC-0010 CA-14)', () => {
+  it('assigns the tones of RF-8', () => {
+    const states = ['draft', 'scheduled', 'completed', 'cancelled'] as EventStatus[];
+    expect(states.map((status) => statusPresentation(status).tone)).toEqual([
+      'neutral',
+      'info',
+      'positive',
+      'neutral',
+    ]);
+    expect(overduePresentation().tone).toBe('risk');
+    const outlook = ['not-published', 'pending', 'published', 'error'] as OutlookStatus[];
+    expect(outlook.map((status) => outlookPresentation(status).tone)).toEqual([
+      'neutral',
+      'warning',
+      'positive',
+      'risk',
+    ]);
+  });
+
+  it('never shows a risk or a warning in the positive or the informative tone', () => {
+    const risksAndWarnings = [
+      overduePresentation(),
+      outlookPresentation('pending'),
+      outlookPresentation('error'),
+    ];
+    expect(risksAndWarnings.filter((state) => ['positive', 'info'].includes(state.tone))).toEqual(
+      [],
+    );
+  });
+});

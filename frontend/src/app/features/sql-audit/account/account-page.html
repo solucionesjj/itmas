@@ -44,9 +44,9 @@
 } @else if (failed()) {
   <div class="error-state" role="alert">
     <app-sql-status
-      [status]="{ label: 'No se pudo cargar la cuenta.', icon: 'error', tone: 'error' }"
+      [status]="{ label: 'No se pudo cargar la cuenta.', icon: 'error', tone: 'risk' }"
     />
-    <button mat-stroked-button (click)="retry()">
+    <button class="itmas-glass-button" mat-stroked-button (click)="retry()">
       <mat-icon>refresh</mat-icon>
       Reintentar
     </button>
@@ -71,7 +71,7 @@
 
   <mat-card appearance="outlined">
     <mat-card-content>
-      <dl class="facts">
+      <dl class="facts itmas-inner">
         <dt>Instancia</dt>
         <dd>
           {{ account.instance.alias }} · {{ label('engine', account.instance.engine) }}

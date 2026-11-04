@@ -78,7 +78,7 @@ auditoría de accesos SQL (SPEC-0005); agenda anual de infraestructura, API ↔ 
 | Key ring sin cifrado en reposo | Requiere certificado/Key Vault del entorno | Checklist de producción (SECURITY.md §8) |
 | Variables de entorno visibles con `docker inspect` | Requisito del proyecto: secretos por variables de entorno | Gestor de secretos en producción |
 | HTTP dentro de las redes Docker | Tráfico interno en red privada | TLS en el borde; mTLS si se distribuye en varios hosts |
-| `style-src 'unsafe-inline'` | Requerido por Angular/Material | Revisar nonces de estilo cuando Angular lo soporte sin SSR |
+| `style-src 'unsafe-inline'` | Requerido por Angular/Material | Revisar nonces de estilo cuando Angular lo soporte sin SSR. Desde SPEC-0010, `style-src` y `font-src` no admiten ningún origen de terceros (sin Google Fonts). |
 | Auditoría de negocio fuera de autorización | Solo existe el módulo de autorización | Incluir en cada spec de features |
 | Sesión revocada vigente hasta la siguiente solicitud | Validación por solicitud | Aceptable: no hay estado cliente con privilegios |
 | Códigos de enrolamiento sin caducidad | Decisión del solicitante (SPEC-0003 P-3b) | Un solo uso; regenerar o eliminar el equipo invalida el código |
