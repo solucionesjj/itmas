@@ -110,6 +110,7 @@ La maqueta dejó cuatro hallazgos:
    - Tiene un logotipo tipográfico propio en Poppins, con el punto naranja como detalle.
    - El logotipo es texto y `mat-icon` en la plantilla: no se carga SVG remoto ni se inyecta con `innerHTML`.
    - No se usan elementos de marca de otros productos.
+   - El icono de la pestaña del navegador es el logotipo de ECS, la organización propietaria de ITMas (SPEC-0010, Q-18).
 9. **Relación con otros ADR.**
    - Este ADR reemplaza a ADR-0005 en las paletas, la tipografía, la regla «sin sistema de diseño propio» y la carga de fuentes desde Google Fonts. ADR-0005
      sigue vigente en lo demás: un único tema con `light-dark()`, `ThemeService`, Material Symbols Outlined como conjunto de iconos y la estructura de carpetas.

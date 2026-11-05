@@ -123,6 +123,7 @@ funcionalidad, los permisos, las rutas ni los textos de los procesos.
   - Logotipo tipográfico «ITMas» en Poppins 600, con un punto naranja como detalle y un `mat-icon` en un recuadro, en la barra lateral y en el inicio de sesión.
   - Solo plantilla: sin SVG remoto ni `innerHTML`.
   - `appName` y el `<title>` pasan de «ITMAS3» a «ITMas», como ya dice el manual (Q-1).
+  - El icono de la pestaña del navegador (`frontend/public/favicon.ico`) es el logotipo de ECS, la organización propietaria de ITMas (Q-18).
 - **RF-11 Selección de tema.** No cambia: el menú «Cambiar tema» sigue ofreciendo **Claro**, **Oscuro** y **Según el sistema**, el cambio es inmediato y la
   preferencia se guarda como hoy.
 - **RF-12 Movimiento.**
@@ -574,6 +575,7 @@ revisa que ningún proceso describa colores o posiciones que cambien.
 | Q-15 | Alcance de las plantillas y orden de tabulación (2026-11-03, durante la implementación y tras la revisión de `architecture`) | **Aplicar las clases `itmas-*` en las plantillas de features** (listas en tarjeta de vidrio, tablas, pares dato–valor y botones) y **mantener el nuevo orden de tabulación del *shell***: navegación y después barra superior. | §11.1 amplía los archivos; RNF-6 recoge el orden de tabulación. |
 | Q-16 | Pantallas sin datos locales (2026-11-03, tras `/sdd-validate`) | **Aceptarlas como riesgo residual**: detalle y edición de política y de actividad (con los diálogos de completar y cancelar), instancia y cuenta SQL y el diálogo del código de enrolamiento no se recorrieron, porque el entorno local no tiene esos datos y no se crearon. | CA-3, CA-11 y CA-13 se dan por cubiertos en las 22 rutas alcanzables; estas pantallas usan los mismos componentes, tokens y superficies. |
 | Q-17 | Carga de la fuente de iconos (2026-11-03, tras publicar `v1.1.1`) | **`font-display: block` para Material Symbols**: con `swap`, en la primera visita se veían un instante los nombres de los iconos («hub», «login») como texto. Poppins mantiene `swap`. | RNF-3; `_fonts.scss` y `fonts-provenance.spec.ts`, que exige `swap` en Poppins y `block` en los iconos. |
+| Q-18 | Icono de la pestaña (2026-11-05) | **Logotipo de ECS** en lugar del icono por defecto de Angular. ECS es la organización propietaria de ITMas, no otro producto. | RF-10; `frontend/public/favicon.ico` en 16, 32, 48, 64 y 128 px con fondo transparente. |
 
 ### 19.2 Preguntas abiertas
 Ninguna.
