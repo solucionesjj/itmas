@@ -4,10 +4,15 @@ title: Integración con Outlook mediante Microsoft Graph con permisos de aplicac
 status: Accepted
 date: 2026-10-17
 deciders: [architecture, security]
-related: [SPEC-0006, ADR-0002]
+related: [SPEC-0006, ADR-0002, ADR-0023]
 ---
 
 # ADR-0016 — Integración con Outlook mediante Microsoft Graph con permisos de aplicación acotados
+
+> **Desde el 2026-11-06 solo se aplica con `AGENDA_OUTLOOK_TRANSPORT=graph`.** El transporte por defecto es `smtp`, y lo rige
+> [ADR-0023](adr-0023-agenda-invitations-smtp.md): invitaciones por SMTP de Microsoft 365 con usuario y contraseña. Este adaptador
+> se conserva desactivado como camino de vuelta (SPEC-0008 Q-6). La verificación con el tenant que preveía para SPEC-0008 solo
+> hará falta si se vuelve a Graph.
 
 > **Aceptado por el solicitante el 2026-10-18.** Revisión de `security` **hecha el 2026-10-21** (SPEC-0006 §18): alcance con RBAC,
 > credencial, dominios permitidos y límites, y la lectura de la constitución de la última sección, que es correcta. Sus

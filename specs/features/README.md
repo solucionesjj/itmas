@@ -12,6 +12,6 @@ Una spec por funcionalidad: `SPEC-NNNN-<slug>.md`, creada a partir de
 | [SPEC-0005](SPEC-0005-sql-engine-access-audit.md) | Auditoría de accesos a motores SQL | Implemented |
 | [SPEC-0006](SPEC-0006-infrastructure-agenda.md) | Agenda anual de infraestructura | Implemented |
 | [SPEC-0007](SPEC-0007-sdd-tooling.md) | Skills y guardas para el flujo SDD | Implemented |
-| [SPEC-0008](SPEC-0008-outlook-activation.md) | Activación de Outlook para la agenda de infraestructura | Draft |
+| [SPEC-0008](SPEC-0008-outlook-activation.md) | Invitaciones de la agenda por correo SMTP de Microsoft 365 | Approved |
 | [SPEC-0009](SPEC-0009-single-server-production.md) | Producción en un único servidor Ubuntu con IP pública | In Progress |
 | [SPEC-0010](SPEC-0010-itmas-visual-identity.md) | Identidad visual de ITMas | Implemented |

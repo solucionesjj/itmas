@@ -7,7 +7,7 @@ owner: jmartinez
 created: 2026-10-17
 approved-by: jmartinez (2026-10-17)
 agents: [architecture, security, database, backend, frontend, testing]
-related: [SPEC-0001, SPEC-0003, SPEC-0004, SPEC-0005, SPEC-0008, ADR-0002, ADR-0008, ADR-0016, ADR-0017]
+related: [SPEC-0001, SPEC-0003, SPEC-0004, SPEC-0005, SPEC-0008, ADR-0002, ADR-0008, ADR-0016, ADR-0017, ADR-0023]
 ---
 
 # SPEC-0006 — Agenda anual de infraestructura
@@ -1642,6 +1642,27 @@ Tras las revisiones obligatorias (§18, «Revisiones obligatorias del cierre»),
 | D-6 | Cambios ajenos a esta spec en el mismo árbol | Autoriza commits `minor:` aparte para las fijaciones transitivas de NuGet, la vulnerabilidad de `vite` y la estabilización de la prueba de rendimiento de SPEC-0005. El cambio de nginx no es de esta spec y no viaja con ella. | Ninguno; trazabilidad (constitución §11.2 y §11.6). |
 | D-7 | Revisiones y entorno | Revisiones con agentes independientes por rol; en Docker, solo `docker compose up --build` (sin `down -v`). | §18. |
 | D-8 | Hora propuesta al planificar hoy desde el calendario (2026-10-24) | Si el día elegido en un calendario es **hoy**, el formulario propone una hora futura: la actual **más una hora**, en lugar de las 09:00. | RF-12b; manual (`consultar-agenda`, `planificar-actividad`). |
+
+### 19.9 Enmienda por el transporte SMTP (2026-11-06, ADR-0023 y SPEC-0008)
+
+El solicitante decidió no usar Microsoft Graph y publicar la agenda con **invitaciones iCalendar por SMTP de Microsoft 365**
+(ADR-0023, aceptado el 2026-11-06; SPEC-0008, aprobada el mismo día). Con `AGENDA_OUTLOOK_TRANSPORT=smtp`, que es el valor por
+defecto, cambian estas partes de esta spec. Con `graph`, todo sigue como está escrito.
+
+| Parte | Con `smtp` |
+|---|---|
+| RF-14 | El enlace «Abrir en Outlook» no existe (no hay `webLink`). |
+| RF-15, RF-16 | No hay calendario compartido: son invitaciones a los calendarios de los destinatarios. No hay `transactionId`; la idempotencia viene del `UID` y de la `SEQUENCE`. |
+| RF-17 | Quien se quita de una actividad enviada recibe la cancelación (SPEC-0008 RF-3b). |
+| RF-18 | Publicado significa *enviado* (aceptado por el servidor), no *entregado*. |
+| RF-19, RN-14 | No hay «se vuelve a crear si se borró»: la actualización se reenvía con el mismo `UID`. |
+| RNF-5 | 15 s por mensaje y un presupuesto de 45 s por petición; el lote se detiene también ante fallos de autenticación o del remitente, no solo ante un `429` (SPEC-0008 RF-6). |
+| §12.1 | El conjunto cerrado de códigos gana los `smtp_*` y los `outlook_*` (SPEC-0008 §11). |
+| §14.4 | Los prerrequisitos del tenant (aplicación y RBAC) solo valen para `graph`. Los de `smtp` están en SPEC-0008 §14.2. |
+| Modelo de amenazas | La fila de «el equipo tiene lectura del calendario» solo vale para `graph`. |
+| `outlook_event_id` | Guarda el `UID` de la invitación. |
+
+Hasta que SPEC-0008 esté `Implemented`, `AGENDA_OUTLOOK_ENABLED` sigue sin activarse en producción (D-4).
 
 ## Anexo A. Prácticas del sector y cadencias de referencia
 

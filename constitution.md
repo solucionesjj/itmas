@@ -1,6 +1,6 @@
 # Constitución del proyecto
 
-**Versión:** 5.0.0 · **Vigente desde:** 2026-11-05 · **Origen:** [SPEC-0000](specs/architecture/SPEC-0000-application-foundation.md)
+**Versión:** 6.0.0 · **Vigente desde:** 2026-11-06 · **Origen:** [SPEC-0000](specs/architecture/SPEC-0000-application-foundation.md)
 
 Esta constitución es la política técnica permanente del proyecto. Toda especificación, plan, cambio de código,
 configuración o documentación (hecho por personas o por agentes de IA) debe cumplirla.
@@ -50,9 +50,37 @@ Los términos **DEBE**, **NO DEBE**, **DEBERÍA** y **PUEDE** tienen el sentido 
 6. Toda entrada externa DEBE validarse en el backend. JSON con propiedades desconocidas se rechaza.
 7. Los errores DEBEN devolverse como Problem Details (RFC 9457) y NO DEBEN exponer stack traces, mensajes internos,
    datos de infraestructura ni secretos.
-8. Mínimo privilegio en todo: roles de base de datos, contenedores no root, capacidades eliminadas, redes internas,
-   puertos no publicados salvo el del frontend. Única excepción: el agente de dispositivo (§13) se ejecuta con
-   privilegios elevados, porque los necesita para leer el estado del sistema, y con los controles compensatorios de §13.4.
+8. Mínimo privilegio en todo: roles de base de datos, contenedores no root, capacidades eliminadas, redes internas, puertos no
+   publicados salvo el del frontend, y credenciales con el alcance justo para su función. Solo se admiten estas excepciones, cada una
+   con sus propios controles:
+   - **(a)** el agente de dispositivo (§13) se ejecuta con privilegios elevados, porque los necesita para leer el estado del
+     sistema, con los controles compensatorios de §13.4;
+   - **(b)** las credenciales de copias, en los términos de §8.7(e);
+   - **(c)** una **credencial saliente**, que ITMas usa para llamar a un servicio externo, que no esté acotada a su función, porque
+     la alternativa acotada no está disponible o porque la persona responsable la descarta de forma expresa. Es admisible solo si:
+     - es de una **cuenta de servicio**: no es de una persona, solo la usa ITMas y no se comparte con otros sistemas;
+     - **no** tiene roles de administración ni privilegiados en el servicio externo, ni derechos sobre recursos de otros (por
+       ejemplo, enviar como otro buzón);
+     - si es una cuenta de usuario del directorio de la organización, no recibe ninguna política en ITMas (§3.4);
+     - un **ADR `Accepted` con revisión de `security`** declara:
+       1. su alcance real: a qué sistemas y datos da acceso además de su función;
+       2. los controles compensatorios que se aplican y los que faltan;
+       3. las alternativas acotadas que se descartan, su coste y el motivo;
+       4. quién conoce o custodia la credencial;
+       5. cómo se retiraría la excepción; y
+       6. la aceptación expresa del riesgo por una persona responsable, con su fecha y una fecha de revisión no posterior a seis
+          meses desde la aceptación.
+     - Vencida esa fecha sin revisión, la aceptación caduca y la funcionalidad que usa la credencial DEBE desactivarse,
+       preferiblemente de forma automática, hasta una nueva aceptación expresa.
+
+     Esta excepción NO DEBE aplicarse a:
+     - credenciales que den acceso al servidor, a la base de datos, al despliegue, al registro o a las copias (estas últimas se rigen
+       por §8.7(e));
+     - credenciales con privilegios de administración en cualquier sistema;
+     - credenciales de la aplicación de ITMas en el proveedor de identidad, y credenciales con privilegios sobre la configuración
+       del proveedor de identidad o de la nube que da soporte a ITMas. Una cuenta de usuario del directorio sin roles no queda
+       excluida por esto;
+     - la autenticación de personas o de dispositivos en ITMas (§3.2).
 9. Las protecciones existentes (CSRF, cabeceras, CSP, rate limiting, CORS cerrado, validación de `returnUrl`,
    filtrado de hosts) NO DEBEN relajarse sin enmienda.
 10. Toda spec DEBE incluir una sección de consideraciones de seguridad (amenazas, datos sensibles, permisos).
@@ -230,3 +258,4 @@ Esta sección aplica a los componentes de servidor. El agente de dispositivo se 
 | 3.0.0 | 2026-10-26 | MAJOR: §8.1 se limita a los servicios de Compose; nuevo §8.7 para el borde de red de producción y las operaciones del host, con reglas de definición, puertos, protecciones, software expuesto, credenciales y copias (ADR-0019). |
 | 4.0.0 | 2026-11-03 | MAJOR: §6.2 y §6.3 admiten una identidad visual propia de ITMas en la capa de tema (paletas, tipografía, forma, superficies y fondos) mediante las API de tema de Angular Material, tokens `--itmas-*` y clases `itmas-*`, sin alterar el comportamiento ni la accesibilidad de sus componentes; fuera de la capa, el CSS de componentes sigue siendo de layout, con reglas comprobables. §6.4 exige WCAG 2.2 AA en ambos esquemas en toda pantalla y respetar `prefers-reduced-motion` y `prefers-reduced-transparency` (ADR-0021). |
 | 5.0.0 | 2026-11-05 | MAJOR: §8.7(e) admite, como única excepción a §3.8 y §8.7(c) para las credenciales de copias, una credencial que no sea de mínimo alcance, limitada a su destino, exclusiva o de solo añadir sobre un destino que impida borrar. Lo exige declarado en el ADR o la spec: su alcance y con qué sistemas se comparte, quién puede borrar o sobrescribir las copias, el control compensatorio o la pérdida aceptada, y la aceptación expresa de una persona responsable con revisión a seis meses como máximo, que caduca si vence. Ninguna credencial de copias puede cambiar la configuración de su destino (ADR-0022). |
+| 6.0.0 | 2026-11-06 | MAJOR: §3.8 enumera sus excepciones y admite una nueva para una credencial saliente que no esté acotada a su función, porque la alternativa acotada no está disponible o se descarta de forma expresa. Solo para una cuenta de servicio exclusiva de ITMas, sin roles de administración ni derechos sobre recursos de otros, y sin políticas en ITMas si es una cuenta del directorio. Lo exige declarado en un ADR aceptado con revisión de `security`: su alcance real, los controles que se aplican y los que faltan, las alternativas descartadas con su coste y su motivo, quién la custodia, cómo se retiraría, y la aceptación expresa con revisión a seis meses como máximo; al caducar, la funcionalidad se desactiva. No se aplica a credenciales del servidor, la base de datos, el despliegue, el registro, las copias o la administración, ni a las de la aplicación de ITMas o con privilegios sobre la configuración del proveedor de identidad o de la nube, ni a la autenticación de personas o dispositivos (ADR-0023). |

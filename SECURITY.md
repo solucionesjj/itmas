@@ -226,7 +226,7 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
 - [ ] **Auditoría SQL (SPEC-0005).** Revisar periódicamente las instancias con el aviso *Certificado sin verificar* y
       pasarlas a `verify` o `pinned` (ADR-0015). Comprobar con `itmas-agent sql test` que las cuentas del agente siguen
       con el mínimo privilegio. Revisar quién tiene `sql-audit.read` (expone las cuentas privilegiadas de los motores).
-- [ ] **Agenda y Outlook (SPEC-0006, ADR-0016).** Antes de poner `AGENDA_OUTLOOK_ENABLED=true`: cumplir **SPEC-0008** (CA-24 con el tenant real), hacer los prerrequisitos del tenant y
+- [ ] **Agenda y Outlook (SPEC-0006, ADR-0016).** **No** se pone `AGENDA_OUTLOOK_ENABLED=true` hasta que **SPEC-0008** esté `Implemented`. Esa spec, aprobada el 2026-11-06 con ADR-0023, cambia el transporte a SMTP de Microsoft 365 con usuario y contraseña, y reescribirá este punto con los controles de su §14.2. Lo que sigue solo vale para el transporte `graph`: hacer los prerrequisitos del tenant y
       verificar el alcance (DEVELOPMENT.md §11.2: `Test-ServicePrincipalAuthorization` dentro del ámbito solo para el buzón de la agenda),
       confirmar que **no** hay consentimiento global de `Calendars.ReadWrite` en Entra ID y decidir la credencial: certificado, o secreto de
       caducidad corta aceptado de forma explícita (`security`). Repetir la verificación del alcance de forma periódica. Revisar quién tiene
