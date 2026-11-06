@@ -125,7 +125,7 @@
       "category": "inventario",
       "permissions": ["Código del equipo"],
       "specs": ["SPEC-0002", "SPEC-0003", "SPEC-0005"],
-      "updated": "2026-10-12",
+      "updated": "2026-11-06",
       "routes": []
     },
     {

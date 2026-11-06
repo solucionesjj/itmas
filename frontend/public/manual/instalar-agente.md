@@ -11,10 +11,27 @@ entregó el área de TI (ver [Registrar un equipo y obtener su código](registra
 ## Antes de empezar
 
 1. Ten a mano el código del equipo (`XXXXX-XXXXX-XXXXX-XXXXX`).
-2. Descarga el paquete de tu sistema desde `/downloads/agent/latest/` de esta misma dirección, junto con el archivo
-   `SHA256SUMS`.
-3. Comprueba la suma del paquete con `SHA256SUMS` (el área de TI te indicará cómo si lo necesitas). Los paquetes no
+2. Descarga el paquete de tu sistema y el archivo `SHA256SUMS`. Los enlaces llevan siempre a la última versión
+   publicada en esta misma dirección:
+
+   | Sistema | Paquete |
+   |---|---|
+   | Windows (64 bits) | [itmas-agent-win-x64.zip](/downloads/agent/latest/itmas-agent-win-x64.zip) |
+   | Linux (x64) | [itmas-agent-linux-x64.tar.gz](/downloads/agent/latest/itmas-agent-linux-x64.tar.gz) |
+   | Linux (ARM64) | [itmas-agent-linux-arm64.tar.gz](/downloads/agent/latest/itmas-agent-linux-arm64.tar.gz) |
+   | macOS con Apple Silicon (M1 o posterior) | [itmas-agent-osx-arm64.tar.gz](/downloads/agent/latest/itmas-agent-osx-arm64.tar.gz) |
+   | macOS con Intel | [itmas-agent-osx-x64.tar.gz](/downloads/agent/latest/itmas-agent-osx-x64.tar.gz) |
+   | Sumas de comprobación (todos) | [SHA256SUMS](/downloads/agent/latest/SHA256SUMS) |
+
+   La carpeta de descargas no muestra su contenido: abre directamente el enlace del archivo.
+3. Comprueba la suma del paquete con `SHA256SUMS`, desde la carpeta donde descargaste ambos archivos. Los paquetes no
    están firmados, así que esta comprobación garantiza que el archivo es el publicado por ITMas.
+   - **Windows (PowerShell):** `(Get-FileHash .\itmas-agent-win-x64.zip -Algorithm SHA256).Hash` y compara el
+     resultado con la línea de `itmas-agent-win-x64.zip` en `SHA256SUMS` (no importan mayúsculas o minúsculas).
+   - **Linux:** `sha256sum -c --ignore-missing SHA256SUMS` debe mostrar `OK` junto al paquete.
+   - **macOS:** `shasum -a 256 -c --ignore-missing SHA256SUMS` debe mostrar `OK` junto al paquete.
+
+   Si la suma no coincide, no instales el paquete: descárgalo de nuevo y, si sigue sin coincidir, avisa a TI.
 
 ## Pasos
 
@@ -41,6 +58,7 @@ En ITMas, el equipo pasa a **Activo** y aparece su primer registro. Para ver el 
 
 | Situación | Qué hacer |
 |---|---|
+| Al abrir la carpeta de descargas aparece "no encontrado" | La carpeta no muestra su contenido. Usa los enlaces de cada paquete de "Antes de empezar". |
 | "El código de autorización no es válido." | El código ya se usó, se regeneró o el equipo se eliminó. Pide a TI un código nuevo. |
 | "El servidor respondió 409." | Esta máquina ya está registrada en ITMas como otro equipo. TI debe eliminar ese registro antes. |
 | Error de certificado o de conexión | Revisa la dirección del servidor y la conexión a Internet; el instalador no continúa sin una conexión segura. |
