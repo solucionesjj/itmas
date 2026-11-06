@@ -95,8 +95,8 @@ age -r "$BACKUP_AGE_RECIPIENT" -o "$BACKUP_DIR/$counts_name" "$tmpdir/counts.txt
 rm -rf "$tmpdir"
 tmpdir=""
 
-# Copy every encrypted file that has no .uploaded marker yet, oldest first: yesterday's failed copy is retried today. Append-only
-# credentials cannot read or list the destination, so rclone must not look at it before writing.
+# Copy every encrypted file that has no .uploaded marker yet, oldest first: yesterday's failed copy is retried today. rclone writes
+# without looking at the destination first, so an append-only credential (one that cannot read or list) also works (ADR-0022).
 failed_uploads=""
 for file in $(find "$BACKUP_DIR" -maxdepth 1 -type f \( -name 'itmas3-*.dump.age' -o -name 'itmas3-*.counts.age' \) | sed 's#.*/##' | sort); do
   [ ! -e "$BACKUP_DIR/$file.uploaded" ] || continue

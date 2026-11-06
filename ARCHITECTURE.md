@@ -44,7 +44,7 @@ comprobar el origen en Linux). El modelo de confianza real es que cualquier proc
  etiqueta vX.Y.Z ─▶ GitHub Actions (CI, aprobación del entorno "production", Trivy) ─▶ GHCR (imágenes y paquetes del agente)
                                                                                           │ (credencial de solo lectura)
  persona administradora ── SSH ──▶ scripts/deploy.sh ── docker-compose.yml + docker-compose.prod.yml (imágenes por digest)
- itmas3-backup.timer ─▶ scripts/backup-db.sh ─▶ age (clave pública) ─▶ rclone ─▶ S3 de otra cuenta (solo añadir)
+ itmas3-backup.timer ─▶ scripts/backup-db.sh ─▶ age (clave pública) ─▶ rclone ─▶ S3 de la misma cuenta (ADR-0022)
  itmas3-check.timer  ─▶ scripts/check-host.sh ─▶ latido / aviso ─▶ servicio externo (que también sondea /auth/session)
  deploy/**  configuración versionada: Caddy, ssh, fail2ban, actualizaciones, logs de Docker, unidades de systemd, plantillas de AWS
 ```

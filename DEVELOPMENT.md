@@ -477,8 +477,8 @@ cambiarlos. La persona administradora usa `sudo`, no el grupo `docker` (equivale
 ### 12.1 Requisitos previos
 
 - **AWS** (los crea quien administra AWS; plantillas y verificaciones en [`deploy/aws/`](deploy/aws/README.md), sin identificadores en el repositorio): instancia EC2 **`x86_64`** con volumen **EBS cifrado**,
-  **IMDSv2 obligatorio con *hop limit* 1**, *security group* que solo abre 22, 80 y 443 (también en IPv6: ninguna regla `::/0` en otros puertos), rol de instancia que solo puede **añadir** objetos a las copias, y un bucket de S3 en **otra cuenta**
-  con versionado, *Object Lock*, propietario del bucket forzado, cifrado SSE-S3 y vencimiento a los 30 días.
+  **IMDSv2 obligatorio con *hop limit* 1**, *security group* que solo abre 22, 80 y 443 (también en IPv6: ninguna regla `::/0` en otros puertos), un rol de instancia sin claves guardadas que **no pueda cambiar la configuración** del bucket de las copias,
+  y un bucket de S3 con bloqueo de acceso público. En producción el bucket es de la misma cuenta, sin versionado ni vencimiento, y el rol lo comparten otras instancias ([ADR-0022](specs/architecture/adr-0022-backup-destination-same-account.md), R-8 a R-10).
 - **GitHub** (ajustes del repositorio, no son archivos; **obligatorios**, no recomendaciones):
   - entorno **`production`** con revisores obligatorios y *Deployment branches and tags* limitado a `v*`;
   - *ruleset* de etiquetas `v*` que solo permita crearlas, moverlas y borrarlas a la administración, y protección de `main`;
@@ -674,11 +674,12 @@ se publicaron: revisa el mensaje. `./scripts/build-agent.sh` sigue sirviendo par
 La base de datos contiene la auditoría (`app.audit_events`), el mapa de cuentas privilegiadas de los motores SQL y el *key ring* de Data Protection sin cifrar, así que **la copia siempre va cifrada y fuera del servidor**.
 
 - **Qué hace** `scripts/backup-db.sh` (cada día a las 03:15 con jitter, desde `itmas3-backup.timer`, y antes de cada despliegue): comprueba el espacio libre, `pg_dump -Fc`, lo lee entero con `pg_restore` (detecta truncamientos), cuenta las filas de cada tabla **a partir del propio volcado**, cifra con la
-  **clave pública** de `age`, copia al bucket de la otra cuenta con `rclone` (rol de instancia: sin claves guardadas) y borra las copias locales de 7 días o más. Una copia que no subió se reintenta en la ejecución siguiente. El destino aplica su propia retención de 30 días; el servidor
-  no puede leer, listar ni borrar lo que subió (sí puede añadir versiones nuevas: por eso se restaura la versión que elijas, no «la última por nombre»).
+  **clave pública** de `age`, copia al bucket de destino con `rclone` (rol de instancia: sin claves guardadas) y borra las copias locales de 7 días o más. Una copia que no subió se reintenta en la ejecución siguiente. El bucket conserva las copias sin vencimiento.
+  El rol del servidor, que comparten otras instancias, **puede leer, listar y borrar** lo que subió, pero no cambiar la configuración del bucket (ADR-0022).
 - **Qué no incluye:** los roles de PostgreSQL (los crea `database/init/01-create-roles.sh` con las contraseñas del `.env`), el propio `.env` y la clave privada. Por eso se guardan aparte, con copia sellada.
-- **Traer una copia** (el servidor no puede leer el bucket): desde un equipo con credenciales de la cuenta de destino, `aws s3api list-object-versions --bucket <bucket> --prefix <prefijo>/` y `aws s3api get-object --bucket <bucket> --key <prefijo>/<archivo> --version-id <id> <archivo>`;
-  descarga también el `….counts.age` del mismo nombre.
+- **Traer una copia:** desde tu equipo, con credenciales de administración (no desde el servidor), `aws s3api list-object-versions --bucket <bucket> --prefix <prefijo>/` y `aws s3api get-object --bucket <bucket> --key <prefijo>/<archivo> <archivo>`;
+  descarga también el `….counts.age` del mismo nombre. Con un bucket versionado, añade `--version-id <id>` para elegir la versión; en producción no lo está (`VersionId` sale `null`).
+- **Copias no confiables tras un compromiso** (ADR-0022, decisión 3): si se sospecha que el servidor, o una instancia que comparta su rol, estuvo comprometido, una copia del bucket no es de confianza aunque `restore-db.sh` termine en 0, porque pudo sustituirse por un volcado alterado. En ese escenario no hay copia fuera de su alcance (R-8).
 - **Prueba de restauración** (antes de publicar y cada trimestre, **en un equipo de trabajo con Docker, nunca en el servidor**):
 
   ```bash
@@ -731,9 +732,9 @@ Resumen de cómo se comprueba en el servidor cada criterio que no cubre una prue
 
 | CA | Comprobación |
 |---|---|
-| 1, 2 | Tras la primera copia: `rclone` sube con el rol de instancia; desde el servidor, listar y borrar en el bucket deben fallar y una segunda subida del mismo nombre crea otra versión (`deploy/aws/README.md`). |
-| 3 | `sudo ./scripts/check-host.sh` con la última copia renombrada: llega el aviso al correo. |
-| 4 | `restore-db.sh` (§12.9). |
+| 1, 2 | Tras la primera copia: `rclone` sube con el rol de instancia y el bucket bloquea el acceso público. Desde tu equipo, con credenciales de administración: `aws s3api get-bucket-policy` y `aws iam simulate-principal-policy` del rol sobre las acciones de configuración del bucket (deben salir denegadas) y sobre un bucket cualquiera (`implicitDeny`), como en `deploy/aws/README.md`. |
+| 3 | Sin copia: `d=$(mktemp -d) && sudo BACKUP_DIR="$d" ./scripts/check-host.sh; rmdir "$d"` («no encrypted backup in the last 26 hours»). Sin subir: esconde la marca `.uploaded` de la copia más nueva y lanza `check-host.sh` («the latest backup was not copied off the server»). En los dos casos llega el aviso al correo. Renombrar solo la última copia no basta si hay otra de menos de 26 horas. |
+| 4 | `restore-db.sh` (§12.9). En cada prueba trimestral, comprueba también que la fecha de revisión de R-8 y R-10 (SECURITY.md) no ha vencido: si venció sin revisión, la aceptación caducó. |
 | 5, 27 | Escaneo externo de 22, 80, 443 y de UDP (también por IPv6); `sudo docker ps`; `ss -ltnp`; `aws ec2 describe-security-groups`; `docker version`; prueba de `169.254.169.254` desde un contenedor (`docker run --rm curlimages/curl -m 3 http://169.254.169.254/latest/meta-data/` debe agotar el tiempo). |
 | 6, 7 | `ssh -o PubkeyAuthentication=no <usuario>@<servidor>` y `ssh root@<servidor>` rechazados; fallos repetidos desde una IP de prueba **con un usuario inexistente** (fail2ban no cuenta una clave rechazada de un usuario válido) y `sudo fail2ban-client status sshd`; `sudo unattended-upgrade --dry-run -d`. |
 | 8, 9 | `docker info --format '{{.LoggingDriver}}'`; reinicio del servidor (§12.7, paso 8). |

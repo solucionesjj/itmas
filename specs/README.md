@@ -84,3 +84,4 @@ specs/
 | [ADR-0019](architecture/adr-0019-host-edge-operations-outside-compose.md) | El borde de red de producción y las operaciones del host fuera de Compose (enmienda de §8, MAJOR 3.0.0) | Accepted |
 | [ADR-0020](architecture/adr-0020-continuous-deployment-ghcr.md) | Despliegue continuo con GitHub Actions, GHCR y un script ejecutado por una persona | Accepted |
 | [ADR-0021](architecture/adr-0021-itmas-visual-identity.md) | Identidad visual propia de ITMas sobre Angular Material (enmienda de §6, MAJOR 4.0.0) | Accepted |
+| [ADR-0022](architecture/adr-0022-backup-destination-same-account.md) | Copias en la cuenta del servidor, sin inmutabilidad (enmienda de §8.7(e), MAJOR 5.0.0) | Accepted |

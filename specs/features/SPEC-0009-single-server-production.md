@@ -7,7 +7,7 @@ owner: jmartinez
 created: 2026-10-24
 approved-by: jmartinez (2026-10-25)
 agents: [architecture, security, testing, database, device-agent, frontend]
-related: [ADR-0018, ADR-0019, ADR-0020, ADR-0007, ADR-0010, ADR-0011, SPEC-0002, SPEC-0008]
+related: [ADR-0018, ADR-0019, ADR-0020, ADR-0022, ADR-0007, ADR-0010, ADR-0011, SPEC-0002, SPEC-0008]
 ---
 
 # SPEC-0009 — Producción en un único servidor Ubuntu con IP pública
@@ -54,7 +54,7 @@ comandos no se han ejecutado todavía en el servidor real**. Lo que hay hoy, com
 ## 3. Alcance
 
 - **Incluye:**
-  1. **Copias de seguridad de PostgreSQL**: volcado diario, cifrado, copia externa a S3 de otra cuenta de AWS, retención, verificación y prueba de restauración.
+  1. **Copias de seguridad de PostgreSQL**: volcado diario, cifrado, copia externa a un bucket de S3 (de la misma cuenta del servidor, ADR-0022), retención, verificación y prueba de restauración.
   2. **Endurecimiento del host**: `ufw`, SSH solo por clave, `fail2ban`, `unattended-upgrades` y `daemon.json` de Docker con rotación de logs, con un script
      idempotente y verificable.
   3. **Automatización del despliegue**: GitHub Actions (suites, auditoría, imágenes en GHCR), script de despliegue con vuelta atrás ejecutado por una persona y
@@ -69,7 +69,7 @@ comandos no se han ejecutado todavía en el servidor real**. Lo que hay hoy, com
   - Cambios en `backend/`, en `frontend/src/` (solo cambia `frontend/nginx/`, RF-28), el esquema o los roles de PostgreSQL, y TLS en el contenedor de PostgreSQL (Q-17: se acepta la desviación).
   - Activar Outlook (SPEC-0008), cambiar la credencial de Entra ID a certificado, cifrar el *key ring* y el resto de los ítems de SECURITY.md §8 que esta topología no cambia; de ellos solo se registra la desviación del `.env` en el host (Q-18).
   - Firma de código de los paquetes del agente (SPEC-0002 P-11, riesgo aceptado).
-  - Aprovisionar el servidor con una herramienta de configuración (Q-8 eligió un script `sh` idempotente) y crear la infraestructura de AWS (instancia, volumen cifrado, *security group*, cuenta y bucket de destino de las copias): esta spec solo los enumera (§10.6, constitución §8.7) y verifica el resultado (C-1, §19.3).
+  - Aprovisionar el servidor con una herramienta de configuración (Q-8 eligió un script `sh` idempotente) y crear la infraestructura de AWS (instancia, volumen cifrado, *security group*, bucket de destino de las copias): esta spec solo los enumera (§10.6, constitución §8.7) y verifica el resultado (C-1, §19.3).
   - Desplegar desde el CI: queda diferido (Q-11, P-12).
   - La enmienda de la constitución sobre §8 (hallazgo F2 de la revisión de ADR-0018): ya hecha en ADR-0019 (`Accepted`, constitución 3.0.0, 2026-10-26).
   - Normalizar a /64 la partición del límite de frecuencia por IP (cambio de API, spec aparte): se evita con RF-29 (sin registro `AAAA`).
@@ -82,7 +82,7 @@ comandos no se han ejecutado todavía en el servidor real**. Lo que hay hoy, com
 | Quien etiqueta y aprueba | Crea la etiqueta `vX.Y.Z` y aprueba el entorno `production` de GitHub (Q-12). Hoy es la misma persona. |
 | GitHub Actions | Ejecuta las pruebas, la auditoría y el escaneo, construye y publica imágenes y paquetes del agente en GHCR. **No tiene acceso al servidor** (Q-11). |
 | GitHub Container Registry | Registro de imágenes y de los paquetes del agente (Q-9, Q-20). Con los paquetes públicos (recomendado, §19.7) el servidor lo lee sin credencial; con paquetes privados, con una credencial de solo lectura. |
-| Destino de las copias | Bucket de S3 en **otra cuenta de AWS** (Q-1). |
+| Destino de las copias | Bucket de S3 de la **misma cuenta** que el servidor (Q-1, sustituida por ADR-0022). |
 | Servicio de sonda externa | Servicio gratuito que consulta `/auth/session`, recibe los latidos del host y envía el correo (Q-15). |
 | Colaboradores | Descargan el agente de `/downloads/agent/` (SPEC-0002 RF-18); no cambia para ellos. |
 | `security`, `architecture` | Revisan; ver la matriz de §10.5. |
@@ -94,14 +94,15 @@ comandos no se han ejecutado todavía en el servidor real**. Lo que hay hoy, com
 **Copias de seguridad**
 
 - **RF-1** Un volcado de la base de datos (`pg_dump -Fc`, como hoy en §12.9) se genera **una vez al día** (Q-2: RPO de 24 h y RTO de un día hábil, sin archivado de WAL) y **antes de cada despliegue** (RF-16).
-- **RF-2** Cada volcado se **cifra antes de salir del servidor** y se copia a un bucket de **Amazon S3 de otra cuenta de AWS** distinta de la del servidor (Q-1). El cifrado no es opcional (§12.9). La clave que lo descifra **no reside en el servidor** (P-2).
-  La credencial del servidor sobre el destino solo permite **añadir** objetos, y el destino impide borrarlos antes de que venza la retención (P-1, P-25).
-- **RF-3** Retención de **7 días en el servidor y 30 días en el destino** (Q-3). El servidor solo borra sus copias locales; el vencimiento en el destino lo aplica el propio destino (RN-4). Borrar lo que excede la retención no borra nada más.
+- **RF-2** Cada volcado se **cifra antes de salir del servidor** y se copia a un bucket de **Amazon S3 de la misma cuenta** que el servidor, bajo un prefijo propio y sin versionado (ADR-0022, decisión 1; sustituye a Q-1). El cifrado no es opcional (§12.9). La clave que lo descifra **no reside en el servidor** (P-2).
+  La credencial es un rol de instancia sin claves guardadas (P-25), compartido con otras instancias: sube, lista, lee y borra en todo el bucket y alcanza un segundo bucket, pero **no puede cambiar la configuración del bucket** (ADR-0022, decisión 2; R-8 y R-10).
+- **RF-3** Retención de **7 días en el servidor**; en el destino, **sin vencimiento** (ADR-0022, decisión 5; sustituye a los 30 días de Q-3). El servidor solo borra sus copias locales. Borrar lo que excede la retención no borra nada más.
 - **RF-4** Cada volcado se comprueba al crearse: hay espacio para él, no está vacío y `pg_restore` lo **lee entero** (no basta con el índice: uno truncado se detecta), y de él se calculan los recuentos de filas de cada tabla (no de la base viva, para que no compitan con las escrituras).
   Un volcado ausente, vacío, ilegible o truncado, o una copia externa que falla, genera un aviso (RF-23). Lo que no llegó al destino se reintenta en la ejecución siguiente (marca `.uploaded` por archivo).
 - **RF-5** Existe un **procedimiento de restauración completo** y se **prueba**: antes de publicar y **cada trimestre** (Q-4), en un contenedor temporal en un equipo de trabajo con Docker, **nunca** en el servidor de producción (el script se niega si encuentra `host.conf`).
   Cubre lo que el volcado no trae (roles creados por `database/init/01-create-roles.sh`, contraseñas de `.env`, propietarios y privilegios): restaura en **una sola transacción** (si algo falla no queda nada a medias), compara los recuentos de **todas** las tablas con los del volcado, comprueba que el rol de ejecución de la API conserva solo DML (sin DDL, sin `TRUNCATE`,
   sin propiedad, sin acceso al historial de migraciones) y, con las imágenes indicadas, ejecuta el `migrator` (debe terminar en 0) y levanta la API sana sobre los datos restaurados. Nunca restaura sobre la base de producción: DEVELOPMENT.md §12.9 describe la recuperación con una base nueva.
+  Una copia del bucket **no es de confianza** si el servidor, o una instancia que comparta su rol, pudo estar comprometido, aunque la restauración termine en 0: pudo sustituirse por un volcado alterado (ADR-0022, decisión 3).
 - **RF-6** El procedimiento define dónde se guardan las dos cosas que **no** están en el volcado ni en el repositorio: el `.env` del servidor y la clave privada que descifra las copias. Las opera **una sola persona** (Q-5) y se guarda **una copia sellada de ambas fuera de línea**,
   en custodia física o en el gestor corporativo, para que otra persona autorizada pueda restaurar si la titular no está (riesgo R-2, §14.4).
 
@@ -188,7 +189,7 @@ Son reglas de proceso (no hay dominio de aplicación afectado).
 - **RN-1** Una copia que no se ha restaurado con éxito no cuenta como copia: **no se publica el servicio** hasta cumplir RF-5 una vez (§12.9 ya lo llama «requisito previo»).
 - **RN-2** Nada llega a producción sin: etiqueta `v*` → suite, auditoría y escaneo en verde → aprobación del entorno `production` → imágenes publicadas → despliegue por una persona con `deploy.sh`. No se despliega desde una rama.
 - **RN-3** Ningún script ejecuta `docker compose down -v` ni borra el volumen `postgres-data` (§12.10).
-- **RN-4** El servidor no puede descifrar sus propias copias ni leer, listar o borrar las externas: solo **añadir** versiones (P-1, P-2). Volver a escribir una clave añade una versión y no destruye la anterior (versionado y *Object Lock* en el destino), de modo que un servidor comprometido no destruye su recuperación.
+- **RN-4** El servidor no puede descifrar sus propias copias (P-2). Su rol, también desde las otras instancias que lo comparten, puede borrarlas o sobrescribirlas: un compromiso puede destruir su recuperación. Se acepta sin control compensatorio y con revisión el 2027-05-05 (ADR-0022, R-8 y R-10; sustituye a P-1).
 - **RN-5** Solo el `frontend`, en `127.0.0.1`, publica un puerto (constitución §8.4; ADR-0018). RF-16 lo verifica en cada despliegue porque Docker se salta `ufw`.
 - **RN-6** Los volcados y sus copias son datos sensibles (§2): se tratan como la base de datos, con acceso limitado a la persona administradora.
 - **RN-7** Una versión del agente ya publicada no se sobrescribe (Q-14).
@@ -210,8 +211,8 @@ Ninguno. La spec no añade endpoints ni permisos de la aplicación (constitució
 
 Los de infraestructura se verifican **en el propio servidor, antes de crear el registro DNS** cuando es posible (Q-19), y se documentan en §18 (constitución §9.2).
 
-- [ ] **CA-1** (RF-1, RF-2) Dado el servidor en marcha, cuando llega la hora del volcado, entonces hay un volcado **cifrado** con la fecha del día en el bucket de la cuenta de destino, y en el servidor no hay la clave que lo descifra.
-- [ ] **CA-2** (RF-3) La retención deja 7 días en el servidor y 30 en el destino y no elimina nada más, y la credencial del servidor no puede leer, listar ni borrar objetos del destino, y volver a escribir una clave solo añade una versión (RN-4).
+- [ ] **CA-1** (RF-1, RF-2) Dado el servidor en marcha, cuando llega la hora del volcado, entonces hay un volcado **cifrado** con la fecha del día en el bucket de destino, y en el servidor no hay la clave que lo descifra.
+- [ ] **CA-2** (RF-2, RF-3, RN-4) La retención deja 7 días en el servidor y el destino conserva las copias, sin eliminar nada más. El bucket bloquea el acceso público. La credencial es un rol sin claves guardadas que, en `simulate-principal-policy`, no puede cambiar la configuración del bucket y sale `implicitDeny` en un bucket cualquiera, de modo que no alcanza más de lo declarado en R-10. La clave de `age` no está en el servidor.
 - [ ] **CA-3** (RF-4, RF-23) Con un volcado ausente o ilegible simulado, llega un aviso por correo a la lista del equipo.
 - [ ] **CA-4** (RF-5, RN-1) Con un volcado real, restaurado en un contenedor temporal **fuera** del servidor de producción siguiendo solo el procedimiento escrito, la API queda `healthy`, `/auth/session` responde y los recuentos de las tablas de `app` coinciden con el origen. Se anotan fecha y duración (sin datos).
 - [ ] **CA-5** (RF-7) Un escaneo desde fuera muestra abiertos solo SSH, 80 y 443 (TCP, ningún UDP), el *security group* de AWS coincide con `ufw` (P-24) y `docker ps` muestra como único puerto publicado `127.0.0.1:${FRONTEND_PORT}`.
@@ -256,7 +257,7 @@ Los de infraestructura se verifican **en el propio servidor, antes de crear el r
 - **ADR-0019** es la enmienda de §8 (constitución 3.0.0): admite los componentes del host fuera de Compose (§8.7). **Aceptado el 2026-10-26** tras una revisión independiente de `architecture` y `security`.
 - **ADR-0020**: despliegue continuo — GHCR, imágenes por *digest*, `deploy.sh` ejecutado por una persona sin acceso del CI al servidor, credencial de solo lectura del servidor, publicación de los paquetes del agente como artefacto y política de vuelta atrás (Q-13).
   Es transversal (§2.5) y define una superficie de ataque nueva (§14). **Aceptado el 2026-10-26**; la revisión independiente de `security` se hizo sobre el ADR y el código (§19.7) y el ADR se actualizó con sus resultados y con la visibilidad pública del repositorio.
-- Las copias, el endurecimiento y el monitoreo **no** requieren ADR propio: se concretan aquí.
+- Las copias, el endurecimiento y el monitoreo **no** requieren ADR propio: se concretan aquí. La excepción es el destino y la credencial de las copias, que enmienda **ADR-0022** (constitución 5.0.0, aceptado el 2026-11-05).
 
 ### 10.3 Alternativas y decisión
 
@@ -264,7 +265,7 @@ Los de infraestructura se verifican **en el propio servidor, antes de crear el r
 |---|---|---|---|
 | Canal CI → servidor (Q-11) | a) CI por SSH con usuario `deploy` y comando forzado · b) el servidor consulta e instala solo · c) *runner* autoalojado · d) una persona ejecuta el script | a) exige abrir SSH a los rangos de GitHub; c) ejecuta código de *workflows* en producción: no recomendado; b) guarda un token en el host; d) es lo más simple y no añade superficie. | **d)** |
 | Registro (Q-9) | GHCR · registro de la nube de la organización · construir en el servidor | GHCR no añade servicio; con paquetes privados el servidor necesita una credencial de solo lectura, con públicos (el repositorio lo es, §19.7) ninguna. | **GHCR** |
-| Copia externa (Q-1) | S3 en otra cuenta · S3 en la misma cuenta con Object Lock · Azure Blob · SharePoint · SFTP · proveedor externo | Criterios de `security`: cifrado en cliente, credencial que solo permita **añadir**, retención del lado del destino, cuenta distinta. | **S3 en otra cuenta de AWS** |
+| Copia externa (Q-1) | S3 en otra cuenta · S3 en la misma cuenta con Object Lock · Azure Blob · SharePoint · SFTP · proveedor externo | Criterios de `security`: cifrado en cliente, credencial que solo permita **añadir**, retención del lado del destino, cuenta distinta. | **S3 en otra cuenta de AWS**; sustituida el 2026-11-05 por un bucket de la misma cuenta sin inmutabilidad (ADR-0022) |
 | Sonda y alertas (Q-15) | servicio externo gratuito · *workflow* de GitHub Actions · servicio propio | El servicio externo vigila también al propio servidor; el host envía latidos en vez de correo (P-17). | **Servicio externo gratuito, correo a una lista** |
 | Endurecimiento (Q-8) | guía · script idempotente · Ansible | Script idempotente: verificable y sin herramienta nueva. | **Script `sh` idempotente** |
 | Paquetes del agente (Q-20) | artefacto en GHCR · adjuntos de una release · copia manual desde el CI | GHCR reutiliza el registro (y la credencial de lectura, si es privado) que `deploy.sh` ya usa. | **Artefacto OCI en GHCR** |
@@ -278,9 +279,9 @@ Los de infraestructura se verifican **en el propio servidor, antes de crear el r
 | §8.7 enumeración | Los componentes del host fuera de Compose son el proxy TLS (ADR-0018), las copias, el despliegue, el monitoreo, el endurecimiento y los recursos de nube de §10.6. Están enumerados en ADR-0018, ADR-0020 y esta spec, y `security` los revisa. |
 | §8.7 (a) | `deploy/**`, `scripts/**` y `.github/workflows/**` versionados; `harden-host.sh check` e `install-host-tasks.sh check` comparan lo instalado con lo versionado (RF-30, CA-28). |
 | §8.7 (b) | Puertos hacia fuera: 22, 80 y 443 (RF-7). Con Docker solo `127.0.0.1:${FRONTEND_PORT}`, que `deploy.sh` verifica (CA-13); el frontend se publica solo en loopback mientras Caddy lo preceda. |
-| §8.7 (c) | Mínimo privilegio: `backup-db.sh`, `check-host.sh`, `harden-host.sh` e `install-host-tasks.sh` corren como `root` porque leen Docker, PostgreSQL y la configuración del sistema e instalan paquetes; `deploy.sh` también lo ejecuta `root`, con `sudo` desde la cuenta de la persona administradora, y **nadie va en el grupo `docker`** (equivale a `root`). El clon `/opt/itmas3`, `host.conf`, el estado de los despliegues y la credencial de `docker login` son de `root`, porque los temporizadores ejecutan como `root` los scripts del clon. Los riesgos residuales conocidos son R-1 a R-5 y R-7 (§14.4), aceptados. |
+| §8.7 (c) | Mínimo privilegio: `backup-db.sh`, `check-host.sh`, `harden-host.sh` e `install-host-tasks.sh` corren como `root` porque leen Docker, PostgreSQL y la configuración del sistema e instalan paquetes; `deploy.sh` también lo ejecuta `root`, con `sudo` desde la cuenta de la persona administradora, y **nadie va en el grupo `docker`** (equivale a `root`). El clon `/opt/itmas3`, `host.conf`, el estado de los despliegues y la credencial de `docker login` son de `root`, porque los temporizadores ejecutan como `root` los scripts del clon. Los riesgos residuales conocidos son R-1 a R-5, R-7 y R-8 a R-10 (§14.4), aceptados. La credencial de copias es la única excepción a §3.8 que admite §8.7(e) desde la 5.0.0 (ADR-0022). |
 | §8.7 (d) | RF-27 y RF-31: administración de Caddy fuera de TCP, parches con cadencia y aviso, claves restringidas y sandbox de systemd. |
-| §8.7 (e) | Credenciales de mínimo alcance: lectura de GHCR solo si los paquetes son privados, rol de instancia que solo añade objetos y URL de latido; ninguna credencial de CI con ejecución en el servidor y ninguna *deploy key* (el repositorio es público, el clon es por HTTPS) (RNF-2, ADR-0020). |
+| §8.7 (e) | Credenciales de mínimo alcance: lectura de GHCR solo si los paquetes son privados y URL de latido. La de copias, un rol de instancia compartido que no es de solo añadir, se declara según §8.7(e) en la versión 5.0.0: alcance, quién borra, pérdida aceptada sin compensación y aceptación con revisión (ADR-0022, R-8 y R-10). Ninguna puede cambiar la configuración del bucket; ninguna credencial de CI con ejecución en el servidor y ninguna *deploy key* (el repositorio es público, el clon es por HTTPS) (RNF-2, ADR-0020). |
 | §8.7 (f) | Copias cifradas con `age` antes de salir, clave privada fuera del servidor y restauración probada (RF-2, RF-5, CA-4). |
 | §8.4 | RF-16 y RN-5 verifican cada despliegue. |
 | §3.8 | El CI no tiene credencial hacia el servidor (Q-11). Quien ejecuta `deploy.sh` usa `sudo`, no el grupo `docker`, que equivale a `root` (DEVELOPMENT.md §12.3): solo la persona administradora. |
@@ -323,10 +324,11 @@ Los crea quien administra AWS (C-1), no esta spec: la spec los enumera y verific
 
 | Recurso | Propiedad exigida | Se verifica en |
 |---|---|---|
-| Instancia EC2 | Ubuntu 26.04 LTS; IMDSv2 obligatorio con *hop limit* 1; rol de instancia con permiso de **solo añadir** objetos (`s3:PutObject`) al prefijo de copias del bucket de destino | CA-27, CA-2 |
+| Instancia EC2 | Ubuntu 26.04 LTS; IMDSv2 obligatorio con *hop limit* 1; rol de instancia compartido con otras instancias, que sube, lista, lee y borra en todo el bucket y alcanza un segundo bucket, sin permiso para cambiar la configuración del bucket (ADR-0022, decisión 2; R-10) | CA-27, CA-2 |
 | Volumen EBS | Cifrado | CA-19 |
 | *Security group* | Entrada solo 22/tcp, 80/tcp y 443/tcp | CA-5 |
-| Bucket de destino (otra cuenta) | Versionado y *Object Lock*; política que permite `PutObject` solo al rol de instancia y no concede al servidor leer ni borrar; vencimiento a los 30 días por regla de ciclo de vida | CA-1, CA-2 |
+| Bucket de destino (misma cuenta, ADR-0022) | Bloqueo de acceso público; sin versionado, *Object Lock* ni vencimiento; sin política propia | CA-1, CA-2 |
+| SSM Session Manager, State Manager y consola serie de EC2 | Accesos de administración sin puertos de entrada; toda identidad que pueda abrir una sesión, ejecutar comandos o asociaciones, o usar la consola serie, equivale a `root` (R-9) | ADR-0022, decisión 6 |
 
 ## 11. Cambios de frontend
 
@@ -349,20 +351,22 @@ Ninguno en el esquema, las migraciones, los roles ni la configuración de Postgr
 | **S/E** Una cuenta de GitHub o del CI comprometida publica una imagen maliciosa | No hay credencial de GitHub con acceso al servidor (Q-11): publicar no despliega. Aprobación manual del entorno `production`, protección de `main` y de las etiquetas `v*`, secretos solo en ese entorno y `permissions` mínimos. Con una sola persona, la aprobación es una pausa deliberada, no una separación de funciones (R-2). Quien despliega ve la etiqueta y el *digest* antes de ejecutar `deploy.sh`. |
 | **T** Cadena de suministro: una acción de terceros, imagen base o paquete comprometidos que llegan a producción | Acciones y herramientas fijadas a versión inmutable; imágenes desplegadas por *digest*; suite, auditoría de dependencias y escaneo de imágenes antes de publicar (Q-10); revisión de `security` en cada herramienta nueva (§12.5). |
 | **T** Imagen manipulada en el registro tras publicarse | El servidor despliega por el *digest* registrado en el CI (RF-14), no por etiqueta mutable. |
-| **I** Los volcados contienen la auditoría, el mapa de cuentas privilegiadas, datos del inventario y el *key ring* sin cifrar | Cifrado asimétrico antes de salir; la clave que descifra fuera del servidor, con una copia sellada fuera de línea (RF-6); destino en otra cuenta con acceso restringido; el volcado local en un directorio `700` de `root`; RN-6. |
+| **I** Los volcados contienen la auditoría, el mapa de cuentas privilegiadas, datos del inventario y el *key ring* sin cifrar | Cifrado asimétrico antes de salir; la clave que descifra fuera del servidor, con una copia sellada fuera de línea (RF-6); destino con bloqueo de acceso público y sin política propia (ADR-0022); el volcado local en un directorio `700` de `root`; RN-6. |
 | **I** El `.env` o un secreto aparecen en la salida de un script o de CI | `docker compose config -q` (sin `-q` imprime los valores); los scripts no imprimen variables; secretos enmascarados en CI; búsqueda de secretos en CA-14. |
 | **I** Credencial de solo lectura de GHCR guardada en el servidor (solo si los paquetes son privados) | Con paquetes públicos no existe. Si existe: alcance de solo lectura de paquetes de una cuenta de servicio, archivo de `root` con permisos `600`, introducida con `--password-stdin` y rotada; no da acceso al código. |
 | **I/D** Repositorio público: cualquiera lee la topología y los riesgos aceptados, y abre PR cuyos *workflows* consumen *runners* | Nada confidencial en el repositorio ni en las imágenes (§4 de la constitución; sin identificadores de AWS, direcciones ni claves); *workflows* de PR con token de solo lectura y sin secretos, y aprobación obligatoria de los de colaboradores externos; reporte privado de vulnerabilidades (R-7). |
 | **T/S** Una etiqueta movida o un *commit* que no está en `main` se despliega | `deploy.sh` trae las etiquetas sin `--force`, exige que el *commit* esté en `origin/main`, muestra *commit* y *digests* y pide confirmación antes de tocar nada; etiquetas de imagen inmutables en la publicación. |
 | **I** La URL de latido hacia el servicio externo es un secreto (quien la conozca puede fingir que el servidor vive) | Archivo de `root` con permisos `600` en el host; nunca en el repositorio, en `.env.example` ni en logs. |
-| **T/R** Un servidor comprometido borra o cifra sus propias copias (extorsión) | La credencial del destino solo permite añadir y el destino impide el borrado dentro de la retención; la cuenta de destino es distinta de la del servidor (Q-1); preferir un rol de instancia a claves estáticas (P-25); RN-4. |
+| **T/R** Un servidor comprometido, o una instancia que comparta su rol, borra, sobrescribe o altera las copias (extorsión) | **No se mitiga en el destino** (ADR-0022): sin versionado, sin *Object Lock* y con un rol que puede borrar. El rol no puede cambiar la configuración del bucket; rol de instancia sin claves estáticas (P-25). Riesgo aceptado sin compensación (R-8, R-10). |
+| **I/T** Un compromiso del servidor de ITMas alcanza, con el rol compartido, el resto del bucket y un segundo bucket de otros sistemas | Aceptado por el solicitante, que responde también de esos datos (R-10). Se revisa el 2027-05-05; la alternativa es un rol propio para ITMas (ADR-0022, F). |
+| **E** Una identidad con acceso por SSM (sesión, comandos o asociaciones de State Manager) o por la consola serie de EC2 obtiene `root` en el servidor sin pasar por SSH ni `fail2ban` | CloudTrail registra `StartSession` y `SendCommand`. Riesgo aceptado (R-9); la lista completa de identidades se revisa el 2027-05-05. |
 | **D** Disco lleno (logs, volcados, imágenes acumuladas por despliegue) | Rotación de logs (RF-11), retención local (RF-3), limpieza de imágenes antiguas (RF-16), alerta de disco (RF-21). |
 | **D** Fuerza bruta contra SSH | Solo clave, sin `root`, `fail2ban` y actualizaciones de seguridad automáticas. **SSH está abierto a Internet por decisión del solicitante** (Q-6, R-1). |
 | **D** El certificado no se renueva (Let's Encrypt) y el sitio deja de ser accesible | Alerta de vencimiento a menos de 14 días (RF-22), que salta cuando la renovación automática de Caddy ya ha fallado. HSTS escalonado (RF-27): un HSTS largo con una renovación fallida bloquearía el sitio hasta un año. |
 | **E** El grupo `docker` equivale a `root`, y un clon o una configuración que otro usuario pueda escribir se ejecutaría como `root` desde los temporizadores | Nadie va en el grupo `docker`: todo se ejecuta con `sudo` como `root`; el clon, `host.conf`, el estado y la credencial de `docker login` son de `root`, y los scripts se niegan a leer `host.conf` si otro usuario puede escribirlo o no es del usuario que ejecuta. El CI no tiene acceso al servidor. |
 | **R** No saber quién desplegó qué | Registro de despliegues (RF-16) y la historia de ejecuciones de Actions con la aprobación del entorno. |
 | **I** Escucha en la red entre `api` y `postgres` (`SslMode=Disable`) | Red `data` con `internal: true`, sin puertos publicados y solo en el host; desviación aceptada en Q-17 (R-3). |
-| **I** Los volcados siguen conteniendo datos de personas ya eliminadas hasta que vence la retención | La retención de 30 días del destino es el plazo máximo; se documenta. |
+| **I** Los volcados siguen conteniendo datos de personas ya eliminadas | El destino no vence (ADR-0022, P-30 rechazada): el plazo es indefinido hasta que una persona borre las copias. Van cifradas y la clave está fuera del servidor. Aceptado en R-8. |
 | **S** Un proceso local del servidor (o un contenedor de `edge`) fija su IP y el esquema con `X-Forwarded-*` y evade los límites por IP | Modelo de confianza documentado (ADR-0018, decisión 3: el loopback del host es de confianza total; quien ya ejecuta código en el servidor puede más); `real_ip_recursive off`, `X-Forwarded-Proto` acotado por origen y `set_real_ip_from` a la puerta de enlace (RF-28, CA-22). |
 | **S** Un fallo de Let's Encrypt emite el certificado con otra CA (ZeroSSL) sin aviso | Emisor fijado a Let's Encrypt y correo de contacto (RF-27). |
 | **E** La administración de Caddy en `localhost:2019` sin autenticación y un Caddy sin parcheo automático, único proceso expuesto a Internet | `admin off` (RF-27); actualización periódica con aviso; huella de la clave GPG; `/var/lib/caddy` solo para su usuario. |
@@ -378,7 +382,7 @@ La documentación y el manual son públicos: no llevan IPs, nombres de equipo, i
 
 Obligatoria para: ADR-0018 (aceptación) y ADR-0020, el destino y el cifrado de las copias, la credencial de lectura de GHCR y los permisos de los *workflows*, el endurecimiento, las herramientas nuevas, la decisión sobre PostgreSQL (Q-17) y la actualización de SECURITY.md. La aceptación de riesgos residuales la hace el solicitante (`agents/security.md`).
 
-### 14.4 Riesgos residuales (decididos el 2026-10-25 y recogidos en la aprobación, §19.4)
+### 14.4 Riesgos residuales (R-1 a R-7 decididos el 2026-10-25 y recogidos en la aprobación, §19.4; R-8 a R-10, el 2026-11-05 con ADR-0022)
 
 | ID | Riesgo | Decisión |
 |---|---|---|
@@ -389,6 +393,9 @@ Obligatoria para: ADR-0018 (aceptación) y ADR-0020, el destino y el cifrado de 
 | R-5 | El loopback del host es de confianza total para `X-Forwarded-*` (un proceso local puede fijar su IP y el esquema) | Aceptado expresamente (§8.7 c) al aceptar ADR-0018 (2026-10-25), con el endurecimiento de RF-28; consta en ADR-0018 (decisión 3). |
 | R-6 | La lectura de §8.1 (Caddy fuera de Compose) sin enmienda formal de la constitución | **Cerrado el 2026-10-26:** enmienda de §8 en ADR-0019 (`Accepted`, constitución 3.0.0). |
 | R-7 | El repositorio es público: la topología (un servidor, SSH con clave y `fail2ban`) y los riesgos aceptados son legibles por cualquiera | Aceptado por el solicitante (2026-10-27, «público a propósito»); la seguridad no depende de ocultarlos; sin identificadores ni secretos, reporte privado de vulnerabilidades y aprobación de los *workflows* externos. |
+| R-8 | Las copias no son inmutables: bucket en la misma cuenta, sin versionado, *Object Lock* ni vencimiento, con un rol que puede borrar y sobrescribir. Un compromiso del servidor, de una instancia que comparta el rol, del acceso de SSM o de la cuenta destruye o altera todas las copias, sin recuperación; los datos eliminados se conservan sin plazo | Aceptado por el solicitante el 2026-11-05, **sin control compensatorio** (P-28, P-29 y P-30 rechazadas). Revisión el **2027-05-05**; si vence sin revisión, la aceptación caduca (ADR-0022, decisión 3). |
+| R-9 | SSM Session Manager, State Manager y la consola serie de EC2 son accesos de `root` al servidor fuera de SSH y de `fail2ban` | Aceptado el 2026-11-05 con lo que muestra CloudTrail (otra persona, una identidad de automatización y State Manager); la lista completa y la consola serie se revisan el 2027-05-05 (ADR-0022, decisión 6). |
+| R-10 | El rol de la instancia lo comparten otras instancias y alcanza todo el bucket y un segundo bucket: un compromiso de ITMas llega a datos de otros sistemas, y un compromiso de cualquiera de esas instancias llega a las copias de ITMas | Aceptado el 2026-11-05 por el solicitante, que responde también de esos datos. Revisión el **2027-05-05** (ADR-0022, decisión 2). |
 
 ## 15. Pruebas
 
@@ -426,7 +433,7 @@ Obligatoria para: ADR-0018 (aceptación) y ADR-0020, el destino y el cifrado de 
 | 13 | Ensayo en el servidor antes del DNS, primer despliegue y verificación de los CA | persona administradora + security + testing | §18 de esta spec |
 
 **Estado (2026-10-30):** las tareas 1 a 12 están **implementadas y en `origin/main`** (commit `6037d95`, con las correcciones de las revisiones de §19.7). El primer CI en GitHub (2026-10-28) falló por tres causas que no se veían en local; están corregidas y `ci.yml` pasa (§18).
-La 13 está **en curso**: `v1.0.1` está publicada en producción desde el 2026-10-30 (§19.8); quedan las verificaciones del servidor que enumera §18.
+La 13 está **en curso**: `v1.0.1` está publicada en producción desde el 2026-10-30 (§19.8) y `v1.1.2` desde el 2026-11-05. La copia, la restauración y la vuelta atrás se comprobaron ese día (§18); el bucket de destino no cumple §10.6 y quedan las verificaciones del servidor que enumera §18.
 
 ### 16.2 Dependencias y compuertas
 
@@ -478,8 +485,49 @@ La 13 está **en curso**: `v1.0.1` está publicada en producción desde el 2026-
     (las diferencias con el equipo de trabajo son las comprobaciones que se saltan como `root` y esa parte); `sshd -t` acepta `deploy/ssh/` y `sshd -T` da contraseñas, teclado interactivo y `root` desactivados; `apt-config` lee `deploy/apt/` (solo `resolute-security` y las de ESM, sin reinicio automático) y `unattended-upgrade --dry-run` termina en 0;
     `fail2ban-client -t` acepta `deploy/fail2ban/`, y su filtro `sshd` reconoce el proceso `sshd-session` de OpenSSH 10 en el journal (un usuario inexistente cuenta como fallo; una clave rechazada de un usuario válido no, como en el modo normal de siempre).
   - Pruebas de este cambio: `./scripts/test-host-tasks.sh` 175 de 175 (11 nuevas sobre la versión de Caddy; las 3 mutaciones del control se detectan) y ShellCheck 0.9.0 con la orden del CI sin avisos.
-- **No verificado (necesita AWS o el servidor real; lo confirma la persona administradora):** CA-1, CA-2 (credencial solo de añadir y `rclone` contra S3), CA-4 (restauración del primer volcado real), CA-5 a CA-9, CA-12 (fallo antes del `migrator`) y el ensayo de `rollback` (necesita una segunda versión), CA-14 (revisión del log de los *workflows*), CA-15 (sumas de los paquetes descargados), CA-16 a CA-18 (avisos), CA-19, CA-20 y CA-22 (IP real y `EDGE_TRUSTED_PROXY_FROM`),
-  CA-23 en el servidor, CA-27, CA-28 y CA-29 (huella de Caddy). Las opciones de `ProtectSystem` de las unidades de systemd y `rclone` con `--s3-no-head` contra un bucket con *Object Lock* quedan por confirmar en el servidor.
+- **Copias, restauración y vuelta atrás (2026-11-04 y 2026-11-05)**, sin datos ni identificadores:
+  - **`v1.1.2`** (`29c7df4`, con `d6c6b7f` de SPEC-0010): el `Release` del 2026-11-04 pasó las suites y el escaneo, esperó la aprobación del entorno `production` y publicó las tres imágenes. Es la primera publicación con Trivy instalado desde su release de GitHub (§19.9).
+  - **`host.conf`** completado. La primera copia real llegó al bucket el 2026-11-05: el volcado cifrado con `age` y su `.counts.age`. La clave privada se creó en el equipo de la persona administradora y no está en el servidor (CA-1, salvo la cuenta de destino).
+  - **El bucket de destino no cumple el §10.6 aprobado.** `list-object-versions` devuelve `VersionId: null`: el bucket no tiene versionado y, por tanto, tampoco *Object Lock*. Esa consulta se ejecutó en el servidor y no dio acceso denegado.
+    El solicitante confirmó el 2026-11-05 que el bucket está en la misma cuenta y no vence, y que el rol de la instancia, por su política de SSM, sube, lista, lee y borra. El 2026-11-05 decidió mantenerlo así: **ADR-0022** enmienda §8.7(e) y cambia RF-2, RF-3, RF-5, RN-4, CA-1, CA-2, §10.6 y §14; se aceptó el 2026-11-05 (§19.10).
+  - **Volumen EBS cifrado** (CA-19, parte del volumen): confirmado por la persona administradora el 2026-11-05.
+  - **Bloqueo de acceso público del bucket** (compuerta 2 de ADR-0022): las cuatro opciones activadas, comprobado el 2026-11-05.
+    **La cuenta no tiene bloqueo de acceso público** (`NoSuchPublicAccessBlockConfiguration`, 2026-11-05). El bucket de las copias está protegido por su propio bloqueo, que el rol no puede cambiar, pero no hay una segunda capa a nivel de cuenta.
+    Desde el servidor, el rol de la instancia **no puede** leer IAM ni describir EC2 (`AccessDenied` en `iam:GetInstanceProfile`, `iam:GetAccountAuthorizationDetails`, `ec2:DescribeInstances`, `ec2:DescribeAddresses` y `s3:GetAccountPublicAccessBlock`).
+    El resto de las comprobaciones se hacen con credenciales de administración.
+  - **Alcance del rol de la instancia** (compuerta 2 de ADR-0022, `simulate-principal-policy` con credenciales de administración, 2026-11-05). La primera simulación **no cumplía** la decisión 2; se corrigió el mismo día (abajo).
+    - Puede cambiar la configuración del bucket de las copias y borrarlo: `PutBucketPolicy`, `PutLifecycleConfiguration`, `PutBucketVersioning`, `PutBucketNotification`, `PutBucketPublicAccessBlock` y `DeleteBucket` salen `allowed`.
+    - Con ello, un servidor comprometido puede además quitar el bloqueo de acceso público y hacer público el bucket, que es de uso general y puede guardar otros datos además de las copias.
+    - Tiene tres políticas: la de acceso completo al bucket de las copias, **otra de acceso completo a un segundo bucket ajeno a ITMas** y `AmazonSSMManagedInstanceCore`.
+      El acceso al segundo bucket incumple el mínimo alcance del §8.7(e) vigente y de §3.8. El texto propuesto en ADR-0022 lo admite si se declara, y se declara en R-10.
+    - **Corregido en parte el mismo día:** la persona administradora restringió la política del bucket de las copias. Repetida la simulación, las seis acciones de configuración salen `implicitDeny`.
+      La simulación se hizo sin `--resource-policy`. El bucket **no tiene política propia** (`NoSuchBucketPolicy`, 2026-11-05), así que la simulación con las políticas del rol es completa.
+      `PutObject` en el prefijo de las copias sigue `allowed`.
+    - **Las copias siguen funcionando con la política restringida.** Una ejecución a las 19:33Z falló con `AccessDenied` en la subida, mientras se cambiaba la política.
+      Las siguientes (19:42Z, 19:43Z, 19:44Z, 23:40Z y 23:41Z) terminaron con «copied to the external destination», y las copias pendientes se reintentaron (RF-4).
+    - **Avisos de las copias (CA-3, verificado el 2026-11-05):** se provocaron tres fallos y `check-host.sh` o `backup-db.sh` detectaron cada uno. Según la persona administradora, llegó el aviso de fallo por correo a través del servicio de latidos (RF-4, RF-23).
+      El servicio avisa al cambiar de estado, así que fallos seguidos pueden dar un solo correo:
+      - el fallo de la copia externa de las 19:33Z;
+      - un volcado ausente, simulado con `BACKUP_DIR` apuntando a un directorio vacío: `check-host.sh` dio «no encrypted backup in the last 26 hours»;
+      - una copia no subida, simulada escondiendo la marca `.uploaded` de la más reciente: «the latest backup was not copied off the server».
+      Ocultar solo la última copia no basta para simularlo: la comprobación mira la copia más nueva, y había otras de menos de 26 horas.
+      Tras la prueba, `check-host.sh` volvió a «All host checks passed» y llegó el correo de recuperación.
+    - **Alcance en S3** (simulación de `GetObject`, `PutObject` y `DeleteObject`, una ruta cada vez, 2026-11-05):
+      - en el prefijo de las copias, `allowed`, como prevé la decisión 2;
+      - en **otro prefijo del mismo bucket**, también `allowed`: no cumple el mínimo alcance, y se acepta como R-10;
+      - en un bucket cualquiera, `implicitDeny`.
+      Sigue asociada además la política de acceso completo al segundo bucket.
+    - **Resto de las acciones de configuración** (2026-11-05): `DeleteBucketPolicy`, `PutBucketAcl`, `PutBucketOwnershipControls` y `PutReplicationConfiguration` sobre el bucket, y `PutAccountPublicAccessBlock` sobre la cuenta, salen `implicitDeny`. La decisión 2 de ADR-0022 se cumple.
+    - **El rol lo comparten otras instancias** (dato del solicitante, 2026-11-05). El solicitante decidió **aceptar el alcance como riesgo (R-10, ADR-0022)** en lugar de dar a ITMas un rol propio (§19.10).
+  - **Accesos de administración por AWS** (compuerta 2 de ADR-0022, 2026-11-05, sin identificadores):
+    - **La consola serie de EC2 está activada** a nivel de cuenta (`SerialConsoleAccessEnabled: true`). Es otra vía de consola hacia la instancia para quien tenga permiso de enviarle una clave.
+    - **CloudTrail registra `StartSession`.** En las últimas horas abrieron sesiones de SSM una persona distinta del solicitante y una identidad de automatización (Terraform). El evento no dice sobre qué instancia, así que pueden ser otras de la cuenta.
+    - **CloudTrail registra `SendCommand`.** Los eventos recientes los genera SSM State Manager: hay asociaciones que ejecutan comandos en instancias de la cuenta. Quien pueda crear o cambiar esas asociaciones también ejecuta comandos como `root`.
+    - La lista completa de identidades con esos permisos (`get-account-authorization-details`) no se obtuvo: R-9 se aceptó con lo que muestra CloudTrail, y la lista queda para la revisión del 2027-05-05.
+  - **Restauración (CA-4):** ese volcado, descargado fuera del servidor y restaurado con `restore-db.sh` en el equipo de trabajo, terminó correctamente según la persona administradora: recuentos iguales, privilegios correctos, `migrator` sin cambios y API `healthy`. Duración no anotada.
+  - **Vuelta atrás:** tras `deploy.sh v1.1.2`, `deploy.sh rollback` repuso la versión anterior y un nuevo `deploy.sh v1.1.2` la dejó otra vez en marcha, según la persona administradora (CA-11). Entre `v1.0.1` y `v1.1.2` no hay migraciones: `rollback` no necesitó `--schema-changed-ok`. Los fallos simulados de CA-12 no se ensayaron.
+- **No verificado (necesita AWS o el servidor real; lo confirma la persona administradora):** CA-1 y CA-2 (dependen de la aceptación de ADR-0022 y de las comprobaciones de §19.10), CA-5 a CA-9, CA-12 (fallos simulados antes y después del `migrator`), CA-14 (revisión del log de los *workflows*), CA-15 (sumas de los paquetes descargados), CA-16 a CA-18 (avisos), CA-19, CA-20 y CA-22 (IP real y `EDGE_TRUSTED_PROXY_FROM`),
+  CA-23 en el servidor, CA-27, CA-28 y CA-29 (huella de Caddy). Las opciones de `ProtectSystem` de las unidades de systemd quedan por confirmar en el servidor. `rclone` con `--s3-no-head` sube al bucket de destino, que no tiene *Object Lock* (ADR-0022), desde el 2026-11-05.
 - **Declarado de más:** la spec no afirma que `deploy.sh` haya corrido contra GHCR ni contra un Docker real: sus pruebas usan sustitutos de `docker`, `git` y `curl`.
 - Cambios en archivos de otros roles, pendientes de su revisión: `SECURITY.md` (security), `backend/src/Itmas3.Api/Security/ConnectionIp.cs` (solo un comentario; backend) y `adr-0011` (architecture).
 - Revisiones: `architecture`, `security` y `database` (2026-10-26) y `testing` (2026-10-27) revisaron la implementación de forma independiente y sus hallazgos están aplicados (§19.7). Quedan `frontend` (plantilla de nginx) y `device-agent` (paquetes del agente).
@@ -491,9 +539,9 @@ La 13 está **en curso**: `v1.0.1` está publicada en producción desde el 2026-
 
 | Q | Decisión | Efecto en la spec |
 |---|---|---|
-| Q-1 | Almacenamiento de objetos: **S3 en otra cuenta de AWS**, con credencial solo de añadir y retención/Object Lock en el destino. | RF-2, RF-3, RN-4, §10.3, §14.1. |
+| Q-1 | Almacenamiento de objetos: **S3 en otra cuenta de AWS**, con credencial solo de añadir y retención/Object Lock en el destino. **Sustituida el 2026-11-05 por ADR-0022.** | RF-2, RF-3, RN-4, §10.3, §14.1. |
 | Q-2 | Volcado **diario**; RTO de un día hábil; sin WAL. | RF-1, RNF-5. |
-| Q-3 | **7 días** en el servidor y **30 días** en el destino. | RF-3, CA-2. |
+| Q-3 | **7 días** en el servidor y **30 días** en el destino. **Los 30 días los sustituye ADR-0022 (sin vencimiento).** | RF-3, CA-2. |
 | Q-4 | Prueba de restauración **antes de publicar y cada trimestre**, fuera de producción. | RF-5. |
 | Q-5 | **Una sola persona** administra y custodia; **copia sellada** de la clave y del `.env` fuera de línea. | RF-6, R-2. |
 | Q-6 | SSH **abierto**, solo clave y `fail2ban`. | RF-7, R-1. |
@@ -515,7 +563,7 @@ La 13 está **en curso**: `v1.0.1` está publicada en producción desde el 2026-
 
 ### 19.2 Propuestas
 
-Aceptadas tal como se redactaron: **P-1, P-2, P-3, P-4, P-5, P-8, P-9, P-10, P-11, P-12, P-13, P-14, P-16, P-17, P-18, P-19, P-21, P-22, P-23.**
+Aceptadas tal como se redactaron: **P-1** (sustituida el 2026-11-05 por ADR-0022), **P-2, P-3, P-4, P-5, P-8, P-9, P-10, P-11, P-12, P-13, P-14, P-16, P-17, P-18, P-19, P-21, P-22, P-23.**
 Con matiz: **P-15** (`latest` se cambia con un renombrado de directorio, no un enlace: nginx usa `disable_symlinks on`) y **P-20** (se añade el cifrado del volumen EBS). **Modificadas:** **P-6** (custodia: una persona con copia sellada, no dos personas con acceso) y **P-7** (SSH abierto, no restringido).
 
 ### 19.3 Propuestas nuevas y datos pendientes
@@ -523,7 +571,7 @@ Con matiz: **P-15** (`latest` se cambia con un renombrado de directorio, no un e
 Propuestas nuevas que surgieron de las respuestas, **confirmadas por el solicitante al aprobar** (§19.4):
 
 - **P-24** El *security group* de AWS abre solo 22, 80 y 443, igual que `ufw` (defensa en profundidad; con SSH abierto, es la segunda capa).
-- **P-25** El servidor escribe en el bucket con un **rol de instancia de EC2** y una política entre cuentas que solo permita añadir objetos, en lugar de claves estáticas guardadas en el host (RNF-1, constitución §4). `security` lo confirma al redactar el plan.
+- **P-25** (la parte «entre cuentas, que solo permita añadir» la sustituye ADR-0022 el 2026-11-05; el rol de instancia se mantiene) El servidor escribe en el bucket con un **rol de instancia de EC2** y una política entre cuentas que solo permita añadir objetos, en lugar de claves estáticas guardadas en el host (RNF-1, constitución §4). `security` lo confirma al redactar el plan.
 - **P-26** Los paquetes del agente se publican en GHCR como una imagen mínima (`FROM scratch`) y `deploy.sh` los extrae con `docker`, sin una herramienta nueva (constitución §12.5); ADR-0020 fija el mecanismo definitivo.
 - **C-1** La infraestructura de AWS (instancia, volumen EBS cifrado, *security group*, cuenta y bucket de destino) se crea **fuera** de esta spec; la spec solo verifica el resultado.
 
@@ -589,7 +637,9 @@ originan los riesgos residuales R-1 a R-4 de §14.4. Las compuertas de §16.2 se
   Los eligió el solicitante; queda la revisión de `security` de la elección (constitución §12.5). Las URLs y las cuentas no van al repositorio.
 - **Caddy 2.7.2 o posterior del repositorio oficial** (RF-27): el paquete de Ubuntu se instaló primero y dejó el sitio sin la HSTS de Caddy; `install-host-tasks.sh check` lo exige ahora.
 - **Ubuntu 26.04 LTS en lugar de 24.04** (Q-8): el servidor ya la tenía y el solicitante la **eligió el 2026-10-30**. Se actualizaron §2, Q-8, §10.6, DEVELOPMENT.md §12 y `deploy/aws/README.md`. Las suites de los scripts y la configuración de `sshd`, `unattended-upgrades` y `fail2ban` se comprobaron en un contenedor `ubuntu:26.04` (§18).
-  En el servidor quedan las comprobaciones de CA-6 a CA-8, CA-27 y CA-28 (`harden-host.sh check`, `unattended-upgrade --dry-run`, un baneo real de `fail2ban`, Docker 28 o posterior) y las de `rclone` de CA-1 y CA-2. El CI sigue en `ubuntu-24.04`, con GNU coreutils.
+  En el servidor quedan las comprobaciones de CA-6 a CA-8, CA-27 y CA-28 (`harden-host.sh check`, `unattended-upgrade --dry-run`, un baneo real de `fail2ban`, Docker 28 o posterior). Las de `rclone` de CA-1 y CA-2 se hicieron el 2026-11-05 (§18). El CI sigue en `ubuntu-24.04`, con GNU coreutils.
+- **Bucket de destino:** decidido el 2026-11-05, se mantiene el bucket actual (§19.10, ADR-0022 `Accepted`).
+- **Pendiente de confirmar: la IP pública de la instancia es una Elastic IP.** Si no lo es, cambia al parar y arrancar la instancia, y el registro DNS deja de apuntar al servidor.
 - **Pendiente:** las verificaciones del servidor que §18 lista como no verificadas, la revisión de `frontend` y `device-agent`, y subir HSTS a 86 400 s cuando el sitio esté confirmado y a 31 536 000 s tras la primera renovación real del certificado.
 
 ### 19.9 Instalación de Trivy en el CI (2026-11-03)
@@ -615,3 +665,46 @@ originan los riesgos residuales R-1 a R-4 de §14.4. Las compuertas de §16.2 se
   acción.
 - **Publicación:** la etiqueta `v1.1.0` no se mueve (`deploy.sh` no acepta etiquetas movidas). SPEC-0010 se publica como `v1.1.1`, sobre el *commit* que
   incluye este cambio.
+
+### 19.10 Destino de las copias y acceso por SSM (2026-11-05)
+
+- **Hechos**, comprobados con la primera copia real y confirmados por el solicitante:
+  - El bucket que recibe las copias está en la **misma cuenta** que el servidor.
+  - No tiene versionado (`VersionId: null`), *Object Lock* ni vencimiento.
+  - El rol de la instancia lleva una política asociada a SSM que le permite subir, listar, leer y borrar en el bucket.
+  - El servidor se administra por SSH y por SSM Session Manager. Sus volúmenes están cifrados.
+- **Decisión del solicitante:** «no vamos a manejar versiones, solo almacenamiento». Considera aceptable la política de SSM.
+- **Consecuencia** (antes de la aceptación):
+  - Contradecía la constitución §8.7(e) (credencial de copias de solo añadir) y RF-2, RF-3, RN-4, CA-1, CA-2 y §10.6.
+  - Se propuso **ADR-0022**, que enmienda §8.7(e) (constitución 5.0.0), con una excepción acotada a §3.8 y §8.7(c) para las credenciales de copias, y enumera todos los cambios de esta spec. Esos cambios se aplican en un único cambio al aceptarlo; hasta entonces, el texto aprobado no se toca.
+  - Riesgos nuevos: R-8 (copias que un servidor comprometido puede destruir o alterar), R-9 (SSM como acceso de `root`) y R-10 (rol compartido con otras instancias, con alcance sobre todo el bucket y un segundo bucket). §8.7(f) se sigue cumpliendo.
+- **Revisión independiente** de `architecture` y `security` de ADR-0022 (2026-11-05): «aceptable con cambios» en las dos. Sus hallazgos están en el ADR.
+- **P-28 rechazada por el solicitante (2026-11-05):** «por ahora no vamos a hacer copias fuera de línea, aceptar el riesgo por ahora». Era una copia mensual fuera de línea, con su SHA-256 y separada de la clave.
+  ADR-0022 acepta R-8 **sin control compensatorio** y con una fecha de revisión. Si el servidor se compromete, se pueden perder o alterar todas las copias.
+- **Fecha de revisión de R-8 y R-10:** el **2027-05-05**, confirmada por el solicitante el 2026-11-05 para los dos.
+- **P-29 rechazada por el solicitante (2026-11-05):** era una `Deny` de `s3:DeleteObject` para el rol y un aviso por correo de los borrados del bucket. Queda como opción para la revisión de R-8.
+- **P-30 rechazada por el solicitante (2026-11-05):** «sin vencimiento». El bucket conserva las copias sin límite, con los datos de personas y equipos ya eliminados; se acepta en R-8 y se revisa el 2027-05-05.
+- **Resultado de la compuerta 2 (2026-11-05):**
+  - **Primera simulación: no cumplía.** El rol podía cambiar la configuración del bucket y borrarlo, y tiene acceso completo a otro bucket ajeno a ITMas (§18).
+  - **Tras restringir la política** del bucket de las copias, la configuración sale `implicitDeny`.
+  - **Alcance real:** el rol lee, escribe y borra en todo el bucket, que es de uso general, y tiene acceso completo a un segundo bucket. Fuera de esos dos, sale denegado. En el prefijo de las copias, `PutObject` sale `allowed` y las copias siguen subiendo (§18).
+  - **El rol lo comparten otras instancias.** El solicitante **aceptó el alcance como riesgo (R-10)** el 2026-11-05 y rechazó un rol propio para ITMas.
+    Con ello, quien comprometa cualquiera de esas instancias puede borrar o alterar las copias de ITMas, y un compromiso de ITMas alcanza datos de otros sistemas.
+    ADR-0022 y su texto propuesto de §8.7(e) se ajustaron a esta decisión.
+- **Comprobaciones de la compuerta 2 de ADR-0022**, sin identificadores en el repositorio:
+  - **Hechas:**
+    - el bloqueo de acceso público del bucket; **la cuenta no tiene bloqueo**, y el solicitante decidió dejarlo así el 2026-11-05;
+    - que el bucket no tiene política propia, así que la simulación del rol es completa;
+    - las seis primeras acciones de configuración, con `implicitDeny`;
+    - el alcance real del rol en S3 (§18).
+  - **Aceptado sin completar:** la lista completa de identidades con acceso de `root` por AWS. R-9 se acepta con lo que muestra CloudTrail, y la lista queda para la revisión del 2027-05-05.
+  - **Hechas también:**
+    - la simulación del resto de las acciones de configuración, todas con `implicitDeny`;
+    - que CloudTrail registra `StartSession` y `SendCommand`;
+    - la decisión sobre la consola serie: activada en la cuenta, el solicitante la acepta en R-9 (2026-11-05).
+- **Compuerta 1 de ADR-0022, cumplida el 2026-11-05:**
+  - R-8 y R-10, aceptados por el solicitante sin control compensatorio y con revisión el 2027-05-05;
+  - P-29, P-30 y la alternativa F, rechazadas;
+  - R-10 lo acepta el solicitante también por los datos de los otros sistemas, de los que responde como administrador de la infraestructura. No hay separación de funciones (R-2).
+- **ADR-0022 aceptado el 2026-11-05**, con las tres compuertas cumplidas. R-9 se aceptó con lo que muestra CloudTrail, y la lista completa de identidades queda para la revisión del 2027-05-05.
+  En el mismo cambio, la constitución pasó a la 5.0.0 y esta spec incorporó RF-2, RF-3, RF-5, RN-4, CA-1, CA-2, §10.4, §10.6, §14.1 y §14.4. CA-1 y CA-2 pueden marcarse al cerrar la spec. La spec sigue `In Progress` por las otras verificaciones de §18.

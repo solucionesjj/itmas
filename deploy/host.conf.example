@@ -6,7 +6,7 @@
 # --- Backups (scripts/backup-db.sh) --------------------------------------------------------------------------------
 # age PUBLIC key (age1...) of the people who can restore. The matching private key is NOT on this server.
 BACKUP_AGE_RECIPIENT=
-# rclone destination of the encrypted copies: the bucket of the other AWS account, e.g. ":s3:<bucket>/<prefix>".
+# rclone destination of the encrypted copies: the S3 bucket and prefix of the backups (ADR-0022), e.g. ":s3:<bucket>/<prefix>".
 BACKUP_REMOTE=
 # Credentials come from the EC2 instance role, so no key is stored here (deploy/aws/README.md).
 export RCLONE_S3_PROVIDER=AWS

@@ -206,7 +206,7 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
 - [ ] Cifrado en reposo del key ring de Data Protection (`ProtectKeysWithCertificate` / Azure Key Vault):
       hoy las claves se guardan sin cifrar en `app.data_protection_keys` (la API lo advierte al arrancar).
 - [ ] PostgreSQL. Con un servidor administrado: TLS (`SslMode=VerifyFull`), backups y cifrado en reposo. **En el servidor único (SPEC-0009):** sin TLS dentro de la red `data` interna (R-3 aceptado);
-      copia diaria **cifrada con `age` y copiada fuera del servidor** (S3 de otra cuenta, solo añadir, vencimiento a 30 días); restauración probada antes de publicar y cada trimestre (`scripts/restore-db.sh`);
+      copia diaria **cifrada con `age` y copiada fuera del servidor** a un bucket de S3 de la misma cuenta, sin versionado ni vencimiento, con un rol que puede borrar (ADR-0022, R-8 y R-10); restauración probada antes de publicar y cada trimestre (`scripts/restore-db.sh`);
       volumen EBS cifrado (`aws ec2 describe-volumes`).
 - [ ] Imágenes fijadas por digest y escaneadas; `npm audit` / NuGet audit en CI. Implementado en SPEC-0009 (ADR-0020): el CI ejecuta `npm audit`, NuGet Audit y Trivy (bloquea alta o crítica con corrección) y `deploy.sh` despliega por digest. Verificar con la primera publicación.
 - [ ] `AUTHZ_BOOTSTRAP_ROOT_OIDS` vacío una vez creado el Root (dejarlo solo como procedimiento de emergencia documentado).
@@ -247,14 +247,17 @@ No existen scripts inline (`script-src 'self'`); por eso el *inline critical CSS
 - [ ] **Repositorio público (decisión del solicitante, 2026-10-27).** Nada confidencial en el repositorio, en los *workflows* ni en las imágenes (§4 de la constitución): ni identificadores de cuentas de AWS, direcciones, *buckets* ni claves.
       La topología (un servidor, SSH con clave y `fail2ban`) y los riesgos aceptados de abajo son legibles por cualquiera: la seguridad no depende de ocultarlos, y las vulnerabilidades se reportan por un canal privado (§9; activa el
       reporte privado de vulnerabilidades de GitHub).
-- [ ] **Recursos de AWS (SPEC-0009 §10.6).** IMDSv2 obligatorio con *hop limit* 1; rol de instancia que solo puede añadir objetos al prefijo de las copias; bucket de destino en otra cuenta con versionado, *Object Lock*
-      y vencimiento a 30 días; *security group* con solo 22, 80 y 443 (`deploy/aws/README.md`).
+- [ ] **Recursos de AWS (SPEC-0009 §10.6, ADR-0022).** IMDSv2 obligatorio con *hop limit* 1; *security group* con solo 22, 80 y 443 (`deploy/aws/README.md`).
+      Bucket de destino de la misma cuenta, con bloqueo de acceso público, sin política propia y sin versionado, *Object Lock* ni vencimiento.
+      Rol de instancia compartido con otras instancias, que sube, lista, lee y borra en todo el bucket y alcanza un segundo bucket, y que **no puede cambiar la configuración del bucket** (comprobado con `simulate-principal-policy`).
+      El servidor también se administra por SSM Session Manager, State Manager y la consola serie de EC2: quien pueda usarlos sobre la instancia equivale a `root` (R-9).
 - [ ] **Clave de las copias y URL de latido.** La clave privada de `age` nunca está en el servidor (gestor de contraseñas y copia sellada); la URL de latido del servicio de monitoreo es un secreto que solo vive en
       `/etc/itmas3/host.conf` (modo 600, `root`).
 
-### Riesgos residuales aceptados en el servidor único (SPEC-0009, 2026-10-25)
+### Riesgos residuales aceptados en el servidor único (SPEC-0009, 2026-10-25; R-8 a R-10, 2026-11-05)
 
 Los acepta el solicitante (`jmartinez`) con las mitigaciones de la columna de decisión; se revisan al cambiar la topología o el número de personas administradoras (constitución §8.7 c).
+R-8 y R-10 llevan además una **fecha de revisión**: si vence sin revisión, la aceptación caduca (constitución §8.7 e). `security` la mantiene aquí, y la prueba trimestral de restauración comprueba que no ha vencido.
 
 | ID | Riesgo | Decisión |
 |---|---|---|
@@ -264,6 +267,9 @@ Los acepta el solicitante (`jmartinez`) con las mitigaciones de la columna de de
 | R-4 | Secretos en un `.env` modo 600 del host | Aceptado |
 | R-5 | El loopback del host es de confianza total para `X-Forwarded-*` | Aceptado (ADR-0018, decisión 3), con el endurecimiento de la plantilla de nginx |
 | R-7 | El repositorio es público: la topología y estos riesgos los puede leer cualquiera | Aceptado (decisión del solicitante, 2026-10-27): sin identificadores ni secretos, reporte privado de vulnerabilidades y aprobación de los *workflows* de colaboradores externos |
+| R-8 | Copias no inmutables: bucket de la misma cuenta, sin versionado ni vencimiento, con un rol que puede borrar y sobrescribir. Un compromiso del servidor, de una instancia que comparta el rol, del acceso de SSM o de la cuenta destruye o altera todas las copias, sin recuperación; los datos eliminados se conservan sin plazo | Aceptado sin control compensatorio (ADR-0022). **Revisión: 2027-05-05** |
+| R-9 | SSM Session Manager, State Manager y la consola serie de EC2 son accesos de `root` fuera de SSH y de `fail2ban` | Aceptado con lo que muestra CloudTrail; la lista completa de identidades se obtiene en la revisión (ADR-0022) |
+| R-10 | Rol de instancia compartido con otras instancias, con alcance sobre todo el bucket y un segundo bucket: un compromiso de ITMas llega a datos de otros sistemas, y un compromiso de cualquiera de esas instancias llega a las copias de ITMas | Aceptado por el solicitante, que responde también de esos datos (ADR-0022). **Revisión: 2027-05-05** |
 
 ## 9. Reportar una vulnerabilidad
 
