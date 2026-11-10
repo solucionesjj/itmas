@@ -52,7 +52,8 @@ cuenta, ni siquiera si `verify` falla. ITMas muestra esas instancias con el avis
 ## Resultado
 
 En la siguiente recolección diaria (junto con el inventario) el motor aparece en **Auditoría SQL → Instancias** (ver
-[Consultar los accesos de los motores SQL](consultar-accesos-sql)).
+[Consultar los accesos de los motores SQL](consultar-accesos-sql)). Para probarla sin esperar al día siguiente, ver
+[Forzar un nuevo envío del inventario](forzar-envio-inventario).
 
 ## Problemas frecuentes
 

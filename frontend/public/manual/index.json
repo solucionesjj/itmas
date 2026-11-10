@@ -125,7 +125,17 @@
       "category": "inventario",
       "permissions": ["Código del equipo"],
       "specs": ["SPEC-0002", "SPEC-0003", "SPEC-0005"],
-      "updated": "2026-11-06",
+      "updated": "2026-11-10",
+      "routes": []
+    },
+    {
+      "id": "forzar-envio-inventario",
+      "title": "Forzar un nuevo envío del inventario",
+      "summary": "Reenviar el inventario y la auditoría SQL de un equipo sin esperar al día siguiente, por ejemplo para probar una conexión SQL recién añadida.",
+      "category": "inventario",
+      "permissions": ["Administrador del equipo"],
+      "specs": ["SPEC-0002", "SPEC-0005"],
+      "updated": "2026-11-10",
       "routes": []
     },
     {
@@ -175,7 +185,7 @@
       "category": "auditoria-sql",
       "permissions": ["Administrador del equipo"],
       "specs": ["SPEC-0005"],
-      "updated": "2026-10-12",
+      "updated": "2026-11-10",
       "routes": []
     },
     {

@@ -52,7 +52,8 @@ entregó el área de TI (ver [Registrar un equipo y obtener su código](registra
 ## Resultado
 
 En ITMas, el equipo pasa a **Activo** y aparece su primer registro. Para ver el estado en el equipo, ejecuta
-`itmas-agent status` (como administrador).
+`itmas-agent status` (como administrador). Para que envíe de nuevo sin esperar al día siguiente, ver
+[Forzar un nuevo envío del inventario](forzar-envio-inventario).
 
 ## Problemas frecuentes
 
