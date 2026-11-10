@@ -30,6 +30,7 @@ public sealed class AgendaOutlookCompositionTests
     private static (string, string)[] CompleteOutlook() =>
     [
         ("Agenda:Outlook:Enabled", "true"),
+        ("Agenda:Outlook:Transport", "graph"),
         ("Agenda:Outlook:TenantId", "33333333-3333-3333-3333-333333333333"),
         ("Agenda:Outlook:ClientId", "44444444-4444-4444-4444-444444444444"),
         ("Agenda:Outlook:ClientSecret", "placeholder-not-a-secret"),

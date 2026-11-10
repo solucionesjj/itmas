@@ -73,7 +73,7 @@ public sealed class AgendaOutlookFlowTests(PostgreSqlFixture database) : AgendaT
             }
         }
 
-        public Task<OutlookGatewayResult> CancelAsync(string outlookEventId, string reason, CancellationToken cancellationToken)
+        public Task<OutlookGatewayResult> CancelAsync(string outlookEventId, string reason, OutlookEventData? data, CancellationToken cancellationToken)
         {
             lock (_gate)
             {
@@ -110,6 +110,7 @@ public sealed class AgendaOutlookFlowTests(PostgreSqlFixture database) : AgendaT
         var app = Factory.WithWebHostBuilder(builder =>
         {
             builder.UseSetting("Agenda:Outlook:Enabled", "true");
+            builder.UseSetting("Agenda:Outlook:Transport", "graph");
             builder.UseSetting("Agenda:Outlook:TenantId", "33333333-3333-3333-3333-333333333333");
             builder.UseSetting("Agenda:Outlook:ClientId", "44444444-4444-4444-4444-444444444444");
             builder.UseSetting("Agenda:Outlook:ClientSecret", "placeholder-not-a-secret");
@@ -275,8 +276,8 @@ public sealed class AgendaOutlookFlowTests(PostgreSqlFixture database) : AgendaT
 
         Assert.Equal("scheduled", outcome.Of(unknown).GetProperty("status").GetString());
         Assert.Equal("scheduled", outcome.Of(thrown).GetProperty("status").GetString());
-        Assert.Equal("graph_unavailable", outcome.Of(unknown).GetProperty("outlook").GetProperty("errorCode").GetString());
-        Assert.Equal("graph_unavailable", outcome.Of(thrown).GetProperty("outlook").GetProperty("errorCode").GetString());
+        Assert.Equal("outlook_unavailable", outcome.Of(unknown).GetProperty("outlook").GetProperty("errorCode").GetString());
+        Assert.Equal("outlook_unavailable", outcome.Of(thrown).GetProperty("outlook").GetProperty("errorCode").GetString());
         Assert.DoesNotContain("secret-detail-from-graph", outcome.Json.GetRawText(), StringComparison.Ordinal);
         Assert.DoesNotContain("secret-detail-from-graph", (await GetEventAsync(app.Client, unknown)).GetRawText(), StringComparison.Ordinal);
         var audit = await AuditAsync("agenda.event.outlook-failed");

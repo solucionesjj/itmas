@@ -289,6 +289,17 @@ describe('AgendaActions (RF-9, RF-10, RF-19, §8.4)', () => {
       );
     });
 
+    it('SPEC-0008 RF-5: a send left pending without an error is information, not a failure', async () => {
+      api.syncOutlook.mockReturnValue(of({ status: 'pending', errorCode: null }));
+
+      await firstValueFrom(actions.sync(target));
+
+      expect(notifications.info).toHaveBeenCalledWith(
+        'Envío pendiente: vuelve a pulsar «Sincronizar de nuevo» pasado un minuto.',
+      );
+      expect(notifications.error).not.toHaveBeenCalled();
+    });
+
     it('explains the failure with the normalized message, never the raw detail', async () => {
       api.syncOutlook.mockReturnValue(of({ status: 'error', errorCode: 'graph_throttled' }));
 

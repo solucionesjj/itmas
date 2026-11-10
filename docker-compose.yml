@@ -79,12 +79,16 @@ services:
       Inventory__HistoryRetentionDays: ${INVENTORY_HISTORY_RETENTION_DAYS:-90}
       SqlAudit__ChangeLogRetentionDays: ${SQL_AUDIT_CHANGE_LOG_RETENTION_DAYS:-365}
       SqlAudit__SnapshotsPermitLimitPerHour: ${SQL_AUDIT_SNAPSHOTS_PER_HOUR:-120}
-      # Infrastructure agenda (SPEC-0006). Outlook is optional and off by default (ADR-0016); only the client secret is a secret.
+      # Infrastructure agenda (SPEC-0006). Outlook is optional and off by default. Transport smtp (SPEC-0008, ADR-0023, default) or
+      # graph (ADR-0016). Only the SMTP password and the Graph client secret are secrets.
       Agenda__TimeZone: ${AGENDA_TIME_ZONE:-America/Bogota}
       Agenda__AllowedAttendeeDomains: ${AGENDA_ALLOWED_ATTENDEE_DOMAINS:-}
       Agenda__PublicUrl: ${AGENDA_PUBLIC_URL:-}
       Agenda__PublishPermitLimitPerHour: ${AGENDA_PUBLISH_REQUESTS_PER_HOUR:-60}
       Agenda__Outlook__Enabled: ${AGENDA_OUTLOOK_ENABLED:-false}
+      Agenda__Outlook__Transport: ${AGENDA_OUTLOOK_TRANSPORT:-smtp}
+      Agenda__Smtp__Username: ${AGENDA_SMTP_USERNAME:-}
+      Agenda__Smtp__Password: ${AGENDA_SMTP_PASSWORD:-}
       Agenda__Outlook__TenantId: ${AGENDA_OUTLOOK_TENANT_ID:-}
       Agenda__Outlook__ClientId: ${AGENDA_OUTLOOK_CLIENT_ID:-}
       Agenda__Outlook__ClientSecret: ${AGENDA_OUTLOOK_CLIENT_SECRET:-}

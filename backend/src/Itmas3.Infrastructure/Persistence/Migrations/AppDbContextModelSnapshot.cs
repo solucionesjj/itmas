@@ -111,6 +111,10 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(300)")
                         .HasColumnName("outlook_event_id");
 
+                    b.Property<string>("OutlookSentRecipients")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("outlook_sent_recipients");
+
                     b.Property<string>("OutlookStatus")
                         .IsRequired()
                         .HasMaxLength(16)
@@ -234,6 +238,8 @@ namespace Itmas3.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_agenda_events_end_after_start", "ends_at_utc > starts_at_utc AND ends_at_local > starts_at_local");
 
                             t.HasCheckConstraint("ck_agenda_events_impact", "impact IN ('none', 'degradation', 'outage')");
+
+                            t.HasCheckConstraint("ck_agenda_events_outlook_sent_recipients", "outlook_sent_recipients IS NULL OR (outlook_event_id IS NOT NULL AND CASE WHEN jsonb_typeof(outlook_sent_recipients) = 'array' THEN jsonb_array_length(outlook_sent_recipients) > 0 ELSE false END)");
 
                             t.HasCheckConstraint("ck_agenda_events_outlook_status", "outlook_status IN ('not-published', 'pending', 'published', 'error')");
 

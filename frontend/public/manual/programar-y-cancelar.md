@@ -36,8 +36,8 @@ programar ni modificar (solo se pueden editar sus etiquetas).
 
 ## Qué recibe Outlook
 
-Cuando Outlook está configurado, programar publica la actividad en el calendario compartido del área y los invitados
-reciben una invitación:
+Cuando Outlook está configurado, programar envía una **invitación de Outlook por correo** desde la cuenta de la agenda, y la
+reunión aparece en el calendario de cada invitado:
 
 - **Invitados:** el responsable, los participantes y, si la actividad tiene activado **Notificar al equipo**, la lista de
   distribución del equipo (como invitada opcional).
@@ -45,21 +45,29 @@ reciben una invitación:
 - **Contenido:** en texto plano, con la descripción, el alcance, el impacto y un enlace a la actividad en ITMas. Las
   etiquetas no se envían.
 - **Recordatorio y categoría:** el recordatorio de la actividad y el tipo como categoría de Outlook.
-- Si **modificas** una actividad programada, la invitación de Outlook se actualiza. Si la **cancelas**, los invitados
-  reciben la cancelación con el motivo. Registrar la ejecución no cambia nada en Outlook.
-- ITMas es la fuente de verdad: lo que se edite directamente en Outlook se sobrescribe la próxima vez que se publique.
+- Si **modificas** una actividad programada, los invitados reciben una actualización de la misma reunión, sin duplicarla.
+  Si **quitas** a alguien (un participante, el responsable o la lista del equipo), esa persona recibe un aviso de que ya no
+  está invitada, sin los datos de la actividad, y la reunión sale de su calendario.
+- Si la **cancelas**, los invitados reciben la cancelación con el motivo. Registrar la ejecución no envía nada.
+- ITMas es la fuente de verdad: lo que se edite directamente en Outlook no vuelve a ITMas y se sustituye en la próxima
+  actualización.
 
-En el detalle de la actividad, la tarjeta **Outlook** muestra el **Estado** de la publicación (siempre con ícono y texto):
-**No publicado**, **Pendiente**, **Publicado** o **Error**, y, si se publicó, el botón **Abrir en Outlook**.
+En el detalle de la actividad, la tarjeta **Outlook** muestra el **Estado** del envío (siempre con ícono y texto):
+**No publicado**, **Pendiente**, **Publicado** o **Error**. **Publicado** significa que el servidor de correo aceptó la
+invitación; no confirma que haya llegado a cada buzón. Según cómo esté configurado ITMas, la tarjeta puede mostrar además
+el botón **Abrir en Outlook**.
 
-### Si la publicación falla
+### Si el envío falla
 
 Un fallo de Outlook **nunca impide** programar, modificar ni cancelar: la actividad queda **Programada** y su estado en
-Outlook pasa a **Error** con un texto que explica la causa en general ("No se pudo publicar en Outlook." y, por ejemplo,
-"Outlook no está disponible."). Cuando se resuelva, usa **Sincronizar de nuevo** en el menú de la fila o en el detalle: es
-seguro repetirlo, no crea invitaciones duplicadas. **Sincronizar pendientes con Outlook** (encima de la lista del año)
-reintenta de una vez todas las programadas que aún no empezaron y están pendientes, con error o sin publicar. Si Outlook pide
-esperar por demasiadas solicitudes, ITMas se detiene, deja el resto como **Pendiente** y puedes reintentar más tarde.
+Outlook pasa a **Error** con un texto que explica la causa en general, por ejemplo "El servidor de correo rechazó las
+credenciales de ITMas." o "Outlook no está disponible.". Cuando se resuelva, usa **Sincronizar de nuevo** en el menú de la
+fila o en el detalle: es seguro repetirlo, no duplica la reunión. **Sincronizar pendientes con Outlook** (encima de la
+lista del año) reintenta de una vez todas las programadas que aún no empezaron y están pendientes, con error o sin publicar.
+
+Si programas o sincronizas muchas actividades a la vez, ITMas envía las que caben en ese momento y deja el resto como
+**Pendiente**, sin error: vuelve a pulsar **Sincronizar pendientes con Outlook** pasado un minuto. Lo mismo ocurre si el
+servidor de correo pide esperar.
 
 ## Resultado
 
@@ -75,7 +83,9 @@ auditoría](consultar-auditoria)).
 | El botón **Programar seleccionadas** está desactivado | Marca al menos un borrador: solo los borradores se pueden programar. |
 | "El motivo es obligatorio." | Escribe por qué se cancela; no basta con espacios. |
 | El estado en Outlook dice **Error** | Pulsa **Sincronizar de nuevo**. Si sigue fallando, avisa a quien administra ITMas: el texto del detalle indica la causa en general. |
-| Una actividad quedó **Pendiente** en Outlook | Una publicación se interrumpió (por ejemplo, por demasiadas solicitudes): pulsa **Sincronizar de nuevo**. |
+| Una actividad quedó **Pendiente** en Outlook | No cupo en el envío (programaste muchas a la vez) o el servidor de correo pidió esperar: pulsa **Sincronizar de nuevo** pasado un minuto. |
+| "El servidor de correo rechazó las credenciales de ITMas." u otro error del servidor de correo | No depende de ti: avisa a quien administra ITMas. Las actividades siguen programadas y se envían con **Sincronizar de nuevo** cuando se resuelva. |
+| Quité a alguien de una actividad y aún la ve en su calendario | Le llega una cancelación de esa reunión; si el estado en Outlook dice **Error** o **Pendiente**, pulsa **Sincronizar de nuevo**. |
 | Me equivoqué y cancelé una actividad | Una actividad cancelada no se reactiva: crea una nueva con los mismos datos. |
 | No veo **Programar** ni **Cancelar** | Necesitas el permiso `agenda.publish`; quien puede editar no necesariamente puede programar. Ver [Qué puedo hacer: permisos y cómo solicitarlos](permisos-y-acceso). |
 | "Se alcanzó el límite de avisos por hora de la agenda. Inténtalo más tarde." o "Demasiadas solicitudes." | Programar, cancelar, sincronizar y modificar actividades programadas comparten un límite por hora para todo ITMas. Espera y vuelve a intentarlo. |

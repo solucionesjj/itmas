@@ -23,6 +23,11 @@ related: [SPEC-0008, SPEC-0006, ADR-0016, ADR-0022, SPEC-0009]
 > - confirmó que los valores predeterminados de seguridad ya estaban desactivados;
 > - aceptó R-1 y R-5 con revisión no posterior al 2027-05-05;
 > - la constitución pasa a la 6.0.0 en el mismo cambio.
+>
+> **Enmienda del 2026-11-10** (SPEC-0008 §19.4): la detección queda solo con las alertas de envío, sin MFA con contraseña de
+> aplicación y sin grupo de exclusión de métodos. Pasan a los controles que faltan de la decisión 12, con revisión de `security`.
+> El solicitante **aceptó de nuevo R-1 y R-5 de forma expresa el 2026-11-10** (SPEC-0008 Q-14), con revisión no posterior al
+> 2027-05-05.
 
 ## Contexto
 
@@ -88,9 +93,9 @@ Fuerzas en juego:
      - Solo la conoce quien la configura, que se anota por su rol.
      - Se rota cada seis meses como máximo, y la rotación se anota en la agenda.
    - **Mínimo de licencia y de pertenencia:** solo una licencia de Exchange Online, sin Teams, SharePoint ni OneDrive; sin roles de
-     administración ni equipos. Solo pertenece a **un único grupo de seguridad sin permisos**, que sirve para excluirla de los
-     métodos registrables en la directiva de métodos de autenticación (passkeys, Authenticator y demás). Si no se crea, la
-     persistencia por métodos se acepta en R-1.
+     administración ni equipos. **Sin grupo de exclusión** de los métodos registrables (2026-11-10, SPEC-0008 §19.4): la persistencia
+     por métodos se acepta en R-1. Un único grupo de seguridad sin permisos que la excluyera de la directiva de métodos sería la
+     forma de cerrarla.
    - **En el buzón:** SMTP AUTH habilitado **solo en él** (`Set-CASMailbox -SmtpClientAuthenticationDisabled $false`), nunca en la
      organización. POP, IMAP, EWS, MAPI, ActiveSync y Outlook en la web desactivados.
    - **En el tenant**, ajustes que no exigen P1:
@@ -99,22 +104,20 @@ Fuerzas en juego:
      - limitar las invitaciones de personas externas a roles concretos;
      - el reenvío automático externo, desactivado en la directiva de *spam* saliente.
    - **Métodos de autenticación:** la cuenta queda fuera del autoservicio de restablecimiento (SSPR) y solo tiene la contraseña como
-     método, lo que se comprueba en cada revisión.
-   - **MFA por usuario con contraseña de aplicación:** se **evalúa en el tenant**. La credencial que guardara ITMas solo serviría
-     para la autenticación heredada y no para iniciar sesión de forma interactiva. Si funciona con SMTP AUTH, se adopta y R-1 se
-     reduce, y el resultado se anota en SPEC-0008 §18. Si se adopta:
+     método.
+   - **MFA por usuario con contraseña de aplicación:** se evaluó y **no se adopta** (2026-11-10, SPEC-0008 §18). Queda como opción
+     futura: la credencial que guardara ITMas solo serviría para la autenticación heredada y no para iniciar sesión de forma
+     interactiva, y R-1 se reduciría. Si se adoptara:
      - el segundo factor lo custodia la misma persona que custodia la contraseña;
-     - la cuenta tiene exactamente ese método y la contraseña de aplicación de ITMas, lo que comprueba cada revisión;
+     - la cuenta tiene exactamente ese método y la contraseña de aplicación de ITMas;
      - las contraseñas de aplicación no se revocan al restablecer la contraseña, así que el procedimiento ante un compromiso las
        borra.
-   - **Detección:**
-     - las directivas de alerta predeterminadas de Microsoft 365 sobre el envío («patrones sospechosos de envío», «usuario
-       restringido para enviar»), dirigidas al equipo;
-     - una revisión del registro de inicios de sesión de la cuenta **cada 6 días como máximo** en Entra ID, porque guarda 7, o
-       **mensual** en el registro de auditoría unificado de Purview (Audit Standard, 180 días). Purview solo se elige si muestra el
-       inicio de sesión SMTP de la prueba CA-1. Se anota cuál se usa;
-     - cada revisión comprueba también los métodos, los consentimientos, las aplicaciones, las reglas de bandeja y los reenvíos.
-       La alerta de creación de reglas de reenvío no ve las reglas creadas por Graph, así que la revisión de reglas es manual.
+   - **Detección:** las directivas de alerta predeterminadas de Microsoft 365 sobre el envío («patrones sospechosos de envío»,
+     «usuario restringido para enviar»), dirigidas al equipo.
+     - **Enmienda del 2026-11-10** (SPEC-0008 §19.4): el solicitante retiró la revisión periódica del registro de inicios de sesión
+       (cada 6 días en Entra ID, o mensual en Purview) y, con ella, la de los métodos, los consentimientos, las aplicaciones, las
+       reglas de bandeja y los reenvíos. Pasa a los controles que faltan (decisión 12). Los registros se consultan solo ante una
+       alerta, un `smtp_auth_failed` inesperado o una sospecha, y en el procedimiento ante un compromiso.
    - **Retención** de los Elementos enviados limitada a **30 días** (lo que se conserva es lo que se expone), y una alerta de cuota.
    - **ITMas** no concede nada a la cuenta: no se le asigna ninguna política (§3.4). No se exige asignación en la aplicación
      empresarial de ITMas, para no cambiar el acceso de las demás personas.
@@ -148,6 +151,10 @@ Fuerzas en juego:
      equipo como `OPT-PARTICIPANT`, con `RSVP=FALSE`, sin `CN`.
    - **Quienes se quitan reciben un único `CANCEL`**, con todos ellos como `ATTENDEE` y en `To`. Así una actualización son como
      mucho dos mensajes: la cancelación y la actualización.
+   - **Esa cancelación es neutra** (precisión de la revisión de `security` de la implementación, 2026-11-10): asunto y `SUMMARY`
+     «Ya no estás invitado a una actividad de la agenda», y solo `UID`, `SEQUENCE`, `DTSTAMP`, las fechas, `ORGANIZER`, sus
+     `ATTENDEE` y `STATUS:CANCELLED`. Nunca el título, la descripción, el lugar, la categoría ni el enlace de la actividad tal como
+     quedó, que la persona quitada no debe ver.
    - **Direcciones.** Una regla estricta única, en `Domain`:
      - la parte local solo admite `[a-z0-9._+-]`, sin punto al principio, al final ni dos seguidos. Es un subconjunto de
        *dot-atom* (RFC 5321) sin `?`, `%`, `&` ni `#`, que tienen significado en un URI `mailto:` (RFC 6068);
@@ -179,6 +186,11 @@ Fuerzas en juego:
      - solo quita si la revisión del trabajo es **igual** a la revisión actual del evento, porque un trabajo más nuevo puede estar en
        curso;
      - ante un `ConflictException`, se reintenta **una vez**, porque quitar es idempotente.
+     - **Precisión de la implementación (2026-11-10, revisión de `architecture`):** también se olvida a quien el servidor rechazó para
+       siempre en el `CANCEL` a quien se quita, porque no tiene un buzón que pueda guardar la reunión; si no, cada actualización
+       repetiría ese `CANCEL` y bloquearía la actividad. Un `CANCEL` que falla sin detener el lote no impide la actualización de los
+       demás: el evento queda en Error y el `CANCEL` se reintenta. Una cancelación de la actividad que el servidor acepta, aunque
+       rechace a todos, se da por hecha.
    - **`MarkOutlookPublished` es monótono:** nunca baja `OutlookSyncedRevision` ni deshace una cancelación confirmada. Un resultado
      tardío de una revisión anterior no cambia el estado.
    - **Estados finales.** Una cancelación confirmada de la actividad, o completarla, **vacía** la lista (`NULL`). Una actividad
@@ -229,7 +241,11 @@ Fuerzas en juego:
      - un mensaje solo empieza si el tiempo transcurrido, más 15 s de conexión (si no hay una abierta), más 15 s del mensaje y un
        margen de 5 s, cabe en el presupuesto;
      - una espera del *gate* que no cabe devuelve `NotAttempted`;
-     - pasado el presupuesto quedan la segunda escritura (con un solo reintento) y la respuesta, dentro del corte de nginx.
+     - pasado el presupuesto quedan la segunda escritura (con un solo reintento) y la respuesta, dentro del corte de nginx. La
+       cancelación propia vence 12 s después del presupuesto; si vence en la segunda escritura, el evento queda Pendiente y la operación
+       no falla.
+   - **Conexión** (precisión de la implementación): un rechazo del servidor deja la sesión abierta; solo un error de transporte, de TLS
+     o de autenticación obliga a conectar de nuevo. Un mensaje que llegó al servidor cuenta en el ritmo, lo acepte o no.
      Lo que no cabe queda **Pendiente**. Un evento con envío parcial (la cancelación aceptada y la actualización sin enviar) queda
      Pendiente, con la cancelación aceptada ya quitada de la lista.
    - **Tiempos máximos:** 15 s por mensaje, y otros 15 s para conectar, cifrar y autenticar.
@@ -268,7 +284,8 @@ Fuerzas en juego:
     - Si `AGENDA_ALLOWED_ATTENDEE_DOMAINS` está vacío, se permite el dominio de la cuenta.
     - El adaptador de Graph se conserva desactivado (SPEC-0008 Q-6). **Solo se cambia de transporte sin envíos vivos:** antes, las
       actividades Programadas con `outlook_event_id` se cancelan o se completan, y las Canceladas con la cancelación sin confirmar
-      se sincronizan hasta confirmarla. No se ofrece un reinicio de columnas.
+      se sincronizan hasta confirmarla. No se ofrece un reinicio de columnas. Si aun así queda una actividad publicada con el otro
+      transporte, sus cambios se guardan, el adaptador responde `outlook_rejected` para ella sola y el resto del lote sigue.
 11. **Caducidad técnica de la aceptación.**
     - Una constante en el código de composición (`Api/Agenda`), `SmtpExceptionAcceptedUntil`, guarda la fecha de revisión de la
       aceptación (decisión 12) y pasa a `AgendaSettings`.
@@ -280,17 +297,20 @@ Fuerzas en juego:
       deshabilita SMTP AUTH en el buzón, porque apagar el envío no invalida la credencial (DEVELOPMENT.md §11).
 12. **Excepción de §3.8 para esta credencial** (enmienda de la última sección):
     - **alcance real:** el del contexto, con los controles de la decisión 2;
-    - **controles que faltan:** MFA, acceso condicional y límite por IP. No hay control preventivo del inicio de sesión, y la
-      detección llega después;
+    - **controles que faltan:** MFA (la contraseña de aplicación no se adopta), el grupo de exclusión de métodos, acceso
+      condicional, límite por IP y, desde el 2026-11-10, la revisión periódica de los inicios de sesión (SPEC-0008 §19.4). No hay
+      control preventivo del inicio de sesión. Las alertas solo detectan un envío anómalo en volumen o patrón, no uno dirigido de
+      pocos mensajes. Un inicio de sesión (y con él la lectura del buzón o del directorio), un *password spraying* sin bloqueo, o un
+      método o una regla añadidos para persistir pasan inadvertidos, y una persistencia por métodos sobrevive a la rotación;
     - **alternativas descartadas:** SMTP con OAuth 2.0 (`SMTP.SendAsApp` acotado al buzón), que solo exigía que el administrador
       registrara una aplicación, y el *relay* por IP, que exigía un conector y liberar el puerto 25 en AWS. Ambas se descartaron
       expresamente el 2026-11-05 (SPEC-0008 Q-12);
     - **custodia:** la contraseña de producción solo está en el `.env` del servidor y en su copia sellada fuera de línea. La conoce
-      quien configura el `.env` (se anota su rol), que custodia también el segundo factor si se adopta la contraseña de aplicación.
-      ITMas es la única usuaria de la cuenta;
+      quien configura el `.env` (se anota su rol). ITMas es la única usuaria de la cuenta;
     - **retirada:** OAuth 2.0 para SMTP, o una directiva de acceso condicional si el tenant llega a tenerla;
-    - **aceptación:** expresa del solicitante el **2026-11-06** (SPEC-0008 Q-13), con revisión no posterior al **2027-05-05**. Al
-      vencer sin revisión, la decisión 11 desactiva el envío.
+    - **aceptación:** expresa del solicitante el **2026-11-06** (SPEC-0008 Q-13), con revisión no posterior al **2027-05-05**. Sin
+      la revisión periódica, sin MFA y sin grupo de exclusión, **aceptada de nuevo de forma expresa el 2026-11-10** (SPEC-0008 Q-14
+      y §19.4), con revisión no posterior al 2027-05-05. Al vencer sin revisión, la decisión 11 desactiva el envío.
 13. **Pruebas** (§9.4). Ninguna prueba llama a Microsoft:
     - **escritor de invitaciones:** métodos, `UID`, `SEQUENCE` (paridad), asistentes y roles, día completo, recordatorio, inyección
       de cabeceras, de propiedades y de `CAL-ADDRESS`, y la regla de direcciones;
@@ -513,3 +533,14 @@ historial).
       - participantes ya guardados: consulta previa y corrección;
     - bajos: `5.7.139` como `smtp_basic_auth_disabled`, la parte local limitada por `mailto:`, la revisión cada 6 días y la
       comprobación de Purview.
+- **Revisión de la implementación** (2026-11-10, SPEC-0008 §18): `architecture`, `security`, `database`, `testing` y `frontend`,
+  todas «aceptable con cambios». Precisaron esta decisión en tres puntos, recogidos arriba:
+  - la cancelación neutra a quien se quita (decisión 4);
+  - olvidar a quien fue rechazado para siempre en el `CANCEL`, sin que un `CANCEL` fallido bloquee la actualización (decisión 5);
+  - la conexión que se conserva ante un rechazo, y el margen del plazo propio (decisión 7).
+  Además, una actividad de Graph responde `outlook_rejected` sin abortar el lote (decisión 10). Ninguno cambia el alcance de la
+  credencial ni los riesgos aceptados.
+- **Revisión de `security` de la enmienda del 2026-11-10** (SPEC-0008 §19.4), independiente y de solo lectura: «aceptable con
+  cambios». La retirada cabe en §3.8 (c), que exige declarar los controles que faltan, no un mínimo de detección, pero no es válida
+  sin la nueva aceptación expresa. Precisó lo que detectan las alertas, la persistencia que sobrevive a la rotación y que el MFA y
+  el grupo de exclusión constaran como decididos. Todo incorporado en las decisiones 2 y 12.

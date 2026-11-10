@@ -360,22 +360,195 @@ avisa de que lo reemplaza.
 **No es un control de seguridad:** `git commit --no-verify` lo omite. La verificación centralizada queda para una
 futura integración continua.
 
-## 11. Agenda de infraestructura: Outlook y el tenant (SPEC-0006, ADR-0016)
+## 11. Agenda de infraestructura: Outlook y el tenant (SPEC-0006, SPEC-0008, ADR-0023, ADR-0016)
 
 La agenda funciona sin Outlook: con `AGENDA_OUTLOOK_ENABLED=false` (valor por defecto) programar solo cambia el estado del evento y la
-API no llama a nada externo. Esta sección es para quien activa la publicación en un entorno. Las variables están en
-[`.env.example`](.env.example) y en el [README](README.md); el diseño, en [ADR-0016](specs/architecture/adr-0016-outlook-graph-application-permissions.md)
-y en `specs/features/SPEC-0006-infrastructure-agenda.md` (§10.2, §14).
+API no llama a nada externo. Esta sección es para quien activa el envío en un entorno. Las variables están en
+[`.env.example`](.env.example) y en el [README](README.md).
+
+Con el transporte por defecto, `smtp` ([ADR-0023](specs/architecture/adr-0023-agenda-invitations-smtp.md), SPEC-0008), ITMas envía
+**invitaciones de Outlook por correo** desde una cuenta de Microsoft 365 con usuario y contraseña, a `smtp.office365.com:587` con
+STARTTLS. El host y el puerto están fijos en el código. El transporte `graph` ([ADR-0016](specs/architecture/adr-0016-outlook-graph-application-permissions.md))
+se conserva desactivado como camino de vuelta (§11.9).
+
+> **Excepción de la constitución.** La contraseña es una identidad de Entra ID sin MFA ni acceso condicional: la constitución §3.8 (c)
+> la admite solo con lo que declara ADR-0023, aceptado hasta el **2027-05-05**. Ese día ITMas deja de enviar solo
+> (`SmtpExceptionAcceptedUntil`) y hay que bloquear la cuenta (§11.5). **Outlook no se activa en producción hasta que SPEC-0008
+> esté `Implemented`.**
 
 ### 11.1 Activarla
 
-Con `AGENDA_OUTLOOK_ENABLED=true` son obligatorias `AGENDA_OUTLOOK_TENANT_ID`, `AGENDA_OUTLOOK_CLIENT_ID`,
-`AGENDA_OUTLOOK_CLIENT_SECRET`, `AGENDA_OUTLOOK_MAILBOX` y `AGENDA_PUBLIC_URL` (URL absoluta `https`); la dirección del equipo
-(`AGENDA_OUTLOOK_TEAM_ADDRESS`) es opcional. Si falta alguna, la API **no arranca** y el mensaje nombra la variable, nunca su valor.
-El secreto solo existe como variable de entorno del contenedor `api`: no lo pases por la línea de comandos, no lo escribas en un
-archivo versionado ni en un ticket (constitución §4).
+Con `AGENDA_OUTLOOK_ENABLED=true` y `AGENDA_OUTLOOK_TRANSPORT=smtp` son obligatorias:
 
-### 11.2 Prerrequisitos en Microsoft 365 (los realiza el equipo de infraestructura)
+- `AGENDA_SMTP_USERNAME`: la cuenta que envía y organiza las reuniones;
+- `AGENDA_SMTP_PASSWORD`: su contraseña;
+- `AGENDA_PUBLIC_URL`: URL absoluta `https`.
+
+La lista del equipo (`AGENDA_OUTLOOK_TEAM_ADDRESS`) es opcional. La cuenta y la lista deben cumplir la regla de direcciones de la agenda:
+antes de la `@`, solo `a-z`, `0-9` y `. _ + -`. Si algo falta o no es válido, la API **no arranca** y el mensaje nombra la variable,
+nunca su valor. Sin `AGENDA_ALLOWED_ATTENDEE_DOMAINS`, solo se invita al dominio de la cuenta.
+
+**La contraseña:**
+- la genera quien despliega al configurar ITMas, **sin comillas simples** (`'`) en ella, y la escribe directamente en el `.env`
+  **siempre entre comillas simples** (`AGENDA_SMTP_PASSWORD='…'`): Compose interpreta `$` y recorta en silencio lo que sigue a ` #`,
+  y una contraseña recortada solo da `smtp_auth_failed` y la pausa de 15 minutos;
+- nunca va en la línea de comandos, en un archivo versionado, en un ticket ni en el chat (constitución §4);
+- se rota otra vez después de la prueba en el equipo de trabajo (§11.3), para que la de producción solo esté en el `.env` del servidor
+  y en su copia sellada fuera de línea (SECURITY.md §8).
+
+**Antes de activarla**, cuenta los participantes guardados con una dirección que no cumple la regla (SPEC-0008 RF-2b). La consulta es
+de solo lectura, con un rol de lectura de la base:
+
+```sql
+SELECT count(*) FROM app.agenda_events e, jsonb_array_elements_text(e.participants) AS p(address)
+WHERE p.address !~ '^[a-z0-9_+-]+(\.[a-z0-9_+-]+)*@([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$';
+```
+
+Si da más de cero, corrige esas actividades editándolas. El formulario nombra la dirección que no cumple. Una dirección así nunca
+recibe nada: el escritor de invitaciones la omite.
+
+### 11.2 Preparar la cuenta y el tenant (lo hace quien administra el tenant)
+
+Los comandos son los de la documentación de Microsoft, con valores de ejemplo entre `<>`. **No se ejecutaron desde este repositorio**:
+valídalos en el tenant antes de darlos por buenos. Anota cada punto en la trazabilidad de SPEC-0008 (CA-6), sin identificadores.
+
+1. **Condición previa.** Los **valores predeterminados de seguridad** de Entra ID ya estaban desactivados por motivos ajenos a ITMas, y
+   el tenant no tiene acceso condicional. Si estuvieran activos, **no los desactives** por esta cuenta: quitarían el MFA a todas las
+   personas. ADR-0023 no se aplica.
+2. **Cuenta de servicio.**
+   - Un buzón dedicado a la agenda que **solo usa ITMas**. Su UPN es igual a su dirección SMTP principal.
+   - Sin *Send As*, *Send on Behalf* ni derechos sobre otros buzones.
+   - **Solo una licencia de Exchange Online**: sin Teams, SharePoint ni OneDrive. Sin roles de administración ni equipos.
+   - Sin grupo de exclusión de métodos (SPEC-0008 §19.4). Un grupo de seguridad sin permisos que la excluyera (punto 5) cerraría la
+     persistencia por métodos aceptada en R-1.
+3. **Solo SMTP AUTH, y solo en ese buzón.** No lo habilites en la organización (`Set-TransportConfig`).
+
+   ```powershell
+   Connect-ExchangeOnline
+   Set-CASMailbox -Identity <cuenta-de-la-agenda> -SmtpClientAuthenticationDisabled $false `
+     -PopEnabled $false -ImapEnabled $false -EwsEnabled $false -MAPIEnabled $false -ActiveSyncEnabled $false -OWAEnabled $false
+   Get-CASMailbox -Identity <cuenta-de-la-agenda> | Format-List SmtpClientAuthenticationDisabled, PopEnabled, ImapEnabled, EwsEnabled, MAPIEnabled, ActiveSyncEnabled, OWAEnabled
+   # La directiva de autenticación que aplique a la cuenta, si la hay, debe permitir la autenticación básica de SMTP:
+   Get-AuthenticationPolicy | Format-List Name, AllowBasicAuthSmtp
+   ```
+
+4. **Ajustes del tenant** (Entra ID, sin P1):
+   - **Aplicaciones empresariales → Consentimiento y permisos:** no permitir el consentimiento de usuarios.
+   - **Configuración de usuario:** que los usuarios no puedan registrar aplicaciones.
+   - **Colaboración externa:** solo roles concretos pueden invitar a personas externas.
+   - **Directiva de *spam* saliente** (Defender): el reenvío automático externo, desactivado.
+5. **Métodos de autenticación.**
+   - La cuenta queda **fuera** del autoservicio de restablecimiento de contraseña (SSPR).
+   - Debe quedar con la contraseña como único método. Sin el grupo del punto 2, la persistencia por métodos queda aceptada en R-1;
+     con él, la directiva de métodos de autenticación la excluiría de los registrables (passkeys, Authenticator…).
+6. **MFA por usuario con contraseña de aplicación:** evaluado y **no adoptado** (2026-11-10). Queda como opción futura: si con MFA
+   por usuario y una contraseña de aplicación el envío SMTP funciona, úsala en `AGENDA_SMTP_PASSWORD`. En ese caso:
+   - el segundo factor lo custodia quien custodia la contraseña;
+   - la cuenta tiene exactamente ese método y esa contraseña de aplicación.
+7. **Detección.**
+   - Las directivas de alerta predeterminadas de Microsoft 365 sobre el envío, dirigidas al equipo: «patrones sospechosos de envío» y
+     «usuario restringido para enviar».
+   - **Sin revisión periódica** de los inicios de sesión (SPEC-0008 §19.4). Consulta los registros de la cuenta solo ante una
+     alerta, un `smtp_auth_failed` inesperado o una sospecha (Entra ID Free los guarda 7 días), y sigue §11.6 si hay indicios.
+   - Las comprobaciones que sí se programan están en §11.7.
+8. **Buzón emisor.**
+   - Directiva de retención de **30 días** para los Elementos enviados.
+   - Alerta de cuota (`Set-Mailbox -IssueWarningQuota`).
+9. **ITMas:** la cuenta no recibe ninguna política.
+
+### 11.3 Prueba con la cuenta real (SPEC-0008, CA-1 a CA-5)
+
+En el equipo de trabajo, con `docker compose up --build`, las variables de §11.1 y buzones de quien hace la prueba como responsable,
+participante y lista:
+
+1. **Programa** una actividad con un título neutro. Debe quedar en *Publicado* y la reunión, en los tres calendarios. Anota si el
+   calendario de la cuenta emisora la muestra.
+2. **Modifica** la hora: llega una actualización de la misma reunión, sin duplicarla. **Sincronizar de nuevo** tampoco la duplica.
+3. **Quita al participante** y guarda: recibe una cancelación neutra, «Ya no estás invitado a una actividad de la agenda», sin el
+   título ni los datos de la actividad, y la reunión sale de su calendario. El resto recibe la actualización.
+   Desmarca «notificar al equipo» con un miembro de la lista que también sea participante: conserva la reunión.
+4. **Cancela** con un motivo: llega la cancelación con el motivo. Repite con una actividad de día completo.
+5. **Errores:**
+   - con una contraseña incorrecta, la actividad queda en *Error* con `smtp_auth_failed`, hay un solo intento de autenticación y el
+     resto del lote queda *Pendiente* durante la pausa de 15 minutos;
+   - sin salida a `smtp.office365.com`, queda en `smtp_unavailable`.
+6. Busca en `docker compose logs api` la contraseña, `AUTH` y las direcciones de la prueba: no debe aparecer ninguna. Para la
+   contraseña, no la escribas en la orden (quedaría en el historial y en `ps`): léela sin eco y pásala por un descriptor.
+
+   ```bash
+   read -rs P && docker compose logs api | grep -cFf <(printf '%s\n' "$P"); unset P
+   ```
+
+   Debe dar `0`.
+7. **Rota la contraseña** (§11.5), actívala en producción con la misma cuenta y repite el paso 4 con la lista del equipo (CA-5).
+8. Anota el resultado (fecha, rol de quien lo hizo y qué se comprobó, sin direcciones ni identificadores) en la trazabilidad de
+   SPEC-0008.
+
+### 11.4 Diagnóstico de los códigos
+
+Un fallo de Outlook nunca impide guardar, programar, cancelar ni cerrar: el evento muestra un código y se reintenta con **Sincronizar de
+nuevo**. Ni el texto del servidor, ni el diálogo SMTP, ni las direcciones se guardan o se registran: solo el código. Lo que no cabe en
+el presupuesto de 45 s de una petición queda *Pendiente*, sin error.
+
+| Código | Causa habitual | Qué hacer |
+|---|---|---|
+| `smtp_auth_failed` | Contraseña incorrecta, caducada o cambiada (`535`). Pausa todos los envíos 15 minutos para no bloquear la cuenta. | Revisa `AGENDA_SMTP_PASSWORD` (§11.5) y el registro de inicios de sesión de la cuenta. |
+| `smtp_basic_auth_disabled` | Microsoft 365 no admite usuario y contraseña en SMTP para la cuenta: SMTP AUTH desactivado en el buzón o el tenant (`5.7.139`), o retirado (`5.7.30`, R-2). | Revisa §11.2, punto 3, y la directiva de autenticación. Tras la retirada definitiva hay que migrar (ADR-0023, seguimiento). |
+| `smtp_sender_rejected` | El servidor no deja enviar desde la cuenta: UPN distinto de la dirección (`5.2.252`), remitente restringido (`5.1.8`) o bloqueo del tenant. Detiene el lote. | Revisa la cuenta (§11.2, punto 2) y si Microsoft la restringió por envío sospechoso. |
+| `smtp_rejected` | El servidor rechazó el mensaje o todos sus destinatarios. | Revisa los destinatarios y el contenido; avisa a desarrollo si se repite. |
+| `smtp_throttled` | Límite de envío de Exchange (`432 4.3.2`, `421 4.4.2`, `5.2.0` de cuota, `5.1.90`). Detiene el lote. | Espera y usa **Sincronizar de nuevo**; si se repite, baja `AGENDA_PUBLISH_REQUESTS_PER_HOUR`. |
+| `smtp_unavailable` | No hay conexión, STARTTLS o certificado válido. La revocación se comprueba por HTTP (OCSP/CRL). | Revisa la salida de `api` a `smtp.office365.com:587` y a los servicios de revocación (§12). |
+| `smtp_timeout` | La conexión o el mensaje superaron los 15 s. | Reintenta; si se repite, revisa la red. |
+| `outlook_unavailable`, `outlook_timeout`, `outlook_rejected` | Respuestas neutras de cualquier transporte: un error inesperado, un tiempo agotado o una respuesta sin identificador. | Reintenta; si se repite, avisa a desarrollo. |
+| `not_configured` | Outlook desactivado, o la aceptación de la excepción venció (desde el 2027-05-06 sin renovarla). | Activa y completa §11.1, o renueva la aceptación (§11.5). |
+| `graph_*` | Solo con `AGENDA_OUTLOOK_TRANSPORT=graph` (§11.9). | Ver la tabla de §11.9. |
+
+### 11.5 Rotar la contraseña y vencimiento de la aceptación
+
+**Rotar** (cada seis meses como máximo, tras la prueba de §11.3 y ante cualquier sospecha):
+1. Genera la contraseña nueva, cámbiala en la cuenta y escríbela directamente en el `.env`.
+2. Reinicia `api` (`docker compose up -d api`) y comprueba con **Sincronizar de nuevo** sobre una actividad programada que vuelve a
+   *Publicado*.
+3. Actualiza la copia sellada del `.env` y anota la próxima rotación en la agenda.
+
+**Vencimiento.** La aceptación de la excepción de §3.8 vence el **2027-05-05**. Desde el 2027-05-06 ITMas no envía nada y muestra
+«Outlook no configurado», aunque `AGENDA_OUTLOOK_ENABLED` siga en `true`. Ese día, además, quien administra el tenant **bloquea el
+inicio de sesión** de la cuenta (o restablece su contraseña) y **deshabilita SMTP AUTH** en el buzón, porque apagar el envío no
+invalida la credencial. Renovarla exige una nueva aceptación expresa en ADR-0023 y un commit que cambie `SmtpExceptionAcceptedUntil`
+(`backend/src/Itmas3.Api/Agenda/AgendaModuleSetup.cs`).
+
+### 11.6 Procedimiento ante un compromiso de la cuenta
+
+1. Pon `AGENDA_OUTLOOK_ENABLED=false` y reinicia `api`.
+2. Restablece la contraseña y revoca las sesiones (`Revoke-MgUserSignInSession`).
+3. Quita los consentimientos, las aplicaciones, los métodos registrados y las contraseñas de aplicación de la cuenta: estas no se
+   revocan al restablecer la contraseña.
+4. Revisa las reglas de bandeja, los reenvíos y los Elementos enviados.
+5. Avisa al equipo, y a `security` para decidir si se sigue con la excepción.
+
+### 11.7 Comprobaciones programadas
+
+Prográmalas como actividades de la propia agenda. No hay revisión periódica de los inicios de sesión (SPEC-0008 §19.4).
+
+- **Rotación** de la contraseña, cada seis meses como máximo (§11.5).
+- **Vencimiento** de la aceptación, el 2027-05-05 (§11.5).
+- **Antes de finales de diciembre de 2026**, y otra vez tras el cambio de Microsoft (MC786329), confirma que el envío sigue funcionando
+  (SPEC-0008 CA-7).
+
+### 11.8 Cambiar de transporte
+
+Solo sin envíos vivos: antes, cancela o completa las actividades Programadas que tengan un id de Outlook, y sincroniza las Canceladas
+cuya cancelación no esté confirmada. Si queda alguna publicada con el otro transporte, sus cambios se guardan igual, pero su estado
+en Outlook pasa a *Error* con `outlook_rejected` y no se le envía nada; el resto del lote sigue. No hay un reinicio de las columnas
+de Outlook.
+
+### 11.9 Transporte `graph` (ADR-0016)
+
+Solo con `AGENDA_OUTLOOK_TRANSPORT=graph`. Son obligatorias `AGENDA_OUTLOOK_TENANT_ID`, `AGENDA_OUTLOOK_CLIENT_ID`,
+`AGENDA_OUTLOOK_CLIENT_SECRET`, `AGENDA_OUTLOOK_MAILBOX` y `AGENDA_PUBLIC_URL`. El secreto solo existe como variable de entorno del
+contenedor `api`.
+
+#### Prerrequisitos en Microsoft 365 con `graph`
 
 Los comandos son los de la documentación de Microsoft ([RBAC for Applications](https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac))
 con valores de ejemplo entre `<>`; **no se ejecutaron desde este repositorio**: valídalos en el tenant antes de darlos por buenos. Los
@@ -418,47 +591,28 @@ nombres de carpeta, el filtro del ámbito y los roles pueden variar con la versi
    El primero debe mostrar el rol de calendarios dentro del ámbito (`InScope: True`) y el segundo, fuera (`InScope: False`). Esta comprobación **no ve
    los permisos consentidos en Entra ID**: un `InScope: False` no prueba que no haya un consentimiento global que anule el límite. Comprueba también en
    Entra ID (**Aplicaciones empresariales → Permisos**) que la aplicación no tiene concedido `Calendars.ReadWrite`, y limita sus propietarios y quién puede
-   añadirle credenciales: quien pueda hacerlo hereda el acceso al buzón. La prueba que demuestra el alcance efectivo es la de §11.3, paso 4 (un buzón fuera
-   del ámbito debe dar `graph_forbidden`).
+   añadirle credenciales: quien pueda hacerlo hereda el acceso al buzón. La prueba que demuestra el alcance efectivo es programar con un buzón fuera
+   del ámbito, que debe dar `graph_forbidden`.
 5. **Entrega a quien despliega ITMas**, por el canal del gestor de secretos: el identificador del tenant, el de la aplicación, la
-   credencial y la dirección del buzón (variables de §11.1).
+   credencial y la dirección del buzón (variables de esta sección).
 
-### 11.3 Prueba con un buzón de pruebas (SPEC-0008, antes CA-24 de SPEC-0006)
+#### Códigos `graph_*`
 
-Con Outlook activado en un entorno de pruebas y los datos de un buzón de pruebas:
-
-1. Crea una actividad con un título neutro y **prográmala**: debe quedar en estado *Publicado* y aparecer en el calendario del buzón (y,
-   en solo lectura, en el del equipo).
-2. **Modifica** su hora: la invitación se actualiza, no se duplica.
-3. **Cancélala** con un motivo: los invitados reciben la cancelación con el motivo.
-4. **Alcance:** cambia `AGENDA_OUTLOOK_MAILBOX` a un buzón de pruebas **fuera** del ámbito y reinicia `api`; programar una actividad
-   debe dejarla *Programada* con el error `graph_forbidden`. Devuelve la variable a su valor.
-5. Anota el resultado (fecha, quién lo hizo y qué se comprobó, sin direcciones ni identificadores) en la trazabilidad de SPEC-0008.
-   Outlook **no** se activa en producción hasta que SPEC-0008 esté `Implemented`.
-
-### 11.4 Diagnóstico de los códigos `graph_*`
-
-Un fallo de Outlook nunca impide guardar, programar, cancelar ni cerrar: el evento muestra un código y se reintenta con **Sincronizar de
-nuevo**, que es idempotente. El detalle de la respuesta de Graph no se guarda ni se muestra; los registros llevan la operación, el
-identificador del evento, el código y el `request-id` de Graph (solo si es un GUID), para el soporte de Microsoft.
+Los registros llevan la operación, el identificador del evento, el código y el `request-id` de Graph (solo si es un GUID), para el
+soporte de Microsoft.
 
 | Código | Causa habitual | Qué hacer |
 |---|---|---|
-| `graph_unauthorized` | Secreto vencido o incorrecto, o tenant o aplicación equivocados. | Revisa la credencial y su caducidad (§11.5). El siguiente intento pide un token nuevo. |
-| `graph_forbidden` | La aplicación no tiene permiso sobre ese buzón: ámbito mal definido o cambio aún no aplicado (hasta 2 h). | Repite la verificación de §11.2 y confirma que `AGENDA_OUTLOOK_MAILBOX` es el buzón del ámbito. |
+| `graph_unauthorized` | Secreto vencido o incorrecto, o tenant o aplicación equivocados. | Revisa la credencial y su caducidad. El siguiente intento pide un token nuevo. |
+| `graph_forbidden` | La aplicación no tiene permiso sobre ese buzón: ámbito mal definido o cambio aún no aplicado (hasta 2 h). | Repite la verificación del ámbito y confirma que `AGENDA_OUTLOOK_MAILBOX` es el buzón del ámbito. |
 | `graph_not_found` | El buzón no existe o su dirección está mal escrita. (Un evento borrado en Outlook se vuelve a crear solo.) | Revisa `AGENDA_OUTLOOK_MAILBOX`. |
 | `graph_throttled` | Límite de peticiones de Graph (`429`). | El lote se detiene y el resto queda *Pendiente*; espera y usa **Sincronizar de nuevo**. |
 | `graph_unavailable` | Graph no responde (`5xx` o red) o no hay salida a `graph.microsoft.com` y `login.microsoftonline.com`. | Revisa la salida de red de `api` y el estado de Microsoft 365. |
 | `graph_timeout` | La llamada superó los 10 s. | Reintenta; si se repite, revisa la red. |
 | `graph_rejected` | Graph rechazó el contenido (por ejemplo, una zona horaria que no admite). | Revisa `AGENDA_TIME_ZONE` y el evento; avisa a desarrollo. |
-| `not_configured` | Outlook desactivado o sin adaptador. | Activa y completa las variables de §11.1. |
 
-### 11.5 Renovar o rotar la credencial
-
-1. Crea la credencial nueva en la aplicación de Entra ID **antes** de que venza la actual.
-2. Actualízala en el gestor de secretos (`AGENDA_OUTLOOK_CLIENT_SECRET`) y reinicia el contenedor `api` (`docker compose up -d api`).
-3. Comprueba con **Sincronizar de nuevo** sobre una actividad programada que el estado vuelve a *Publicado*.
-4. Elimina la credencial anterior y anota el nuevo vencimiento en la agenda.
+Para rotar el secreto, crea el nuevo en la aplicación de Entra ID antes de que venza el actual, cámbialo en `AGENDA_OUTLOOK_CLIENT_SECRET`,
+reinicia `api`, comprueba con **Sincronizar de nuevo** y elimina el anterior.
 
 ## 12. Publicación en un servidor Linux (ADR-0018, SPEC-0009)
 
@@ -493,7 +647,7 @@ cambiarlos. La persona administradora usa `sudo`, no el grupo `docker` (equivale
   **Solo si se dejan privados** hace falta una credencial de lectura: un token personal clásico con solo `read:packages` (GHCR no admite los de granularidad fina), mejor de una **cuenta de servicio de GitHub dedicada** con lectura solo de los paquetes `itmas3-*`
   (*Package settings → Manage access*) y caducidad de 90 días como máximo, no el de una persona.
 - **DNS y Entra ID:** §12.2.
-- **Salida a Internet** desde el servidor hacia `github.com`, `ghcr.io`, `login.microsoftonline.com`, Let's Encrypt, el almacenamiento de las copias y, solo si se activa Outlook, `graph.microsoft.com`.
+- **Salida a Internet** desde el servidor hacia `github.com`, `ghcr.io`, `login.microsoftonline.com`, Let's Encrypt, el almacenamiento de las copias y, solo si se activa Outlook, `smtp.office365.com:587` y los servicios de revocación (OCSP/CRL, por HTTP) de su certificado con el transporte `smtp` (SPEC-0008), o `graph.microsoft.com` con `graph`.
 - **Un servicio externo** con sonda HTTP y latidos (se elige al desplegar; SPEC-0009 §19.5) y una **lista de correo** del equipo para los avisos.
 
 ### 12.2 Entra ID y DNS
@@ -585,7 +739,8 @@ cd /opt/itmas3 && sudo ./scripts/init-env.sh
 | `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET` | los del *App Registration* |
 | `AUTHZ_BOOTSTRAP_ROOT_OIDS` | tu *Object ID*, **solo hasta §12.7** |
 | `AGENDA_PUBLIC_URL` | `https://itmas.sacservices.cloud` |
-| `AGENDA_OUTLOOK_ENABLED` | `false`: no se activa en producción hasta que SPEC-0008 esté `Implemented` |
+| `AGENDA_OUTLOOK_ENABLED` | `false`: no se activa en producción hasta que SPEC-0008 esté `Implemented` (§11) |
+| `AGENDA_OUTLOOK_TRANSPORT`, `AGENDA_SMTP_USERNAME`, `AGENDA_SMTP_PASSWORD` | `smtp` y la cuenta de la agenda, solo al activar Outlook (§11.1). La contraseña se escribe directamente aquí, siempre entre comillas simples |
 | `EDGE_TRUSTED_PROXY_FROM` | vacío hasta comprobar el origen que ve nginx (§12.7, paso 7) |
 | `AGENT_DOWNLOADS_DIR` | no la cambies: `deploy.sh` y nginx deben usar la misma carpeta (`/opt/itmas3/agent/dist`) |
 

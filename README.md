@@ -14,7 +14,7 @@ solo la arquitectura, la seguridad, la infraestructura y las reglas sobre las qu
                            ├── /            SPA Angular 22 + Material 3
                            └── /api, /auth  ──reverse proxy──▶ api (ASP.NET Core 10, :8080)
                                                                ├──▶ Microsoft Entra ID (OIDC)
-                                                               ├──▶ Microsoft Graph (opcional: agenda en Outlook)
+                                                               ├──▶ SMTP de Microsoft 365 (opcional: invitaciones de la agenda)
                                                                └──▶ postgres (PostgreSQL 18)  [red interna]
                            migrator (one-shot, EF Core bundle) ──▶ postgres
                            /downloads/agent/  paquetes del agente (volumen de solo lectura)
@@ -44,7 +44,8 @@ solo la arquitectura, la seguridad, la infraestructura y las reglas sobre las qu
 - **Agenda de infraestructura** ([SPEC-0006](specs/features/SPEC-0006-infrastructure-agenda.md)): plan anual de las
   actividades del área (parches, auditorías, hardening, pruebas de vulnerabilidad, cambios de claves…) con responsable,
   estado, etiquetas y evidencia de ejecución; lista del año y calendarios de año, mes y semana (ADR-0017); exportación
-  `.ics`; y, opcional, publicación en un calendario compartido de Outlook con Microsoft Graph (ADR-0016).
+  `.ics`; y, opcional, invitaciones de Outlook por correo SMTP de Microsoft 365
+  ([SPEC-0008](specs/features/SPEC-0008-outlook-activation.md), ADR-0023), con Microsoft Graph (ADR-0016) como camino de vuelta.
 
 Detalle completo en [ARCHITECTURE.md](ARCHITECTURE.md) y [SECURITY.md](SECURITY.md).
 
@@ -138,13 +139,16 @@ Toda la configuración sensible llega por variables de entorno (`.env` → Docke
 | `SQL_AUDIT_SNAPSHOTS_PER_HOUR` | Instantáneas de auditoría SQL aceptadas por equipo y hora (120 por defecto: hasta 50 conexiones y sus reintentos). | No |
 | `AGENT_DOWNLOADS_DIR` | Carpeta con los paquetes del agente que nginx sirve en `/downloads/agent/` (`./agent/dist`). | No |
 | `AGENDA_TIME_ZONE` | Zona horaria IANA de la agenda de infraestructura (`America/Bogota` por defecto). La API no arranca si no la reconoce. No la cambies con actividades ya guardadas: conservan la zona con la que se guardaron. | No |
-| `AGENDA_ALLOWED_ATTENDEE_DOMAINS` | Dominios de los correos que pueden ser participantes de una actividad, separados por comas. Vacía: con Outlook activo, el dominio de `AGENDA_OUTLOOK_MAILBOX`; con Outlook apagado no se admite ningún participante, así que indícalos aquí si los usas. | No |
+| `AGENDA_ALLOWED_ATTENDEE_DOMAINS` | Dominios de los correos que pueden ser participantes de una actividad, separados por comas. Vacía: con Outlook activo, el dominio de `AGENDA_SMTP_USERNAME` (transporte `smtp`) o de `AGENDA_OUTLOOK_MAILBOX` (`graph`); con Outlook apagado no se admite ningún participante, así que indícalos aquí si los usas. | No |
 | `AGENDA_PUBLIC_URL` | URL pública de ITMas, para el enlace del cuerpo de las invitaciones. Obligatoria (URL `https` absoluta) con `AGENDA_OUTLOOK_ENABLED=true`. Sin Outlook es opcional: con ella, el archivo `.ics` que exporta la agenda lleva el enlace a cada actividad (propiedad `URL`); sin ella, el `.ics` no la incluye. | No |
 | `AGENDA_PUBLISH_REQUESTS_PER_HOUR` | Operaciones por hora que avisan por Outlook: programar, cancelar, sincronizar y modificar actividades programadas (60 por defecto). Se cuentan en conjunto para toda la API y solo después de autorizar (una petición rechazada no gasta): protegen contra el envío masivo de invitaciones. | No |
-| `AGENDA_OUTLOOK_ENABLED` | Publica las actividades programadas en un calendario compartido de Outlook con Microsoft Graph (`false` por defecto: sin llamadas externas y todo lo demás funciona). Con `true` hay que informar las demás variables `AGENDA_OUTLOOK_*` (salvo la dirección del equipo) y los prerrequisitos de Microsoft 365 de [SECURITY.md](SECURITY.md); sin ellas, la API no arranca. | No |
-| `AGENDA_OUTLOOK_TENANT_ID`, `AGENDA_OUTLOOK_CLIENT_ID` | Identificadores de la aplicación de Entra ID de la agenda (distinta de la del inicio de sesión). | No |
-| `AGENDA_OUTLOOK_CLIENT_SECRET` | Credencial de esa aplicación, con caducidad corta. Solo existe en el contenedor `api`; nunca en el repositorio, en logs ni en la línea de comandos. | **Sí** |
-| `AGENDA_OUTLOOK_MAILBOX` | Dirección del buzón compartido cuyo calendario recibe las actividades. | No |
+| `AGENDA_OUTLOOK_ENABLED` | Envía las actividades programadas a Outlook (`false` por defecto: sin llamadas externas y todo lo demás funciona). Con `true` hay que informar las variables del transporte elegido y preparar Microsoft 365 según [DEVELOPMENT.md §11](DEVELOPMENT.md#11-agenda-de-infraestructura-outlook-y-el-tenant-spec-0006-spec-0008-adr-0023-adr-0016); sin ellas, la API no arranca. No se activa en producción hasta que SPEC-0008 esté `Implemented`. | No |
+| `AGENDA_OUTLOOK_TRANSPORT` | `smtp` (por defecto): invitaciones de Outlook por correo desde una cuenta de Microsoft 365 con usuario y contraseña, a `smtp.office365.com:587` con STARTTLS, fijo en el código (ADR-0023). `graph`: el adaptador de Microsoft Graph (ADR-0016), conservado como camino de vuelta. | No |
+| `AGENDA_SMTP_USERNAME` | Con `smtp`: la cuenta dedicada que envía y organiza las reuniones; su UPN es su dirección principal. | No |
+| `AGENDA_SMTP_PASSWORD` | Con `smtp`: la contraseña de esa cuenta (sin MFA: excepción de la constitución §3.8 aceptada hasta el 2027-05-05). Solo existe en el contenedor `api`; nunca en el repositorio, en logs ni en la línea de comandos. Siempre entre comillas simples en el `.env`. | **Sí** |
+| `AGENDA_OUTLOOK_TENANT_ID`, `AGENDA_OUTLOOK_CLIENT_ID` | Con `graph`: identificadores de la aplicación de Entra ID de la agenda (distinta de la del inicio de sesión). | No |
+| `AGENDA_OUTLOOK_CLIENT_SECRET` | Con `graph`: credencial de esa aplicación, con caducidad corta. Solo existe en el contenedor `api`; nunca en el repositorio, en logs ni en la línea de comandos. | **Sí** |
+| `AGENDA_OUTLOOK_MAILBOX` | Con `graph`: dirección del buzón compartido cuyo calendario recibe las actividades. | No |
 | `AGENDA_OUTLOOK_TEAM_ADDRESS` | Opcional. Lista de distribución del equipo, invitada como opcional cuando "notificar al equipo" está activo; debe pertenecer a un dominio permitido. | No |
 
 El host y el puerto de PostgreSQL son internos de Docker (`postgres:5432`); la API los recibe como

@@ -60,7 +60,7 @@ specs/
 | [SPEC-0005](features/SPEC-0005-sql-engine-access-audit.md) | Auditoría de accesos a motores SQL | Implemented |
 | [SPEC-0006](features/SPEC-0006-infrastructure-agenda.md) | Agenda anual de infraestructura | Implemented |
 | [SPEC-0007](features/SPEC-0007-sdd-tooling.md) | Skills y guardas para el flujo SDD | Implemented |
-| [SPEC-0008](features/SPEC-0008-outlook-activation.md) | Invitaciones de la agenda por correo SMTP de Microsoft 365 | Approved |
+| [SPEC-0008](features/SPEC-0008-outlook-activation.md) | Invitaciones de la agenda por correo SMTP de Microsoft 365 | Implemented |
 | [SPEC-0009](features/SPEC-0009-single-server-production.md) | Producción en un único servidor Ubuntu con IP pública | In Progress |
 | [SPEC-0010](features/SPEC-0010-itmas-visual-identity.md) | Identidad visual de ITMas | Implemented |
 | [ADR-0001](architecture/adr-0001-clean-architecture.md) | Clean Architecture en 4 proyectos | Accepted |

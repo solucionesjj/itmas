@@ -214,8 +214,8 @@
       "summary": "Ver las actividades en la lista del año y en los calendarios de año, mes y semana, su estado, sus advertencias y el detalle de cada una, y exportar las programadas a un archivo .ics.",
       "category": "agenda",
       "permissions": ["agenda.read"],
-      "specs": ["SPEC-0006"],
-      "updated": "2026-10-24",
+      "specs": ["SPEC-0006", "SPEC-0008"],
+      "updated": "2026-11-06",
       "routes": ["/agenda", "/agenda/events/:id"]
     },
     {
@@ -234,19 +234,19 @@
       "summary": "Crear actividades y series que se repiten (también desde un día u hora vacíos del calendario), revisar sus fechas antes de crearlas, modificarlas y entender las advertencias.",
       "category": "agenda",
       "permissions": ["agenda.create", "agenda.update"],
-      "specs": ["SPEC-0006"],
-      "updated": "2026-10-24",
+      "specs": ["SPEC-0006", "SPEC-0008"],
+      "updated": "2026-11-06",
       "routes": ["/agenda/events/new", "/agenda/series/new", "/agenda/events/:id/edit"]
     },
     {
       "id": "programar-y-cancelar",
       "title": "Programar y cancelar actividades",
-      "summary": "Confirmar los borradores de la agenda, de uno en uno o por lotes, cancelar con motivo las programadas y saber qué recibe Outlook y cómo reintentar si falla.",
+      "summary": "Confirmar los borradores de la agenda, de uno en uno o por lotes, cancelar con motivo las programadas y saber qué invitaciones de Outlook se envían y cómo reintentar si falla.",
       "category": "agenda",
       "permissions": ["agenda.publish"],
-      "specs": ["SPEC-0006"],
-      "updated": "2026-10-21",
-      "routes": ["/agenda"]
+      "specs": ["SPEC-0006", "SPEC-0008"],
+      "updated": "2026-11-06",
+      "routes": ["/agenda", "/agenda/events/:id"]
     },
     {
       "id": "registrar-ejecucion",

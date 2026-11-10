@@ -175,6 +175,7 @@ public sealed class AgendaAuditAndConfigurationTests(PostgreSqlFixture database)
         using var broken = Factory.WithWebHostBuilder(builder =>
         {
             builder.UseSetting("Agenda:Outlook:Enabled", "true");
+            builder.UseSetting("Agenda:Outlook:Transport", "graph");
             builder.UseSetting("Agenda:Outlook:ClientSecret", secret);
             builder.UseSetting("Agenda:Outlook:Mailbox", "agenda@example.com");
         });
@@ -212,6 +213,7 @@ public sealed class AgendaAuditAndConfigurationTests(PostgreSqlFixture database)
         void Complete(IWebHostBuilder builder, string teamAddress)
         {
             builder.UseSetting("Agenda:Outlook:Enabled", "true");
+            builder.UseSetting("Agenda:Outlook:Transport", "graph");
             builder.UseSetting("Agenda:Outlook:TenantId", "33333333-3333-3333-3333-333333333333");
             builder.UseSetting("Agenda:Outlook:ClientId", "44444444-4444-4444-4444-444444444444");
             builder.UseSetting("Agenda:Outlook:ClientSecret", "placeholder-not-a-secret");
@@ -233,6 +235,7 @@ public sealed class AgendaAuditAndConfigurationTests(PostgreSqlFixture database)
     private static void CompleteOutlookSettings(IWebHostBuilder builder)
     {
         builder.UseSetting("Agenda:Outlook:Enabled", "true");
+        builder.UseSetting("Agenda:Outlook:Transport", "graph");
         builder.UseSetting("Agenda:Outlook:TenantId", "33333333-3333-3333-3333-333333333333");
         builder.UseSetting("Agenda:Outlook:ClientId", "44444444-4444-4444-4444-444444444444");
         builder.UseSetting("Agenda:Outlook:ClientSecret", "placeholder-not-a-secret");
@@ -296,7 +299,7 @@ public sealed class AgendaAuditAndConfigurationTests(PostgreSqlFixture database)
             OutlookEventData data, string? outlookEventId, CancellationToken cancellationToken) =>
             Task.FromResult(OutlookGatewayResult.Failure(OutlookErrorCodes.Unavailable));
 
-        public Task<OutlookGatewayResult> CancelAsync(string outlookEventId, string reason, CancellationToken cancellationToken) =>
+        public Task<OutlookGatewayResult> CancelAsync(string outlookEventId, string reason, OutlookEventData? data, CancellationToken cancellationToken) =>
             Task.FromResult(OutlookGatewayResult.Failure(OutlookErrorCodes.Unavailable));
     }
 }

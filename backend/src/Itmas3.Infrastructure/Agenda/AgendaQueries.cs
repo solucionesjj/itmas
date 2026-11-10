@@ -78,7 +78,7 @@ internal sealed class AgendaQueries(AppDbContext db, AgendaSettings settings, Ti
                 && AgendaWarnings.Evaluate(row.Id, row.StartsAtUtc, row.EndsAtUtc, row.IsFreeze, row.Impact, candidates).Count > 0,
             row.OutlookStatus)).ToList();
 
-        return new AgendaEventList(items, truncated, settings.TimeZone.Id, settings.OutlookEnabled);
+        return new AgendaEventList(items, truncated, settings.TimeZone.Id, settings.IsOutlookActive(timeProvider.GetUtcNow()));
     }
 
     public async Task<AgendaExportList> ListExportEventsAsync(DateOnly from, DateOnly toExclusive, AgendaFilter filter, CancellationToken cancellationToken)
@@ -243,7 +243,7 @@ internal sealed class AgendaQueries(AppDbContext db, AgendaSettings settings, Ti
             NameOf(agendaEvent.UpdatedBy),
             agendaEvent.Revision,
             warnings,
-            settings.OutlookEnabled);
+            settings.IsOutlookActive(timeProvider.GetUtcNow()));
     }
 
     public async Task<IReadOnlyList<AgendaPersonOption>> SearchPeopleAsync(string? search, int limit, Guid? meId, CancellationToken cancellationToken)

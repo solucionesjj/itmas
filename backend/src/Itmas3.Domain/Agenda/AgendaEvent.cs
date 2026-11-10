@@ -101,6 +101,13 @@ public sealed class AgendaEvent : Entity<Guid>
     /// <summary>When the last operation with Outlook ended, confirmed or failed (RF-18).</summary>
     public DateTimeOffset? OutlookStatusAt { get; private set; }
 
+    /// <summary>
+    /// Only with the SMTP transport (SPEC-0008 RF-4): the normalized addresses of everyone who may hold the meeting in their
+    /// calendar, so that whoever stops being invited gets the cancellation. Sorted, never empty (null instead) and only with an
+    /// <see cref="OutlookEventId"/> (the <c>UID</c> of the invitation). It never leaves ITMas through the API, the export or the audit.
+    /// </summary>
+    public IReadOnlyList<string>? OutlookSentRecipients { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
 
     public Guid CreatedBy { get; private set; }
@@ -251,6 +258,8 @@ public sealed class AgendaEvent : Entity<Guid>
         CompletedAt = now.ToUniversalTime();
         CompletedBy = completedBy;
         Status = EventStatus.Completed;
+        // A completed activity sends nothing more, so the addresses are not kept (SPEC-0008 RF-4, data minimization).
+        OutlookSentRecipients = null;
         Touch(now, completedBy);
     }
 
@@ -300,9 +309,18 @@ public sealed class AgendaEvent : Entity<Guid>
         }
     }
 
-    /// <summary>Outlook has to be told about the latest change (RF-18 "Pendiente"). Does not change <see cref="Revision"/>.</summary>
-    public void MarkOutlookPending()
+    /// <summary>
+    /// Outlook has to be told about the latest change (RF-18 "Pendiente"). Does not change <see cref="Revision"/>. With
+    /// <paramref name="workRevision"/>, it is the answer of a call that was not attempted (SPEC-0008 RF-5), and a call of a revision
+    /// older than the one Outlook already confirmed changes nothing.
+    /// </summary>
+    public void MarkOutlookPending(int? workRevision = null)
     {
+        if (IsStale(workRevision))
+        {
+            return;
+        }
+
         OutlookStatus = OutlookStatus.Pending;
         OutlookErrorCode = null;
     }
@@ -318,7 +336,8 @@ public sealed class AgendaEvent : Entity<Guid>
     /// <summary>
     /// Outlook confirmed the creation, the update or the cancellation of <paramref name="syncedRevision"/> (RF-18
     /// "Publicado"). When the event changed again while Outlook was being called, it stays "Pendiente" until the newer
-    /// revision is sent.
+    /// revision is sent. It never goes back (SPEC-0008 RF-4): a late answer for a revision older than the one already confirmed
+    /// changes nothing, so a confirmed cancellation is never undone. A confirmed cancellation forgets the recipients.
     /// </summary>
     public void MarkOutlookPublished(string outlookEventId, string? webLink, int syncedRevision, DateTimeOffset now)
     {
@@ -327,28 +346,102 @@ public sealed class AgendaEvent : Entity<Guid>
             throw new ArgumentException("The Outlook event id is required.", nameof(outlookEventId));
         }
 
+        if (IsStale(syncedRevision))
+        {
+            return;
+        }
+
         OutlookEventId = outlookEventId;
         OutlookWebLink = webLink;
         OutlookStatus = syncedRevision >= Revision ? OutlookStatus.Published : OutlookStatus.Pending;
         OutlookSyncedRevision = syncedRevision;
         OutlookErrorCode = null;
         OutlookStatusAt = now;
+        if (Status == EventStatus.Cancelled && OutlookStatus == OutlookStatus.Published)
+        {
+            OutlookSentRecipients = null;
+        }
     }
 
     /// <summary>
-    /// The last operation with Outlook failed (RF-18 "Error"): only a normalized code is kept, never the raw detail (RNF-8).
+    /// The last operation with Outlook failed (RF-18 "Error"): only a normalized code is kept, never the raw detail (RNF-8). With
+    /// <paramref name="workRevision"/>, a failure of a revision older than the one Outlook already confirmed changes nothing.
     /// </summary>
-    public void MarkOutlookFailed(string errorCode, DateTimeOffset now)
+    public void MarkOutlookFailed(string errorCode, DateTimeOffset now, int? workRevision = null)
     {
         if (string.IsNullOrWhiteSpace(errorCode))
         {
             throw new ArgumentException("The error code is required.", nameof(errorCode));
         }
 
+        if (IsStale(workRevision))
+        {
+            return;
+        }
+
         OutlookStatus = OutlookStatus.Error;
         OutlookErrorCode = errorCode;
         OutlookStatusAt = now;
     }
+
+    /// <summary>
+    /// SMTP write-ahead (SPEC-0008 RF-4), in the same write that saves the change: fixes the <c>UID</c> of the invitation and adds the
+    /// recipients of the <c>REQUEST</c> about to be sent to the addresses that may hold the meeting, so that neither a conflict in the
+    /// second write nor an aborted request leaves anyone out. Returns the addresses this call added. A completed or cancelled
+    /// activity never adds anyone.
+    /// </summary>
+    public IReadOnlyList<string> RecordInvitationRecipients(string uid, IEnumerable<string> recipients)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(uid);
+        ArgumentNullException.ThrowIfNull(recipients);
+        if (Status is EventStatus.Completed or EventStatus.Cancelled)
+        {
+            return [];
+        }
+
+        if (OutlookEventId is not null && !string.Equals(OutlookEventId, uid, StringComparison.Ordinal))
+        {
+            // The event was published with the other transport: switching needs no live sends (ADR-0023 decision 10).
+            throw new InvalidOperationException("The event was published with another Outlook transport.");
+        }
+
+        OutlookEventId = uid;
+        var current = new SortedSet<string>(OutlookSentRecipients ?? [], StringComparer.Ordinal);
+        var added = new List<string>();
+        foreach (var recipient in recipients)
+        {
+            var normalized = recipient.Trim().ToLowerInvariant();
+            if (normalized.Length > 0 && current.Add(normalized))
+            {
+                added.Add(normalized);
+            }
+        }
+
+        OutlookSentRecipients = current.Count == 0 ? null : [.. current];
+        return added;
+    }
+
+    /// <summary>
+    /// The second write of an SMTP send (SPEC-0008 RF-4) only removes: the addresses whose cancellation the server accepted and the
+    /// ones it rejected for good that this send had added. It removes only when the send carried the current <see cref="Revision"/>,
+    /// because a newer send may be on its way and may have invited them again.
+    /// </summary>
+    public void ForgetInvitationRecipients(int workRevision, IEnumerable<string> addresses)
+    {
+        ArgumentNullException.ThrowIfNull(addresses);
+        if (workRevision != Revision || OutlookSentRecipients is null)
+        {
+            return;
+        }
+
+        var remove = addresses.Select(address => address.Trim().ToLowerInvariant()).ToHashSet(StringComparer.Ordinal);
+        var kept = OutlookSentRecipients.Where(address => !remove.Contains(address)).ToList();
+        OutlookSentRecipients = kept.Count == 0 ? null : kept;
+    }
+
+    /// <summary>An answer of Outlook for a revision older than the one it already confirmed (SPEC-0008 RF-4).</summary>
+    private bool IsStale(int? workRevision) =>
+        workRevision is { } revision && OutlookSyncedRevision is { } synced && revision < synced;
 
     private void EnsureEditable()
     {

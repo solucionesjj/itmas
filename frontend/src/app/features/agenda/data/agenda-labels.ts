@@ -50,8 +50,23 @@ export function outlookPresentation(status: OutlookStatus): StatusPresentation {
   return OUTLOOK[status];
 }
 
-/** Spanish labels of the closed code set the API returns for Outlook failures (RF-18). Never a raw detail. */
+/**
+ * Spanish labels of the closed code set the API returns for Outlook failures (SPEC-0006 RF-18, SPEC-0008 RF-9). Never a raw
+ * detail. `smtp_*` come from the e-mail invitations (ADR-0023), `graph_*` from Microsoft Graph (ADR-0016) and `outlook_*` are
+ * the neutral answers of either.
+ */
 const OUTLOOK_ERRORS: Readonly<Record<string, string>> = {
+  smtp_auth_failed: 'El servidor de correo rechazó las credenciales de ITMas.',
+  smtp_basic_auth_disabled:
+    'Microsoft 365 no permite a ITMas enviar con usuario y contraseña: hay que revisar el envío SMTP de la cuenta.',
+  smtp_sender_rejected: 'El servidor de correo no permite enviar desde la cuenta de la agenda.',
+  smtp_rejected: 'El servidor de correo rechazó la invitación.',
+  smtp_throttled: 'El servidor de correo pidió esperar; inténtalo más tarde.',
+  smtp_unavailable: 'No se pudo conectar con el servidor de correo.',
+  smtp_timeout: 'El servidor de correo tardó demasiado en responder.',
+  outlook_unavailable: 'Outlook no está disponible.',
+  outlook_timeout: 'Outlook tardó demasiado en responder.',
+  outlook_rejected: 'Outlook rechazó la actividad.',
   graph_unauthorized: 'Outlook rechazó las credenciales de ITMas.',
   graph_forbidden: 'ITMas no tiene permiso sobre el calendario de Outlook.',
   graph_not_found: 'No se encontró el calendario o el evento en Outlook.',

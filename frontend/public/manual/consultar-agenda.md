@@ -37,8 +37,8 @@ se conservan.
      si se solapa con otras;
    - **Responsable** ("Responsable inactivo" si esa persona ya no tiene acceso a ITMas);
    - **Estado**;
-   - **Outlook**: si la actividad se publicó en el calendario compartido. Mientras Outlook no esté configurado,
-     aparece **No publicado** y arriba verás el aviso **Outlook no configurado**.
+   - **Outlook**: si se envió la invitación de Outlook a los invitados. Mientras el envío a Outlook no esté configurado o
+     activo, aparece **No publicado** y arriba verás el aviso **Outlook no configurado**.
 5. Pulsa el título de una actividad (o **Ver** en el menú de su fila) para abrir su **detalle**.
 
 ## Usar los calendarios
@@ -97,7 +97,7 @@ El detalle reúne, en tarjetas:
   regla de la serie a la que pertenece (por ejemplo, "Cada mes, el segundo martes") y la descripción. Si la actividad se
   cancelló, también el motivo.
 - **Etiquetas:** ver [Etiquetar actividades y filtrar la agenda](etiquetar-y-filtrar).
-- **Outlook:** el estado de la publicación en el calendario compartido.
+- **Outlook:** el estado del envío de la invitación de Outlook.
 - **Ejecución:** el resultado, la fecha real, las notas y los enlaces de evidencia (solo si ya se registró; ver
   [Registrar la ejecución de una actividad](registrar-ejecucion)).
 - **Registro:** quién creó la actividad y quién la modificó por última vez, y cuándo.

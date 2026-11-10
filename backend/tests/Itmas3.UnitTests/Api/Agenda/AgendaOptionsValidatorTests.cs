@@ -15,6 +15,7 @@ public sealed class AgendaOptionsValidatorTests
         Outlook = new AgendaOutlookOptions
         {
             Enabled = true,
+            Transport = "graph",
             TenantId = "tenant-placeholder",
             ClientId = "client-placeholder",
             ClientSecret = "placeholder-not-a-secret",

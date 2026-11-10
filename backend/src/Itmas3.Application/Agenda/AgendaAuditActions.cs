@@ -99,13 +99,30 @@ internal static class AgendaAuditViews
         EventIds = occurrences.Select(occurrence => occurrence.Id),
     };
 
-    public static object OfOutlook(Guid eventId, string operation, int revision, string? errorCode) => new
-    {
-        EventId = eventId,
-        Operation = operation,
-        Revision = revision,
-        ErrorCode = errorCode,
-    };
+    /// <summary>
+    /// The result of a call to Outlook. With SMTP it also carries counts (SPEC-0008 RNF-2): how many recipients went in the messages,
+    /// how many got the cancellation because they were removed and how many addresses were left out by the rule. Never the addresses.
+    /// </summary>
+    public static object OfOutlook(
+        Guid eventId, string operation, int revision, string? errorCode, (int Recipients, int Removed, int Omitted)? counts = null) =>
+        counts is { } value
+            ? (object)new
+            {
+                EventId = eventId,
+                Operation = operation,
+                Revision = revision,
+                ErrorCode = errorCode,
+                Recipients = value.Recipients,
+                Removed = value.Removed,
+                Omitted = value.Omitted,
+            }
+            : new
+            {
+                EventId = eventId,
+                Operation = operation,
+                Revision = revision,
+                ErrorCode = errorCode,
+            };
 
     public static IReadOnlyList<string> TagNames(AgendaEvent agendaEvent) =>
         [.. agendaEvent.Tags.Select(tag => tag.Name).Order(StringComparer.OrdinalIgnoreCase)];

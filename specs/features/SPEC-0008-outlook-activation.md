@@ -2,7 +2,7 @@
 id: SPEC-0008
 title: Invitaciones de la agenda por correo SMTP de Microsoft 365
 type: feature
-status: Approved
+status: Implemented
 owner: jmartinez
 created: 2026-10-21
 approved-by: jmartinez (2026-11-06)
@@ -29,6 +29,10 @@ related: [SPEC-0006, ADR-0016, ADR-0023, SPEC-0009]
 > - aceptó ADR-0023 con su enmienda, y la constitución pasó a la 6.0.0.
 >
 > **Mientras esta spec no esté `Implemented`, `AGENDA_OUTLOOK_ENABLED` no se activa en producción** (SPEC-0006 §19.8, D-4).
+>
+> **`Implemented` el 2026-11-10** a petición del solicitante, tras la prueba con la cuenta real (CA-1 a CA-4 y CA-6, §18). La
+> detección queda solo con las alertas de envío (§19.4), y el solicitante aceptó de nuevo R-1 y R-5 ese día (Q-14). CA-5 y CA-7 se comprueban en la puesta en producción y se anotan en §18
+> (§19.5).
 
 ## 1. Objetivo
 
@@ -89,7 +93,7 @@ Hechos externos (ADR-0023, contexto):
 
 | Actor | Descripción |
 |---|---|
-| Quien administra el tenant de Microsoft 365 | Confirma la condición previa (valores predeterminados de seguridad ya desactivados), prepara la cuenta y los ajustes del tenant (§14.2), hace las revisiones periódicas y ejecuta el procedimiento ante un compromiso. |
+| Quien administra el tenant de Microsoft 365 | Confirma la condición previa (valores predeterminados de seguridad ya desactivados), prepara la cuenta y los ajustes del tenant (§14.2), atiende las alertas de envío y ejecuta el procedimiento ante un compromiso. |
 | Quien despliega ITMas | Genera la contraseña nueva y la escribe directamente en el `.env`, sin pasarla por la línea de comandos (constitución §4). Es quien la custodia, y se anota su rol. |
 | Personas con `agenda.publish` | Programan, modifican lo Programado, cancelan y reintentan: son las que hacen salir las invitaciones (SPEC-0006). |
 | Responsable, participantes y lista del equipo | Reciben las invitaciones, actualizaciones y cancelaciones en Outlook. |
@@ -125,6 +129,11 @@ Hechos externos (ADR-0023, contexto):
   reciben **un único** `METHOD:CANCEL`, con todos ellos como `ATTENDEE` y en `To` y `SEQUENCE = 2·revisión`, antes de la
   actualización. También se filtra con los dominios actuales. Esto incluye a un participante quitado, a un responsable cambiado y a
   la lista del equipo si se desmarca «notificar al equipo». Una actualización son como mucho dos mensajes.
+  - Esa cancelación es **neutra** (revisión de `security` de la implementación, 2026-11-10): asunto y resumen «Ya no estás invitado
+    a una actividad de la agenda», solo `UID`, `SEQUENCE`, fechas, organizador y quienes se quitan; nunca el título, la descripción,
+    el lugar, la categoría ni el enlace de la actividad tal como quedó.
+  - Si esa cancelación falla sin detener el lote, la actualización se envía igual a los demás y el evento queda en **Error**, para
+    que «Sincronizar de nuevo» vuelva a intentar la cancelación.
   - La comparación no distingue mayúsculas, y nadie es a la vez destinatario directo de la cancelación y de la actualización.
   - Si alguien recibe la cancelación por la lista y la actualización directamente, gana la actualización por su secuencia mayor.
 - **RF-4** **Quienes pueden tener la reunión** se guardan en el evento (ADR-0023, decisión 5; solo con `smtp` y con el envío activo,
@@ -132,8 +141,9 @@ Hechos externos (ADR-0023, contexto):
   - **en la primera escritura**, la misma que guarda el cambio, se fija `outlook_event_id = UID` y se añaden los destinatarios del
     `REQUEST` previsto, ya pasados por RF-2b. El trabajo lleva el conjunto que había antes;
   - **la segunda escritura solo quita**:
-    - a quien recibió un `CANCEL` aceptado;
-    - a quien el servidor rechazó de forma permanente en `RCPT`, solo si este trabajo lo añadió;
+    - a quien recibió un `CANCEL` aceptado, y a quien el servidor rechazó para siempre en ese `CANCEL`, porque no tiene un buzón que
+      pueda guardar la reunión (si no, bloquearía para siempre la actividad);
+    - a quien el servidor rechazó de forma permanente en `RCPT` del `REQUEST`, solo si este trabajo lo añadió;
     - solo si la revisión del trabajo es igual a la revisión actual del evento;
     - ante un conflicto, con un único reintento;
   - `MarkOutlookPublished` es monótono: nunca baja la revisión sincronizada ni deshace una cancelación confirmada;
@@ -149,7 +159,8 @@ Hechos externos (ADR-0023, contexto):
 - **RF-6** Lotes (ADR-0023, decisión 7):
   - plazo propio, no el de la petición del navegador, también en la segunda escritura. Si el cliente se va, el lote sigue hasta su
     presupuesto;
-  - una conexión y un `AUTH` por lote;
+  - una conexión y un `AUTH` por lote: un rechazo del servidor deja la sesión abierta, y solo un error de transporte, de TLS o de
+    autenticación obliga a conectar de nuevo. Un mensaje que llegó al servidor cuenta en el ritmo, lo acepte o no;
   - presupuesto de 45 s **desde el inicio de la petición**, con la primera escritura y las esperas del *gate* dentro. Un mensaje
     solo empieza si caben la conexión (15 s, si no hay una abierta), el mensaje (15 s) y un margen de 5 s. El instante límite viaja
     al adaptador, que aplica esta regla;
@@ -202,8 +213,8 @@ Sin permisos nuevos. Se aplican los `agenda.*` de SPEC-0006: enviar invitaciones
 ## 8. Comportamiento esperado
 
 1. Quien administra el tenant confirma la **condición previa**: los valores predeterminados de seguridad ya estaban desactivados por
-   motivos ajenos a ITMas, y el tenant no tiene acceso condicional. Después prepara la cuenta y los ajustes del tenant (§14.2) y
-   evalúa el MFA por usuario con contraseña de aplicación.
+   motivos ajenos a ITMas, y el tenant no tiene acceso condicional. Después prepara la cuenta y los ajustes del tenant (§14.2). El
+   MFA por usuario con contraseña de aplicación se evaluó y **no se adopta** (2026-11-10).
 2. Quien despliega genera la contraseña nueva y la escribe en el `.env` del equipo de trabajo.
 3. Con `docker compose up --build` se activa Outlook con `smtp` y se ejecuta la prueba de DEVELOPMENT.md §11.3, que se reescribe
    (CA-1 a CA-4). Las invitaciones van a buzones de quien hace la prueba.
@@ -221,30 +232,30 @@ Lo que ve una persona con `agenda.publish`:
 
 ## 9. Criterios de aceptación
 
-- [ ] **CA-1** Con la cuenta real, se programa una actividad con responsable, un participante y la lista del equipo:
+- [x] **CA-1** Con la cuenta real, se programa una actividad con responsable, un participante y la lista del equipo:
   - queda **Publicado**;
   - los tres reciben una reunión de Outlook con el asunto `[<Tipo>] <Título>`, la hora correcta en su zona y el recordatorio;
   - la reunión queda en sus calendarios.
   Se anota si el calendario del buzón emisor muestra o no el evento.
-- [ ] **CA-2** Al modificar la hora, los destinatarios reciben una **actualización** de la misma reunión: su calendario muestra una
+- [x] **CA-2** Al modificar la hora, los destinatarios reciben una **actualización** de la misma reunión: su calendario muestra una
   sola, con la hora nueva. «Sincronizar de nuevo» sin cambios no la duplica.
-- [ ] **CA-3** Al cancelarla con un motivo, los destinatarios reciben la **cancelación** con el motivo y Outlook ofrece quitarla del
+- [x] **CA-3** Al cancelarla con un motivo, los destinatarios reciben la **cancelación** con el motivo y Outlook ofrece quitarla del
   calendario. Ocurre lo mismo con una actividad de día completo.
-- [ ] **CA-3b** (RF-3b):
+- [x] **CA-3b** (RF-3b):
   - al quitar al participante de una actividad enviada, esa persona recibe la cancelación y la reunión sale de su calendario,
     mientras el responsable y la lista reciben la actualización;
   - al desmarcar «notificar al equipo», un miembro de la lista que también es participante **conserva** la reunión actualizada;
   - al cancelar después la actividad, la cancelación llega a quienes seguían invitados.
-- [ ] **CA-4** Errores con la cuenta real o simulados en el equipo de trabajo, sin que la operación de la agenda falle:
+- [x] **CA-4** Errores con la cuenta real o simulados en el equipo de trabajo, sin que la operación de la agenda falle:
   - con una contraseña incorrecta: **Error** con `smtp_auth_failed`, un solo intento de autenticación, el resto del lote Pendiente
     y la pausa de 15 minutos;
   - sin salida a `smtp.office365.com`: `smtp_unavailable`;
   - ni la contraseña, ni el diálogo SMTP, ni direcciones aparecen en los logs de `api` (búsqueda documentada).
-- [ ] **CA-5** En producción, tras CA-1 a CA-4:
+- [ ] **CA-5** *(Comprobación de la puesta en producción, §19.5: no bloquea `Implemented`.)* En producción, tras CA-1 a CA-4:
   - una actividad de prueba con la lista del equipo llega y se cancela;
   - `docker compose logs api` no contiene la contraseña, `AUTH` ni direcciones;
   - la próxima rotación de la contraseña y la fecha de revisión de R-1 están anotadas en la agenda.
-- [ ] **CA-6** Controles de §14.2, verificados por quien administra el tenant y anotados en §18 sin identificadores:
+- [x] **CA-6** Controles de §14.2, verificados por quien administra el tenant y anotados en §18 sin identificadores:
   - **condición previa:** valores predeterminados ya desactivados antes de esta decisión y sin acceso condicional;
   - **cuenta de servicio:** buzón dedicado, UPN igual a la dirección principal, sin derechos sobre otros buzones y usada solo por
     ITMas;
@@ -257,15 +268,15 @@ Lo que ve una persona con `agenda.publish`:
   - **tenant:** sin consentimiento de usuarios, sin registro de aplicaciones por usuarios, invitaciones externas limitadas y
     reenvío externo automático desactivado;
   - **métodos:** fuera de SSPR, con la contraseña como único método;
-  - **MFA por usuario con contraseña de aplicación:** el resultado de la evaluación;
-  - **detección:** directivas de alerta de envío dirigidas al equipo, y la revisión (cada 6 días como máximo en Entra ID, o mensual
-    en Purview si muestra el inicio de sesión SMTP de CA-1, anotando cuál) programada en la agenda;
+  - **MFA por usuario con contraseña de aplicación:** el resultado de la evaluación (no se adopta, 2026-11-10);
+  - **detección:** directivas de alerta de envío dirigidas al equipo. Sin revisión periódica de los inicios de sesión (enmienda del
+    2026-11-10, §19.4);
   - **al vencer la aceptación:** el bloqueo de la cuenta y de SMTP AUTH está en DEVELOPMENT.md §11 y en la agenda;
   - **buzón emisor:** retención de 30 días de los Elementos enviados y alerta de cuota;
   - **ITMas:** la cuenta no tiene ninguna política.
-- [ ] **CA-7** Antes de finales de diciembre de 2026, y de nuevo tras el cambio de Microsoft, se confirma que el envío sigue
+- [ ] **CA-7** *(Comprobación de la puesta en producción, §19.5.)* Antes de finales de diciembre de 2026, y de nuevo tras el cambio de Microsoft, se confirma que el envío sigue
   funcionando (o la excepción temporal del tenant).
-- [ ] **CA-8** Pruebas automatizadas en verde:
+- [x] **CA-8** Pruebas automatizadas en verde:
   - **escritor de invitaciones:** `REQUEST`/`CANCEL`, `UID`, paridad de `SEQUENCE`, asistentes y roles, un solo `ATTENDEE` en la
     cancelación a quien se quita, día completo, recordatorio y `DTSTAMP`; inyección de cabeceras (también en `To`/`Cc`), de
     propiedades y de `CAL-ADDRESS`;
@@ -298,7 +309,7 @@ Lo que ve una persona con `agenda.publish`:
   - **configuración:** validación al arrancar y selección `smtp`/`graph`/desactivado;
   - **frontend:** textos de los códigos;
   - **integración** con un servidor SMTP de pruebas en Testcontainers.
-- [ ] **CA-9** La documentación está al día en el mismo cambio (§16, tarea 7), `docker compose up --build` sigue sano y con
+- [x] **CA-9** La documentación está al día en el mismo cambio (§16, tarea 7), `docker compose up --build` sigue sano y con
   Outlook desactivado no hay ninguna conexión SMTP.
 
 ## 10. Análisis arquitectónico
@@ -374,7 +385,7 @@ Sin endpoints nuevos ni cambios de contrato HTTP.
   `ObservabilitySetup`.
 - `docker-compose.yml` (`Agenda__Outlook__Transport`, `Agenda__Smtp__Username`, `Agenda__Smtp__Password`) y `.env.example`:
   - sin valores;
-  - con el aviso de las comillas simples para una contraseña con `$`;
+  - con el aviso de escribir la contraseña siempre entre comillas simples;
   - con el comentario de los dominios corregido.
 
 ## 13. Cambios de base de datos
@@ -387,8 +398,10 @@ personales):
   - Usa la convención de las listas pequeñas del evento: el mismo convertidor y comparador que `participants`
     (`AgendaConverters.Json`, `JsonComparer`), configurado de forma explícita, sin `IsRequired()`.
 - **`CHECK` `ck_agenda_events_outlook_sent_recipients`:**
-  `outlook_sent_recipients IS NULL OR (outlook_event_id IS NOT NULL AND jsonb_typeof(outlook_sent_recipients) = 'array' AND
-  jsonb_array_length(outlook_sent_recipients) > 0)`.
+  `outlook_sent_recipients IS NULL OR (outlook_event_id IS NOT NULL AND CASE WHEN jsonb_typeof(outlook_sent_recipients) = 'array'
+  THEN jsonb_array_length(outlook_sent_recipients) > 0 ELSE false END)`.
+  - Con `CASE` y no con `AND`, porque PostgreSQL no garantiza el orden de evaluación de un `AND`: con un objeto JSON,
+    `jsonb_array_length` lanzaría 22023 en lugar de la violación del `CHECK` (23514).
   - El dominio garantiza el invariante (lista vacía = `NULL`, `UID` fijado en la primera escritura), porque `AgendaUnitOfWork` no
     traduce el 23514.
 - **Migración:**
@@ -415,8 +428,8 @@ personales):
 
 | Amenaza | Escenario | Control |
 |---|---|---|
-| Suplantación | La contraseña se filtra (`.env`, `docker inspect` por `root` o el grupo `docker`, una copia en claro) o cae por *password spraying* (la dirección es visible para cualquier invitado). Con ella, alguien envía correo corporativo como la agenda, inicia sesión en el portal, en ITMas y en aplicaciones sin asignación, lee el directorio y el propio buzón y pide tokens de Graph, sin MFA y desde cualquier IP. | Los de §14.2: cuenta de servicio con solo Exchange Online, sin roles ni equipos (como mucho, el grupo de exclusión de métodos); ajustes del tenant sin P1; fuera de SSPR; alertas de envío y revisión periódica; contraseña nueva y rotada; procedimiento ante un compromiso. El `.env` es de `root` y legible solo por él (SPEC-0009). **Sin control preventivo del inicio de sesión** (Q-9, Q-11). **R-1, excepción de §3.8.** |
-| Elevación / persistencia | Con la cuenta, alguien consiente o registra una aplicación, registra un método de autenticación o crea reglas de reenvío para mantener el acceso tras un cambio de contraseña. | Sin consentimiento ni registro de aplicaciones por usuarios; fuera de SSPR y con la contraseña como único método, comprobado en cada revisión; reenvío externo automático desactivado; el procedimiento ante un compromiso quita consentimientos, aplicaciones, métodos y reglas. |
+| Suplantación | La contraseña se filtra (`.env`, `docker inspect` por `root` o el grupo `docker`, una copia en claro) o cae por *password spraying* (la dirección es visible para cualquier invitado). Con ella, alguien envía correo corporativo como la agenda, inicia sesión en el portal, en ITMas y en aplicaciones sin asignación, lee el directorio y el propio buzón y pide tokens de Graph, sin MFA y desde cualquier IP. | Los de §14.2: cuenta de servicio con solo Exchange Online, sin roles ni equipos, y sin grupo de exclusión de métodos (2026-11-10); ajustes del tenant sin P1; fuera de SSPR; alertas de envío (sin revisión periódica de los inicios de sesión, enmienda del 2026-11-10); contraseña nueva y rotada; procedimiento ante un compromiso. El `.env` es de `root` y legible solo por él (SPEC-0009). **Sin control preventivo del inicio de sesión** (Q-9, Q-11). **R-1, excepción de §3.8.** |
+| Elevación / persistencia | Con la cuenta, alguien consiente o registra una aplicación, registra un método de autenticación o crea reglas de reenvío para mantener el acceso tras un cambio de contraseña. | Sin consentimiento ni registro de aplicaciones por usuarios; fuera de SSPR y con la contraseña como único método al configurarla; reenvío externo automático desactivado. Sin grupo de exclusión ni revisión periódica (§19.4), una persistencia no se impide ni se detecta (R-1); el procedimiento ante un compromiso quita consentimientos, aplicaciones, métodos y reglas. |
 | Manipulación | Inyección de cabeceras MIME, de propiedades iCalendar o de parámetros `CAL-ADDRESS` desde el título, la descripción, el motivo o una dirección. | Regla estricta de direcciones al guardar, al arrancar y en el escritor (RF-2b), sin `CN`; MimeKit codifica las cabeceras; el escape de `IcalendarWriter`; pruebas de inyección (CA-8). |
 | Manipulación / revelación en tránsito | Degradación a texto claro, un servidor falso o un host mal escrito que recibe la contraseña. | Host y puerto fijos; STARTTLS estricto; validación del certificado, del nombre y de la revocación; sin opción para desactivarlo (RNF-1). |
 | Revelación | La contraseña, las direcciones o el texto del servidor acaban en logs, en excepciones registradas o en la auditoría. | RNF-2; pruebas de que ninguna excepción de MailKit llega a un *logger*. |
@@ -437,13 +450,13 @@ personales):
 - **Contraseña:**
   - **nueva**, larga y generada al configurar ITMas, y la anterior deja de valer. Tras la prueba en el equipo de trabajo se rota otra
     vez, de modo que la de producción solo esté en el `.env` del servidor y en su copia sellada fuera de línea (SECURITY.md §8);
-  - se escribe directamente en el `.env`, entre comillas simples si contiene `$`;
+  - se escribe directamente en el `.env`, siempre entre comillas simples y sin `'` en ella;
   - **no se escribe en el chat, en tickets ni en el repositorio**;
   - solo la conoce quien la configura (se anota su rol);
   - se rota cada seis meses como máximo, y la rotación se anota en la agenda.
 - **Licencia y pertenencia:** solo una licencia de **Exchange Online**, sin Teams, SharePoint ni OneDrive; sin roles de
-  administración ni equipos. Como mucho, un único grupo de seguridad sin permisos para excluirla de los métodos registrables en la
-  directiva de métodos de autenticación. Sin él, la persistencia por métodos se acepta en R-1.
+  administración ni equipos. **Sin grupo de exclusión** de los métodos registrables (2026-11-10): la persistencia por métodos se
+  acepta en R-1. Un grupo de seguridad sin permisos que la excluyera sigue siendo la forma de cerrarla.
 - **Buzón:** SMTP AUTH habilitado **solo en él** (`Set-CASMailbox -SmtpClientAuthenticationDisabled $false`), nunca en toda la
   organización. POP, IMAP, EWS, MAPI, ActiveSync y Outlook en la web, desactivados.
 - **Ajustes del tenant** (sin P1):
@@ -452,19 +465,18 @@ personales):
   - invitaciones de personas externas limitadas a roles concretos;
   - reenvío automático externo desactivado en la directiva de *spam* saliente.
 - **Métodos de autenticación:** fuera de SSPR, con la contraseña como único método.
-- **MFA por usuario con contraseña de aplicación:** se evalúa. Si SMTP AUTH funciona con una contraseña de aplicación y la cuenta
-  queda con MFA para el inicio de sesión interactivo, se adopta y R-1 se reduce. El resultado se anota en §18. Si se adopta:
+- **MFA por usuario con contraseña de aplicación:** se evaluó y **no se adopta** (2026-11-10, §18). Queda como opción futura para
+  reducir R-1: SMTP AUTH con una contraseña de aplicación y MFA para el inicio de sesión interactivo. Si se adoptara:
   - el segundo factor lo custodia quien custodia la contraseña;
   - la cuenta tiene exactamente ese método y la contraseña de aplicación de ITMas;
   - el procedimiento ante un compromiso borra las contraseñas de aplicación, que no se revocan al restablecer la contraseña.
-- **Detección:**
-  - las directivas de alerta predeterminadas de Microsoft 365 sobre el envío («patrones sospechosos de envío», «usuario restringido
-    para enviar»), dirigidas al equipo;
-  - una revisión del registro de inicios de sesión **cada 6 días como máximo** en Entra ID (guarda 7), o **mensual** en el registro
-    de auditoría unificado de Purview (Audit Standard, 180 días) si muestra el inicio de sesión SMTP de la prueba CA-1. Se anota cuál
-    se usa, y se programa en la agenda;
-  - cada revisión comprueba también los métodos, los consentimientos, las aplicaciones, las reglas de bandeja y los reenvíos. La
-    alerta de reglas de reenvío no ve las creadas por Graph, así que esta comprobación es manual.
+- **Detección:** solo las directivas de alerta predeterminadas de Microsoft 365 sobre el envío («patrones sospechosos de envío»,
+  «usuario restringido para enviar»), dirigidas al equipo.
+  - **Sin revisión periódica** de los inicios de sesión, los métodos, los consentimientos, las aplicaciones, las reglas de bandeja ni
+    los reenvíos: el solicitante la retiró el 2026-11-10 porque la cuenta solo envía correo (§19.4). Pasa a los controles que faltan
+    de R-1.
+  - Esos registros se consultan solo cuando hay un motivo: una alerta, un `smtp_auth_failed` inesperado o una sospecha, y siempre en
+    el procedimiento ante un compromiso.
 - **Buzón emisor:** retención de **30 días** de los Elementos enviados y alerta de cuota.
 - **ITMas:** la cuenta no recibe ninguna política (§3.4). No se exige asignación en la aplicación empresarial de ITMas, para no
   cambiar el acceso de las demás personas.
@@ -498,20 +510,25 @@ los **aceptó expresamente el 2026-11-06** (Q-13). Todos tienen revisión no pos
     - iniciar sesión en el portal, en ITMas (sin permisos) y en aplicaciones sin asignación;
     - leer el directorio y el propio buzón, con sus Elementos enviados de 30 días, y pedir tokens de Graph con los permisos por
       defecto.
-    - registrar métodos de autenticación (passkey, Authenticator) para mantener el acceso, salvo que el grupo de exclusión de §14.2
-      lo impida.
+    - registrar métodos de autenticación (passkey, Authenticator) para mantener el acceso: no hay grupo de exclusión (2026-11-10).
     Sin Teams, SharePoint ni OneDrive, por la licencia. Sin consentimiento, registro de aplicaciones ni invitaciones, por los ajustes
     del tenant.
-  - **Controles que se aplican:** los de §14.2. **Controles que faltan:** MFA (salvo que se adopte la contraseña de aplicación),
-    acceso condicional y límite por IP. No hay control preventivo del inicio de sesión, y la detección llega con hasta una semana de
-    retraso.
+  - **Controles que se aplican:** los de §14.2. **Controles que faltan:** MFA (la contraseña de aplicación no se adopta), el grupo
+    de exclusión de métodos, acceso condicional, límite por IP y, desde el 2026-11-10, la revisión periódica de los inicios de sesión (§19.4). No hay control
+    preventivo del inicio de sesión, y las alertas solo detectan un envío **anómalo en volumen o patrón**: un envío dirigido de pocos
+    mensajes (un *phishing* interno desde una cuenta de confianza) tampoco salta. Un inicio de sesión (y con él la lectura del buzón
+    o del directorio), un *password spraying* que no llegue a bloquear la cuenta, o un método o una regla añadidos para persistir
+    **pasan inadvertidos** hasta que algo motive mirar. Los métodos, consentimientos, aplicaciones, reglas y reenvíos son estado y se
+    ven en cualquier momento; el registro de inicios de sesión de Entra ID Free guarda 7 días, y el de Purview (Audit Standard), 180.
+    Una persistencia por métodos **sobrevive a la rotación** de la contraseña, porque restablecerla no quita métodos.
   - **Alternativas descartadas:** SMTP con OAuth 2.0 (`SMTP.SendAsApp` acotado al buzón), que solo exigía registrar una aplicación,
     y el *relay* por IP, que exigía un conector y liberar el puerto 25 en AWS. Descartadas expresamente el 2026-11-05 (Q-12).
   - **Custodia:** la contraseña de producción solo está en el `.env` del servidor y en su copia sellada fuera de línea. La conoce
-    quien configura el `.env` (se anota su rol), que custodia también el segundo factor si se adopta. ITMas es la única usuaria.
+    quien configura el `.env` (se anota su rol). ITMas es la única usuaria.
   - **Retirada:** OAuth 2.0 para SMTP, o una directiva de acceso condicional si el tenant llega a tenerla.
-  - **Aceptación:** expresa del solicitante el 2026-11-06 (Q-13), con revisión no posterior al 2027-05-05. Al vencer, RF-7 desactiva
-    el envío y el tenant bloquea la cuenta.
+  - **Aceptación:** expresa del solicitante el 2026-11-06 (Q-13), con revisión no posterior al 2027-05-05. Sin la revisión periódica,
+    sin MFA y sin grupo de exclusión, **aceptada de nuevo de forma expresa por el solicitante el 2026-11-10** (Q-14, §19.4), con
+    revisión no posterior al 2027-05-05. Al vencer, RF-7 desactiva el envío y el tenant bloquea la cuenta.
   - Un ataque de *password spraying* puede además bloquear la cuenta y dejar la agenda sin envío.
 - **R-2** La autenticación básica de SMTP sale desactivada por defecto desde finales de diciembre de 2026, y Microsoft la retirará en
   2027 (desde entonces, `550 5.7.30`, visible como `smtp_basic_auth_disabled`). El envío depende de que el tenant la mantenga, y
@@ -525,8 +542,8 @@ los **aceptó expresamente el 2026-11-06** (Q-13). Todos tienen revisión no pos
   - los valores predeterminados de seguridad desactivados para todo el tenant, por una decisión previa y ajena a ITMas que esta spec
     no toma ni justifica;
   - los ajustes de §14.2.
-  Un cambio del tenant puede romper el envío o debilitar los controles sin que ITMas lo sepa, y la revisión periódica es la que lo
-  detecta.
+  Un cambio del tenant puede romper el envío o debilitar los controles sin que ITMas lo sepa. Sin revisión periódica (§19.4), un
+  cambio que rompa el envío se ve como un error `smtp_*` en la agenda, pero uno que solo debilite los controles no se detecta.
 
 Si una revisión posterior cambia alguno de estos riesgos, se vuelve a pedir la aceptación.
 
@@ -570,10 +587,162 @@ Aprobado con la spec el 2026-11-06. La tarea 1 se hizo en el mismo cambio que la
 
 ## 18. Trazabilidad (al implementar)
 
-- Commits/PRs: …
-- Archivos principales: …
-- Pruebas: …
-- Manual de uso actualizado: …
+- **Commits/PRs:** la aprobación, en `85e2ba1` (2026-11-06, tarea 1). La implementación (tareas 2 a 7), la prueba con la cuenta real
+  (tarea 8) y la enmienda de §19.4, en un único commit `SPEC-0008:` del 2026-11-10.
+- **Archivos principales:**
+  - **Domain:**
+    - `Agenda/AgendaEmail.cs`: la regla estricta, RF-2b;
+    - `Agenda/EventDetails.cs`: `ParticipantList` con la regla y un mensaje que nombra la dirección;
+    - `Agenda/AgendaEvent.cs`: `OutlookSentRecipients`, `RecordInvitationRecipients`, `ForgetInvitationRecipients`, las marcas
+      monótonas con la revisión del trabajo, y el vaciado al completar y al confirmar la cancelación.
+  - **Application:**
+    - `Agenda/AgendaSettings.cs`: `OutlookTransport`, `SmtpAcceptedUntil`, `IsOutlookActive`;
+    - `Agenda/AgendaCodes.cs`: códigos `smtp_*` y `outlook_*`;
+    - `Agenda/AgendaAuditActions.cs`: recuentos en `OfOutlook`;
+    - `Agenda/Outlook/IOutlookCalendarGateway.cs`: entrada y resultado nuevos;
+    - `Agenda/Outlook/InvitationWriter.cs` y `OutlookRecipients.cs`;
+    - `Agenda/Outlook/OutlookPublisher.cs`: escritura anticipada en `ForPublish`, `ForCancel` con el tipo, plazo propio, presupuesto,
+      segunda escritura que solo quita con un reintento, sin seguimiento con `smtp`;
+    - los manejadores: `Events/ScheduleAndCancelHandlers.cs`, `Events/EventHandlers.cs`, `Series/SeriesHandlers.cs` y
+      `Outlook/SyncWithOutlookHandler.cs`;
+    - `Agenda/ExportCalendar/IcalendarWriter.cs`: sus ayudas pasan a `internal` para compartirlas.
+  - **Infrastructure:**
+    - `Agenda/Smtp/`: `SmtpOutlookSettings`, `SmtpThrottleGate`, `SmtpTransport` (MailKit), `SmtpErrorMap`,
+      `SmtpOutlookCalendarGateway` y `SmtpOutlookRegistration`;
+    - `Agenda/Graph/GraphOutlookCalendarGateway.cs` y `NotConfiguredOutlookCalendarGateway.cs`: firma nueva; Graph conserva su
+      respaldo `graph_unavailable`;
+    - `Agenda/AgendaQueries.cs`: `outlookEnabled` sigue el envío activo;
+    - `Persistence/Configurations/AgendaConfiguration.cs` y la migración `20261106163011_AddAgendaOutlookSentRecipients`;
+    - `Itmas3.Infrastructure.csproj` y `backend/Directory.Packages.props`: MailKit 4.18.2, publicado el 2026-10-23.
+  - **Api:** `Agenda/AgendaOptions.cs` (`Transport`, `Smtp`, validación) y `Agenda/AgendaModuleSetup.cs` (selección del adaptador y
+    `SmtpExceptionAcceptedUntil = 2027-05-06T00:00Z`, exclusivo).
+  - **Frontend:**
+    - `features/agenda/data/agenda-labels.ts`: textos de los códigos;
+    - `features/agenda/data/agenda-fields.ts`: la misma regla en el formulario, con su mensaje.
+  - **Configuración:** `docker-compose.yml` y `.env.example`.
+  - **Documentación:**
+    - README, ARCHITECTURE, SECURITY (agenda, lista de producción, riesgos R-11 a R-15) y DEVELOPMENT §11 (reescrita: activación,
+      cuenta y tenant, prueba, códigos, rotación y vencimiento, compromiso, revisiones, cambio de transporte, `graph`), §12.4 y §12;
+    - `specs/database/README.md` y `specs/security/threat-model-baseline.md`.
+- **Pruebas** (2026-11-06, en el equipo de trabajo, con Docker; repetidas el 2026-11-10 tras las revisiones, más abajo). El
+  2026-11-06 se ejecutaron primero con los ejecutables de xunit v3 (`backend/tests/*/bin/Debug/net10.0/`) y después con
+  `cd backend && dotnet test`, que sí ejecutó las 1313 pruebas.
+  - **Unitarias:** 936 en verde (antes 819). Nuevas:
+    - `Domain/Agenda/AgendaEmailTests` y `AgendaEventRecipientsTests`;
+    - `Application/Agenda/InvitationWriterTests`, `RemovedRecipientsTests` y `SmtpPublishingTests`;
+    - `Infrastructure/Agenda/Smtp/SmtpOutlookCalendarGatewayTests` y `SmtpThrottleGateTests`;
+    - `Api/Agenda/AgendaSmtpConfigurationTests`.
+  - **Integración:** 377 en verde, con Testcontainers (PostgreSQL 18). Nueva `Api/Agenda/AgendaSmtpIntegrationTests`, con la API real,
+    PostgreSQL y el adaptador SMTP real contra Mailpit v1.32.0 fijado por *digest*: STARTTLS obligatorio, una CA de prueba creada en
+    cada ejecución y autenticación. Comprueba:
+    - el flujo programar, quitar a un participante y cancelar (métodos, destinatarios y secuencias);
+    - la lista guardada y vaciada;
+    - su ausencia en la API, el `.ics` y la auditoría;
+    - el `CHECK`.
+  - **Ajustes a pruebas existentes**, por cambios de comportamiento previstos:
+    - las pruebas de Graph fijan `AGENDA_OUTLOOK_TRANSPORT=graph`;
+    - los respaldos de `OutlookPublisher` son `outlook_*`;
+    - la parte local de una dirección admite 64 caracteres;
+    - firma nueva de `CancelAsync`.
+  - **Frontend:** 627 en verde, `npm run build` sin avisos y Prettier limpio.
+  - **Otras comprobaciones:**
+    - `dotnet ef migrations has-pending-model-changes`: sin cambios;
+    - el script idempotente, revisado: solo `ADD COLUMN` nulable y `ADD CONSTRAINT`;
+    - `docker compose config -q`, correcto.
+  - **Cobertura:** CA-8 queda cubierto por estas pruebas. CA-9 queda en parte: documentación y build, y `docker compose up --build` más
+    abajo.
+- **Decisiones de implementación** dentro de lo aprobado, para la revisión:
+  - **(a) Ubicación del escritor:** `InvitationWriter` vive en `Application/Agenda/Outlook/`, en el mismo ensamblado que
+    `IcalendarWriter`, cuyas ayudas comparte (§10 decía «junto a»).
+  - **(b) Doble de pruebas:** el adaptador se prueba con un doble de una interfaz propia, `ISmtpTransport`, que envuelve MailKit, en
+    lugar de `ISmtpClient`, para simular los rechazos por destinatario.
+  - **(c) Regla del formulario:** el frontend aplica la misma regla y muestra «Introduce un correo válido: antes de la @, solo letras
+    sin tilde, números y . _ + -», en lugar del mensaje genérico anterior. La API sigue rechazando con un mensaje que nombra la dirección.
+  - **(d) `CHECK` con `CASE`:** usa `CASE` para no evaluar `jsonb_array_length` sobre algo que no es un array.
+  - **(e) Presupuesto y plazo:** el presupuesto de 45 s cuenta desde el inicio del caso de uso, ya autorizada la petición. El plazo
+    propio solo se aplica con `smtp`: con `graph` sigue el token de la petición.
+  - **(f) Liberación del adaptador:** el adaptador SMTP también implementa `IDisposable`, para un ámbito liberado de forma síncrona.
+  - **(g) Cambio de transporte:** una actividad publicada con el otro transporte se guarda igual. Su estado en Outlook pasa a *Error*
+    con `outlook_rejected`, sin escritura anticipada y sin enviar nada, y el resto del lote sigue (revisión de `architecture`; antes
+    respondía `422` y abortaba el lote).
+  - **(h) Margen del plazo propio:** la cancelación propia del lote vence 12 s después del presupuesto (`SmtpGrace`), para el
+    mensaje en curso y la segunda escritura. Si aun así vence en la segunda escritura, el evento queda *Pendiente* y la operación no
+    falla.
+- **Prueba con la cuenta real** (tarea 8, 2026-11-10, en el equipo de trabajo, declarada por el solicitante; sin direcciones,
+  identificadores ni secretos):
+  - **CA-1 y CA-2:** la actividad queda *Publicado*. El responsable, el participante y la lista reciben la reunión, y al cambiar la
+    hora, una actualización de la misma reunión, sin duplicados. **El calendario del buzón emisor no muestra el evento.**
+  - **CA-3 y CA-3b:** la cancelación con motivo, también de día completo; quien se quita recibe la cancelación y los demás la
+    actualización.
+  - **CA-4:** con una contraseña incorrecta, *Error* con `smtp_auth_failed` y el resto *Pendiente*. En los logs de `api` no aparecen
+    la contraseña, el diálogo SMTP ni direcciones.
+  - **CA-6:** controles de §14.2 confirmados por el solicitante, con estas respuestas:
+    - el MFA por usuario con contraseña de aplicación **no se adopta**;
+    - **sin grupo de exclusión** de métodos: la persistencia por métodos queda en R-1;
+    - **detección solo con las alertas de envío**, sin revisión periódica de los inicios de sesión (enmienda, §19.4);
+    - la consulta de participantes guardados que no cumplen la regla (RF-2b) se ejecuta sobre la base de **producción** antes de
+      activar el envío, y su resultado se anota con CA-5.
+  - Con la cuenta real quedan comprobados el formato en Outlook, la conexión STARTTLS con la validación estricta del certificado
+    real de `smtp.office365.com` (con revocación) y la autenticación básica de SMTP en el tenant a fecha de hoy.
+- **No verificado:**
+  - **CA-5**, en producción tras el despliegue;
+  - **CA-7**, antes de finales de diciembre de 2026 y tras el cambio de Microsoft (programado en la agenda, DEVELOPMENT.md §11.7);
+  - el comportamiento con las respuestas reales de Exchange ante los límites de envío y `5.7.139`.
+- **Revisiones obligatorias de la implementación** (2026-11-10, independientes y de solo lectura, un agente por rol). Las cinco
+  dieron «aceptable con cambios», y todos los hallazgos están corregidos:
+  - **`architecture`** (con la lente de `backend`):
+    - **alto:** una cancelación rechazada para siempre bloqueaba la actualización. Ahora la actualización sale igual, quien fue
+      rechazado para siempre se olvida, MailKit ya no envía un mensaje sin destinatarios aceptados (`OnNoRecipientsAccepted`), y una
+      cancelación de la actividad rechazada para todos se da por hecha;
+    - **medio:** el fin del plazo propio en la segunda escritura podía dar un 500. Ahora deja el evento *Pendiente* (decisión h);
+    - **bajos:**
+      - una actividad de Graph abortaba el lote (decisión g) o se daba por cancelada sin enviar nada: ahora `outlook_rejected`;
+      - la conexión se reiniciaba tras cualquier fallo, y los rechazos no contaban en el ritmo (RF-6);
+      - el tiempo máximo de MailKit (ahora 20 s) se adelantaba al del adaptador, y `TimeoutException` pasa a `smtp_timeout`.
+  - **`security`:**
+    - **medio:** la cancelación a quien se quita llevaba el contenido nuevo. Ahora es neutra (RF-3b);
+    - **bajos:**
+      - la regla aceptaba un `\n` antes de la `@`: ahora `\z`;
+      - reconexión por mensaje (corregido, como arriba);
+      - el runbook podía poner la contraseña en la línea de comandos, y las comillas simples pasan a ser obligatorias
+        (DEVELOPMENT.md §11, `.env.example`).
+  - **`database`:**
+    - **bajo:** §13 describía el `CHECK` con `AND`, no con `CASE` (corregido arriba).
+    - Sin problemas funcionales: mapeo, migración, invariantes, concurrencia, ausencia de fugas y copias.
+  - **`testing`:**
+    - **alto:** faltaba la prueba del plazo propio frente a una petición abortada;
+    - **medios:** la caducidad en las consultas, varios quitados con un único `CANCEL`, la inyección de cabeceras MIME y STARTTLS de
+      extremo a extremo;
+    - **bajos:** el orden de Mailpit (ahora por `SEQUENCE`), la auditoría y el `.ics` más estrictos, la captura de logs y el
+      presupuesto contado desde el inicio de la petición.
+    - Todo añadido (más abajo).
+  - **`frontend`:**
+    - **medio:** un «Sincronizar de nuevo» que queda *Pendiente* se mostraba como error. Ahora es un aviso informativo;
+    - **bajos:**
+      - `routes` del manual y dos textos de códigos;
+      - una frase de `consultar-agenda`;
+      - el campo de participantes: no borra la dirección rechazada, `aria-invalid` y `aria-describedby`, y oculta la pista mientras
+        hay un error;
+      - un comentario.
+- **Pruebas tras las revisiones** (2026-11-10, `cd backend && dotnet test` y `cd frontend && npm test -- --watch=false`):
+  - **Backend:** 1332 en verde: 952 unitarias y 380 de integración. Son nuevas:
+    - la cancelación neutra y con varios quitados;
+    - la cancelación rechazada que no bloquea, y el rechazo de todos en una actualización y en una cancelación;
+    - la conexión que se conserva y el ritmo;
+    - `smtp_timeout`, Graph rechazado, la inyección MIME y el `\n` antes de la `@`;
+    - el plazo propio con `smtp` frente a Graph, el presupuesto desde el inicio y el plazo propio en la segunda escritura;
+    - en integración: sin STARTTLS (Mailpit sin TLS), la validación de producción frente a la CA de prueba, la captura de logs y la
+      caducidad en el listado y el detalle.
+  - **Frontend:** 629 pruebas: el aviso de *Pendiente* y el campo de participantes.
+  - `cd frontend && npm run build` sin avisos, Prettier limpio, `docker compose config -q` correcto y `docker compose up --build`
+    sano.
+- **Manual de uso actualizado** (2026-11-06, procedimiento de `/update-manual`):
+  - `programar-y-cancelar`: invitaciones por correo, quien se quita recibe un aviso neutro, Publicado significa enviado, Pendiente sin
+    error y los errores nuevos, y `routes` con el detalle;
+  - `planificar-actividad`: la regla de los participantes, que la dirección rechazada se queda escrita, y los dos mensajes;
+  - `consultar-agenda`: la columna y el detalle de Outlook sin calendario compartido.
+  En `index.json`: `SPEC-0008` y `updated`. Revisión de contenido público: se buscaron IPs, `@`, GUID y versiones. Solo aparece el
+  símbolo `@` en el texto de la regla, sin direcciones.
 
 ## 19. Decisiones y preguntas abiertas
 
@@ -593,6 +762,7 @@ Aprobado con la spec el 2026-11-06. La tarea 1 se hizo en el mismo cambio que la
 | Q-10 | Aceptación de los riesgos residuales | **Acepta R-1 a R-4** en su redacción inicial, con revisión no posterior al 2027-05-05. Las revisiones cambiaron R-1 y añadieron R-5, cuya aceptación está pendiente (Q-13). |
 | Q-11 | ¿El tenant tiene acceso condicional? | **No.** La contraseña queda como identidad del directorio sin MFA (R-1). |
 | Q-12 | Cómo seguir sin acceso condicional | **Enmienda de §3.8 y usuario y contraseña.** Descarta expresamente SMTP con OAuth 2.0 (recomendado) y el *relay* por IP. ADR-0023 propone el texto (MAJOR 6.0.0). |
+| Q-14 (2026-11-10) | ¿Acepta de nuevo R-1 y R-5 sin revisión periódica, sin MFA con contraseña de aplicación y sin grupo de exclusión? | **Acepta tal cual**, con revisión no posterior al 2027-05-05. No añade la comprobación de estado al rotar que propuso `security` (§19.4). |
 | Q-13 (2026-11-06) | Condición previa, aceptación de R-1 y R-5 y de ADR-0023 | Confirma que los **valores predeterminados de seguridad ya estaban desactivados** en el tenant. **Acepta R-1 y R-5** con revisión no posterior al 2027-05-05. **Acepta ADR-0023** con su enmienda (constitución 6.0.0) y **aprueba esta spec**. |
 
 ### 19.2 Preguntas abiertas
@@ -657,3 +827,44 @@ código en dos rondas. Todos los hallazgos están incorporados.
     - medios: la custodia (rotación tras la prueba y copia sellada), el bloqueo de la cuenta al vencer, la contraseña de aplicación,
       la persistencia por métodos (grupo de exclusión) y los participantes ya guardados;
     - bajos: `5.7.139`, `AllowBasicAuthSmtp`, `mailto:`, la revisión cada 6 días y Purview.
+
+### 19.4 Enmienda del 2026-11-10: detección solo con alertas de envío
+
+Al anotar CA-6, el solicitante decidió **no revisar periódicamente los inicios de sesión** de la cuenta: «la cuenta smtp es solo para
+enviar correos». Cambia §14.2 (detección), CA-6, la amenaza de suplantación y de persistencia de §14.1, R-1 y R-5, y ADR-0023
+(decisión 2, detección, y decisión 12, controles que faltan).
+
+- **Lo que queda:** las directivas de alerta de envío, dirigidas al equipo, y el procedimiento ante un compromiso. La rotación
+  semestral, el vencimiento y la comprobación de CA-7 siguen programados en la agenda.
+- **Lo que se pierde:** detectar un inicio de sesión (y con él la lectura del buzón o del directorio), un *password spraying* que no
+  bloquee la cuenta, un método, un consentimiento, una aplicación o una regla creados para persistir, y un cambio del tenant que
+  debilite los controles sin romper el envío. Las alertas tampoco ven un envío dirigido de pocos mensajes.
+- **Motivo del solicitante:** que la cuenta solo envía correo. El alcance real de la credencial no cambia: sigue siendo una
+  identidad completa del directorio (R-1).
+- **Respuestas de CA-6 en la misma sesión:** no se adopta el MFA por usuario con contraseña de aplicación; no hay grupo de exclusión
+  de métodos, así que la persistencia por métodos queda en R-1.
+- **Requisitos (constitución §3.8 (c)):** la revisión retirada, el MFA y el grupo de exclusión pasan a los «controles que faltan» de
+  R-1 en ADR-0023, y R-1 y R-5 necesitan una **nueva aceptación expresa** (§14.4).
+- **Revisión de `security`** (2026-11-10, independiente y de solo lectura): «aceptable con cambios».
+  - **alto:** la excepción no es válida sin la nueva aceptación expresa;
+  - **medios:**
+    - el MFA y el grupo de exclusión debían constar como decididos en ADR-0023;
+    - lo que detectan las alertas estaba sobrestimado: no ven un envío dirigido de pocos mensajes;
+    - restos de «se evalúa» y del grupo de exclusión en §8, §14.1, §14.2, DEVELOPMENT y SECURITY;
+  - **bajos:** la persistencia que sobrevive a la rotación, el *password spraying* sin bloqueo, la pérdida forense (métodos y reglas
+    son estado; Purview guarda 180 días), la revisión en ADR-0023 y las cabeceras.
+  Todo corregido. Propuso, sin imponerlos, controles baratos: comprobar el estado de la cuenta en las actividades que ya están en la
+  agenda, el grupo de exclusión, una regla de transporte que copie al equipo los avisos de Microsoft y, si la licencia lo permite,
+  alertas de Purview de una sola actividad.
+
+### 19.5 Cierre del 2026-11-10: CA-5 y CA-7 en la puesta en producción
+
+El solicitante pidió marcar la spec como `Implemented` para desplegarla, tras probar CA-1 a CA-4 y CA-6 con la cuenta real. La
+documentación exigía `Implemented` antes de activar Outlook en producción, y CA-5 exigía activarlo antes de cerrar la spec. Se resuelve
+así:
+
+- **CA-5** pasa a ser la comprobación de la puesta en producción: se hace tras el despliegue (DEVELOPMENT.md §11.3, paso 7), con la
+  consulta de participantes de RF-2b sobre la base de producción, y se anota en §18 con un commit `minor:`. Si falla, se pone
+  `AGENDA_OUTLOOK_ENABLED=false`.
+- **CA-7** queda programada en la agenda (DEVELOPMENT.md §11.7), porque depende de una fecha futura.
+- La nueva aceptación de R-1 y R-5 (Q-14) se dio el mismo día, antes del cierre.

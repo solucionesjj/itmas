@@ -77,6 +77,11 @@ internal sealed class AgendaEventConfiguration : IEntityTypeConfiguration<Agenda
             table.HasCheckConstraint("ck_agenda_events_reminder", $"reminder_minutes BETWEEN 0 AND {AgendaEvent.MaxReminderMinutes}");
             table.HasCheckConstraint("ck_agenda_events_cancel_reason", "status <> 'cancelled' OR cancel_reason IS NOT NULL");
             table.HasCheckConstraint("ck_agenda_events_completion", "(status = 'completed') = (completion_result IS NOT NULL)");
+            // SPEC-0008 §13: who may hold the meeting (SMTP) is a non-empty JSON array, and only exists with the UID of the invitation.
+            table.HasCheckConstraint(
+                "ck_agenda_events_outlook_sent_recipients",
+                "outlook_sent_recipients IS NULL OR (outlook_event_id IS NOT NULL AND CASE WHEN jsonb_typeof(outlook_sent_recipients) = 'array' "
+                + "THEN jsonb_array_length(outlook_sent_recipients) > 0 ELSE false END)");
         });
         builder.HasKey(agendaEvent => agendaEvent.Id);
         builder.Property(agendaEvent => agendaEvent.Id).ValueGeneratedNever();
@@ -110,6 +115,10 @@ internal sealed class AgendaEventConfiguration : IEntityTypeConfiguration<Agenda
         builder.Property(agendaEvent => agendaEvent.OutlookEventId).HasMaxLength(300);
         builder.Property(agendaEvent => agendaEvent.OutlookWebLink).HasMaxLength(1000);
         builder.Property(agendaEvent => agendaEvent.OutlookErrorCode).HasMaxLength(30);
+        // Nullable: the same small-list convention as the participants, without IsRequired (SPEC-0008 §13).
+        builder.Property(agendaEvent => agendaEvent.OutlookSentRecipients)
+            .HasConversion(AgendaConverters.Json<IReadOnlyList<string>?>(), AgendaConverters.JsonComparer<IReadOnlyList<string>?>())
+            .HasColumnType("jsonb");
 
         // Revision is the user-facing ETag; xmin protects every write.
         builder.Property<uint>("RowVersion").IsRowVersion();

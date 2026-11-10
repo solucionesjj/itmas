@@ -206,7 +206,7 @@ public static class IcalendarWriter
     /// <c>URI</c> value is not escaped like text, so it is only used when it is an absolute http or https address with no
     /// credentials, spaces or control characters.
     /// </summary>
-    private static string? EventUrl(string? publicUrl, Guid eventId)
+    internal static string? EventUrl(string? publicUrl, Guid eventId)
     {
         if (string.IsNullOrWhiteSpace(publicUrl)
             || !Uri.TryCreate($"{publicUrl.Trim().TrimEnd('/')}/agenda/events/{eventId:D}", UriKind.Absolute, out var uri)
@@ -220,8 +220,8 @@ public static class IcalendarWriter
         return absolute.Any(c => char.IsControl(c) || char.IsWhiteSpace(c)) ? null : absolute;
     }
 
-    private static string UtcStamp(DateTimeOffset instant) =>
+    internal static string UtcStamp(DateTimeOffset instant) =>
         instant.UtcDateTime.ToString("yyyyMMdd'T'HHmmss'Z'", CultureInfo.InvariantCulture);
 
-    private static string DateStamp(DateTime local) => local.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+    internal static string DateStamp(DateTime local) => local.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
 }

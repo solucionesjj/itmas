@@ -100,9 +100,13 @@ public static class AgendaCodes
     public static string ToCode(AgendaWarningKind kind) => kind == AgendaWarningKind.FreezeOverlap ? "freeze-overlap" : "impact-overlap";
 }
 
-/// <summary>The closed set of normalized Outlook error codes (SPEC-0006 §12.1). Raw Graph detail is never kept or shown (RNF-8).</summary>
+/// <summary>
+/// The closed set of normalized Outlook error codes (SPEC-0006 §12.1, SPEC-0008 §11). The raw answer of Graph or of the SMTP
+/// server is never kept or shown (RNF-8, SPEC-0008 RNF-2).
+/// </summary>
 public static class OutlookErrorCodes
 {
+    // Microsoft Graph (ADR-0016).
     public const string Unauthorized = "graph_unauthorized";
     public const string Forbidden = "graph_forbidden";
     public const string NotFound = "graph_not_found";
@@ -110,13 +114,31 @@ public static class OutlookErrorCodes
     public const string Unavailable = "graph_unavailable";
     public const string Timeout = "graph_timeout";
     public const string Rejected = "graph_rejected";
+
+    // SMTP of Microsoft 365 (ADR-0023 decision 8).
+    public const string SmtpAuthFailed = "smtp_auth_failed";
+    public const string SmtpBasicAuthDisabled = "smtp_basic_auth_disabled";
+    public const string SmtpSenderRejected = "smtp_sender_rejected";
+    public const string SmtpRejected = "smtp_rejected";
+    public const string SmtpThrottled = "smtp_throttled";
+    public const string SmtpUnavailable = "smtp_unavailable";
+    public const string SmtpTimeout = "smtp_timeout";
+
+    // Neutral fallbacks of the publisher, whatever the transport: an unexpected exception, a timeout or an answer without an id.
+    public const string OutlookUnavailable = "outlook_unavailable";
+    public const string OutlookTimeout = "outlook_timeout";
+    public const string OutlookRejected = "outlook_rejected";
+
     public const string NotConfigured = "not_configured";
 
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
-        Unauthorized, Forbidden, NotFound, Throttled, Unavailable, Timeout, Rejected, NotConfigured,
+        Unauthorized, Forbidden, NotFound, Throttled, Unavailable, Timeout, Rejected,
+        SmtpAuthFailed, SmtpBasicAuthDisabled, SmtpSenderRejected, SmtpRejected, SmtpThrottled, SmtpUnavailable, SmtpTimeout,
+        OutlookUnavailable, OutlookTimeout, OutlookRejected,
+        NotConfigured,
     };
 
-    /// <summary>The code itself when it belongs to the closed set, otherwise <see cref="Unavailable"/>.</summary>
-    public static string Normalize(string? code) => code is not null && All.Contains(code) ? code : Unavailable;
+    /// <summary>The code itself when it belongs to the closed set, otherwise <see cref="OutlookUnavailable"/>.</summary>
+    public static string Normalize(string? code) => code is not null && All.Contains(code) ? code : OutlookUnavailable;
 }

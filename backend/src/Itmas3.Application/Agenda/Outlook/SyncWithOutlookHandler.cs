@@ -25,7 +25,8 @@ public sealed class SyncWithOutlookHandler(
 
     public async Task<SyncResult> SyncOneAsync(Guid eventId, CancellationToken cancellationToken)
     {
-        if (!settings.OutlookEnabled)
+        var startedAt = timeProvider.GetUtcNow();
+        if (!settings.IsOutlookActive(startedAt))
         {
             // Nothing is called and nothing is stored: the event simply is not published (CA-17).
             var agendaEvent = await events.GetAsync(eventId, cancellationToken) ?? throw new NotFoundException("Agenda event not found.");
@@ -43,7 +44,7 @@ public sealed class SyncWithOutlookHandler(
                 }
 
                 agendaEvent.MarkOutlookPending();
-                return OutlookEventContent.ForCancel(agendaEvent);
+                return OutlookEventContent.ForCancel(agendaEvent, await types.GetAsync(agendaEvent.TypeId, ct), settings);
             }
 
             if (agendaEvent.Status != EventStatus.Scheduled)
@@ -55,13 +56,14 @@ public sealed class SyncWithOutlookHandler(
             return (await BuildPublishWorkAsync([agendaEvent], ct))[0];
         }, cancellationToken);
 
-        var states = await publisher.RunAsync([work], cancellationToken);
+        var states = await publisher.RunAsync([work], startedAt, cancellationToken);
         return new SyncResult(eventId, states[eventId]);
     }
 
     public async Task<IReadOnlyList<SyncResult>> SyncPendingAsync(CancellationToken cancellationToken)
     {
-        if (!settings.OutlookEnabled)
+        var startedAt = timeProvider.GetUtcNow();
+        if (!settings.IsOutlookActive(startedAt))
         {
             return [];
         }
@@ -77,7 +79,7 @@ public sealed class SyncWithOutlookHandler(
             return await BuildPublishWorkAsync(pending, ct);
         }, cancellationToken);
 
-        var states = await publisher.RunAsync(work, cancellationToken);
+        var states = await publisher.RunAsync(work, startedAt, cancellationToken);
         return [.. work.Select(item => new SyncResult(item.EventId, states[item.EventId]))];
     }
 

@@ -244,7 +244,7 @@ public sealed class NotificationRuleTests
             return OutlookGatewayResult.Success(outlookEventId ?? $"AAMk-{data.EventId:N}", $"https://outlook.example/{data.EventId:N}");
         }
 
-        public Task<OutlookGatewayResult> CancelAsync(string outlookEventId, string reason, CancellationToken cancellationToken)
+        public Task<OutlookGatewayResult> CancelAsync(string outlookEventId, string reason, OutlookEventData? data, CancellationToken cancellationToken)
         {
             Cancelled.Add((outlookEventId, reason));
             return Task.FromResult(OutlookGatewayResult.Success(outlookEventId, null));

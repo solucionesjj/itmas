@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 import { AgendaApi } from '../data/agenda-api';
+import { INVALID_EMAIL } from '../data/agenda-fields';
 import { ChipField } from './chip-field';
 import { TagsField } from './tags-field';
 
@@ -154,8 +155,38 @@ describe('ChipField for participants (RN-5)', () => {
     fixture.detectChanges();
 
     expect(fixture.componentInstance.values()).toEqual(['ana@example.com']);
-    expect(fixture.nativeElement.querySelector('p.error')?.textContent.trim()).toBe(
-      'Introduce un correo válido.',
-    );
+    expect(fixture.nativeElement.querySelector('p.error')?.textContent.trim()).toBe(INVALID_EMAIL);
+  });
+
+  it('SPEC-0008 RF-2b: a refused address stays typed, the input is marked invalid and points to the message', async () => {
+    TestBed.configureTestingModule({
+      providers: [{ provide: AgendaApi, useValue: { listTags: vi.fn() } }],
+    });
+    const { normalizeEmail } = await import('../data/agenda-fields');
+    const fixture = TestBed.createComponent(ChipField);
+    fixture.componentRef.setInput('label', 'Participantes');
+    fixture.componentRef.setInput('normalize', normalizeEmail);
+    fixture.componentRef.setInput('hint', 'Una dirección por vez');
+    fixture.detectChanges();
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('input');
+
+    input.value = 'josé@example.com';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+    fixture.detectChanges();
+
+    const message: HTMLElement = fixture.nativeElement.querySelector('p.error');
+    expect(input.value).toBe('josé@example.com');
+    expect(fixture.componentInstance.values()).toEqual([]);
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby')).toBe(message.id);
+    expect(fixture.nativeElement.querySelector('mat-hint')).toBeNull();
+
+    input.value = 'jose@example.com';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.values()).toEqual(['jose@example.com']);
+    expect(input.value).toBe('');
+    expect(input.getAttribute('aria-invalid')).toBeNull();
   });
 });

@@ -12,6 +12,6 @@ public sealed class NotConfiguredOutlookCalendarGateway : IOutlookCalendarGatewa
     public Task<OutlookGatewayResult> PublishAsync(OutlookEventData data, string? outlookEventId, CancellationToken cancellationToken) =>
         Task.FromResult(OutlookGatewayResult.Failure(OutlookErrorCodes.NotConfigured));
 
-    public Task<OutlookGatewayResult> CancelAsync(string outlookEventId, string reason, CancellationToken cancellationToken) =>
+    public Task<OutlookGatewayResult> CancelAsync(string outlookEventId, string reason, OutlookEventData? data, CancellationToken cancellationToken) =>
         Task.FromResult(OutlookGatewayResult.Failure(OutlookErrorCodes.NotConfigured));
 }

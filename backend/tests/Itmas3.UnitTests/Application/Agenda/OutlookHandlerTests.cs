@@ -180,7 +180,8 @@ public sealed class OutlookHandlerTests
 
         await ScheduleAsync(draft.Id);
 
-        Assert.Equal(OutlookErrorCodes.Unavailable, draft.OutlookErrorCode);
+        // SPEC-0008 §11: the fallback of the publisher is neutral, whatever the transport.
+        Assert.Equal(OutlookErrorCodes.OutlookUnavailable, draft.OutlookErrorCode);
         Assert.DoesNotContain("contoso", JsonSerializer.Serialize(_agenda.UnitOfWork.Entries), StringComparison.Ordinal);
     }
 
@@ -194,19 +195,19 @@ public sealed class OutlookHandlerTests
 
         Assert.Equal(EventStatus.Scheduled, draft.Status);
         Assert.Equal(OutlookStatus.Error, results[0].Outlook.Status);
-        Assert.Equal(OutlookErrorCodes.Unavailable, results[0].Outlook.ErrorCode);
+        Assert.Equal(OutlookErrorCodes.OutlookUnavailable, results[0].Outlook.ErrorCode);
         Assert.DoesNotContain("secret-detail", JsonSerializer.Serialize(_agenda.UnitOfWork.Entries), StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task CA16_a_timeout_is_reported_as_graph_timeout()
+    public async Task CA16_a_timeout_is_reported_with_the_neutral_timeout_code()
     {
         _agenda.Gateway.ThrowOnCall = new TaskCanceledException("timeout");
         var draft = await _agenda.CreateDraftAsync();
 
         var results = await ScheduleAsync(draft.Id);
 
-        Assert.Equal(OutlookErrorCodes.Timeout, results[0].Outlook.ErrorCode);
+        Assert.Equal(OutlookErrorCodes.OutlookTimeout, results[0].Outlook.ErrorCode);
         Assert.Equal(EventStatus.Scheduled, draft.Status);
     }
 

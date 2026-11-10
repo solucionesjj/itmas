@@ -1,4 +1,4 @@
-import { appendUnique, normalizeEmail, normalizeTag } from './agenda-fields';
+import { INVALID_EMAIL, appendUnique, normalizeEmail, normalizeTag } from './agenda-fields';
 
 describe('normalizeTag (RN-15)', () => {
   it('trims and collapses repeated spaces', () => {
@@ -39,13 +39,33 @@ describe('normalizeEmail (RN-5)', () => {
 
   it('rejects malformed addresses', () => {
     for (const text of ['ana', 'ana@', '@example.com', 'ana@example', 'a b@example.com']) {
-      expect(normalizeEmail(text)).toEqual({ error: 'Introduce un correo válido.' });
+      expect(normalizeEmail(text)).toEqual({ error: INVALID_EMAIL });
     }
   });
 
+  it('rejects what breaks the strict rule of SPEC-0008 RF-2b', () => {
+    for (const text of [
+      'ana;x@example.com',
+      'ana:x@example.com',
+      '"ana"@example.com',
+      'ana?x@example.com',
+      'ana#x@example.com',
+      'josé@example.com',
+      '.ana@example.com',
+      'ana..b@example.com',
+      'ana@exa_mple.com',
+      `${'a'.repeat(65)}@example.com`,
+    ]) {
+      expect(normalizeEmail(text), text).toEqual({ error: INVALID_EMAIL });
+    }
+    expect(normalizeEmail(' Soporte+Agenda@Mail.Example.com ')).toEqual({
+      value: 'soporte+agenda@mail.example.com',
+    });
+  });
+
   it('rejects addresses longer than 254 characters', () => {
-    const long = `${'a'.repeat(250)}@example.com`;
-    expect(normalizeEmail(long)).toEqual({ error: 'Introduce un correo válido.' });
+    const long = `${'a'.repeat(60)}@${'d'.repeat(60)}.${'d'.repeat(60)}.${'d'.repeat(60)}.example.com`;
+    expect(normalizeEmail(long)).toEqual({ error: INVALID_EMAIL });
   });
 });
 

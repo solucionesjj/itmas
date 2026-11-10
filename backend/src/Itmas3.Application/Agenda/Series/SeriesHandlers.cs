@@ -103,6 +103,7 @@ public sealed class UpdateSeriesHandler(
 
         // The unit of work may run the closure again (race of a new tag): the budget is spent only once.
         var notifyChecked = false;
+        var startedAt = timeProvider.GetUtcNow();
         var saved = await unitOfWork.ExecuteAsync(async (audit, ct) =>
         {
             var now = timeProvider.GetUtcNow();
@@ -141,7 +142,7 @@ public sealed class UpdateSeriesHandler(
                 }
 
                 // While its creation is on its way (Pending and no Outlook id yet) a second creation is not sent: see UpdateEventHandler.
-                if (occurrence.Status == EventStatus.Scheduled && settings.OutlookEnabled
+                if (occurrence.Status == EventStatus.Scheduled && settings.IsOutlookActive(now)
                     && !(occurrence.OutlookEventId is null && occurrence.OutlookStatus == OutlookStatus.Pending))
                 {
                     occurrence.MarkOutlookPending();
@@ -167,7 +168,7 @@ public sealed class UpdateSeriesHandler(
             return (Updated: updated, Work: work);
         }, cancellationToken);
 
-        await publisher.RunAsync(saved.Work, cancellationToken);
+        await publisher.RunAsync(saved.Work, startedAt, cancellationToken);
         return new UpdateSeriesResult(saved.Updated.Count, [.. saved.Updated.Select(occurrence => occurrence.Id)]);
     }
 }

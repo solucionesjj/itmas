@@ -99,7 +99,8 @@ public sealed partial class GraphOutlookCalendarGateway : IOutlookCalendarGatewa
         return ToPublishResult(create, null);
     }
 
-    public async Task<OutlookGatewayResult> CancelAsync(string outlookEventId, string reason, CancellationToken cancellationToken)
+    /// <summary>Cancels with Graph. <paramref name="data"/> is for the SMTP transport (ADR-0023) and is not used here.</summary>
+    public async Task<OutlookGatewayResult> CancelAsync(string outlookEventId, string reason, OutlookEventData? data, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(outlookEventId) || !IsSafeEventId(outlookEventId))
         {
@@ -162,7 +163,8 @@ public sealed partial class GraphOutlookCalendarGateway : IOutlookCalendarGatewa
             var token = await _tokens.AcquireAsync(timeout.Token);
             if (token.AccessToken is null)
             {
-                var code = OutlookErrorCodes.Normalize(token.ErrorCode);
+                // The Graph adapter keeps its own fallback (ADR-0016): a code outside the closed set is graph_unavailable.
+                var code = token.ErrorCode is { } raw && OutlookErrorCodes.All.Contains(raw) ? raw : OutlookErrorCodes.Unavailable;
                 var tokenThrottled = code == OutlookErrorCodes.Throttled;
                 if (tokenThrottled)
                 {

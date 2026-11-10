@@ -216,6 +216,11 @@ export class AgendaActions {
       this.notifications.info('Actividad publicada en Outlook.');
     } else if (outlook.errorCode === 'not_configured') {
       this.notifications.info('Outlook no configurado: no se publicó nada.');
+    } else if (outlook.status === 'pending' && !outlook.errorCode) {
+      // SPEC-0008 RF-5: it did not fit in this send (pace, budget, a pause of the mail server). Not an error.
+      this.notifications.info(
+        'Envío pendiente: vuelve a pulsar «Sincronizar de nuevo» pasado un minuto.',
+      );
     } else {
       this.notifications.error(
         `No se pudo publicar en Outlook. ${outlookErrorText(outlook.errorCode)}`.trim(),

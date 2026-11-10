@@ -70,6 +70,7 @@ public sealed class UpdateEventHandler(
 
         // The unit of work may run the closure again (race of a new tag): the budget is spent only once.
         var notifyChecked = false;
+        var startedAt = timeProvider.GetUtcNow();
         var saved = await unitOfWork.ExecuteAsync(async (audit, ct) =>
         {
             var now = timeProvider.GetUtcNow();
@@ -95,7 +96,7 @@ public sealed class UpdateEventHandler(
                 agendaEvent.ReplaceTags([.. await resolver.ResolveAsync(command.Input.Tags, actor, now, ct)]);
             }
 
-            var work = PrepareOutlook(agendaEvent, prepared.Type, prepared.Responsible);
+            var work = PrepareOutlook(agendaEvent, prepared.Type, prepared.Responsible, now);
             audit.Record(AgendaAuditActions.EventUpdated, AgendaAuditActions.EventResourceType, agendaEvent.Id.ToString(), before, AgendaAuditViews.Of(agendaEvent));
             var eventWarnings = await warnings.ForAsync(agendaEvent.Id, schedule, prepared.Type.IsFreeze, agendaEvent.Impact, ct);
             return (Event: agendaEvent, Warnings: eventWarnings, Work: work);
@@ -104,7 +105,7 @@ public sealed class UpdateEventHandler(
         var outlook = OutlookState.Of(saved.Event);
         if (saved.Work is not null)
         {
-            var states = await publisher.RunAsync([saved.Work], cancellationToken);
+            var states = await publisher.RunAsync([saved.Work], startedAt, cancellationToken);
             outlook = states[saved.Event.Id];
         }
 
@@ -114,9 +115,9 @@ public sealed class UpdateEventHandler(
     // A scheduled event tells Outlook about the change; a draft, or Outlook being off, changes nothing there. While its creation is
     // still on its way (Pending and no Outlook id yet) a second creation is not sent: it would carry the same transactionId and Graph
     // may answer with the event already created, without the change. It stays Pending and "Sincronizar de nuevo" sends it.
-    private OutlookWork? PrepareOutlook(AgendaEvent agendaEvent, EventType type, AgendaUser responsible)
+    private OutlookWork? PrepareOutlook(AgendaEvent agendaEvent, EventType type, AgendaUser responsible, DateTimeOffset now)
     {
-        if (agendaEvent.Status != EventStatus.Scheduled || !settings.OutlookEnabled)
+        if (agendaEvent.Status != EventStatus.Scheduled || !settings.IsOutlookActive(now))
         {
             return null;
         }

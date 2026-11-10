@@ -35,6 +35,8 @@ export interface ChipSuggestion {
           </mat-chip-row>
         }
         <input
+          [attr.aria-invalid]="error() ? 'true' : null"
+          [attr.aria-describedby]="error() ? errorId : null"
           [placeholder]="placeholder()"
           [disabled]="disabled()"
           [matChipInputFor]="grid"
@@ -50,12 +52,12 @@ export interface ChipSuggestion {
           <mat-option [value]="suggestion.value">{{ suggestion.label }}</mat-option>
         }
       </mat-autocomplete>
-      @if (hint()) {
+      @if (hint() && !error()) {
         <mat-hint>{{ hint() }}</mat-hint>
       }
     </mat-form-field>
     @if (error(); as message) {
-      <p class="error" role="alert">{{ message }}</p>
+      <p class="error" role="alert" [id]="errorId">{{ message }}</p>
     }
   `,
   styles: `
@@ -73,6 +75,8 @@ export interface ChipSuggestion {
   `,
 })
 export class ChipField {
+  private static nextId = 0;
+
   readonly label = input.required<string>();
   readonly itemLabel = input('elemento');
   readonly placeholder = input('');
@@ -88,6 +92,8 @@ export class ChipField {
   readonly query = output<string>();
 
   protected readonly separators = [ENTER, COMMA] as const;
+  /** Links the message to the input (`aria-describedby`), so a screen reader reads why the value was refused. */
+  protected readonly errorId = `app-chip-field-error-${ChipField.nextId++}`;
   protected readonly error = signal<string | null>(null);
   protected readonly atMax = computed(() => this.values().length >= this.max());
   /** Suggestions that are not chips yet. */
@@ -101,10 +107,11 @@ export class ChipField {
     this.query.emit(text);
   }
 
+  /** Clears what was typed only when it became a chip: a refused address stays there to be corrected. */
   protected add(event: MatChipInputEvent): void {
-    const typed = event.value;
-    event.chipInput.clear();
-    this.addText(typed);
+    if (this.addText(event.value)) {
+      event.chipInput.clear();
+    }
   }
 
   protected select(event: MatAutocompleteSelectedEvent): void {
@@ -117,22 +124,26 @@ export class ChipField {
     this.values.set(this.values().filter((existing) => existing !== value));
   }
 
-  /** Adds one chip from text, applying the normalization and the maximum. */
-  addText(raw: string): void {
+  /**
+   * Adds one chip from text, applying the normalization and the maximum. Returns whether the text was used (added, or empty and
+   * ignored), so the caller keeps a refused value in the input.
+   */
+  addText(raw: string): boolean {
     const result = this.normalize()(raw);
     if (result === null) {
-      return;
+      return true;
     }
     if ('error' in result) {
       this.error.set(result.error);
-      return;
+      return false;
     }
     if (this.atMax()) {
       this.error.set(this.maxMessage());
-      return;
+      return false;
     }
     this.error.set(null);
     this.values.set(appendUnique(this.values(), result.value));
     this.query.emit('');
+    return true;
   }
 }

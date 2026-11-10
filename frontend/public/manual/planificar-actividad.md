@@ -36,7 +36,9 @@ exige además `agenda.publish` (*Programar y cancelar actividades*), porque el c
 
 - La fecha de inicio no puede estar en el pasado, el fin debe ser posterior al inicio y una actividad dura como máximo 60
   días.
-- Los participantes deben ser direcciones válidas y de los dominios permitidos; hasta 30 por actividad.
+- Los participantes deben ser direcciones válidas y de los dominios permitidos; hasta 30 por actividad. Antes de la **@**
+  solo se admiten letras sin tilde, números y los signos **.** **_** **+** **-**, para que la invitación de Outlook llegue
+  sin problemas.
 - El responsable debe ser una persona activa. Si después se desactiva, la actividad lo muestra como "Responsable
   inactivo" y hay que reasignarla.
 
@@ -102,7 +104,8 @@ Las actividades quedan en **Borrador**, visibles en la agenda para todo el equip
 | "El inicio no puede estar en el pasado." | Elige una fecha y hora futuras. El histórico anterior a ITMas no se registra. |
 | "El fin debe ser posterior al inicio." | Corrige la fecha o la hora de fin. |
 | "Elige una persona de la lista." | El responsable se elige de la lista que aparece al escribir; no basta con teclear el nombre. |
-| "Introduce un correo válido." | Revisa la dirección del participante. Si el dominio no está permitido, ITMas lo rechaza al guardar. |
+| "Introduce un correo válido: antes de la @, solo letras sin tilde, números y . _ + -" | La dirección se queda escrita en el campo: corrígela (quita tildes, espacios u otros signos) y pulsa **Intro** otra vez. Si el dominio no está permitido, ITMas lo rechaza al guardar. |
+| Al guardar, "El correo «…» de un participante no es válido…" | La actividad se creó antes con una dirección que ya no se admite: corrígela o quítala y guarda de nuevo. |
 | "Otro usuario modificó esta actividad. Recarga los datos e inténtalo de nuevo." | Alguien la cambió mientras la editabas. Pulsa **Recargar datos** y repite tu cambio. |
 | "Indica un número entero de 1 a 60." o "Una serie admite como máximo 60 ocurrencias." | Una serie crea hasta 60 actividades: reduce el número de actividades o acorta la fecha final. |
 | No veo **Nueva actividad** ni **Editar** | Necesitas los permisos `agenda.create` o `agenda.update`. Ver [Qué puedo hacer: permisos y cómo solicitarlos](permisos-y-acceso). |

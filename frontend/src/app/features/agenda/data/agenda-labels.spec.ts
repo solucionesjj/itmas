@@ -43,6 +43,16 @@ describe('states as icon and text (RNF-2)', () => {
 describe('outlookErrorText (RF-18)', () => {
   it('has a message for every code of the closed set and never shows the code as text', () => {
     for (const code of [
+      'smtp_auth_failed',
+      'smtp_basic_auth_disabled',
+      'smtp_sender_rejected',
+      'smtp_rejected',
+      'smtp_throttled',
+      'smtp_unavailable',
+      'smtp_timeout',
+      'outlook_unavailable',
+      'outlook_timeout',
+      'outlook_rejected',
       'graph_unauthorized',
       'graph_forbidden',
       'graph_not_found',
@@ -53,7 +63,7 @@ describe('outlookErrorText (RF-18)', () => {
       'not_configured',
     ]) {
       expect(outlookErrorText(code), code).not.toBe('No se pudo publicar en Outlook.');
-      expect(outlookErrorText(code), code).not.toContain('graph_');
+      expect(outlookErrorText(code), code).not.toMatch(/graph_|smtp_|outlook_/);
     }
   });
 

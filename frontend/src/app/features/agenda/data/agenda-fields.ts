@@ -18,16 +18,26 @@ export function normalizeTag(raw: string): ChipResult {
   return { value: cleaned };
 }
 
-const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+/**
+ * The strict address rule of the agenda (SPEC-0008 RF-2b), the same the API enforces: before the @ only a-z, 0-9 and . _ + -
+ * (no dot at the start, at the end or twice), at most 64 characters; after it, ASCII LDH labels.
+ */
+const EMAIL =
+  /^[a-z0-9_+-]+(\.[a-z0-9_+-]+)*@([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/;
 
-/** Mirrors RN-5 on the form side: a well-formed address of at most 254 characters, lowercase. The domain is checked by the API. */
+/** The message of an address that breaks the rule. */
+export const INVALID_EMAIL =
+  'Introduce un correo válido: antes de la @, solo letras sin tilde, números y . _ + -';
+
+/** Mirrors RN-5 and SPEC-0008 RF-2b on the form side, lowercase. The allowed domains are checked by the API. */
 export function normalizeEmail(raw: string): ChipResult {
   const cleaned = raw.trim().toLowerCase();
   if (cleaned === '') {
     return null;
   }
-  if (cleaned.length > 254 || !EMAIL.test(cleaned)) {
-    return { error: 'Introduce un correo válido.' };
+  const at = cleaned.indexOf('@');
+  if (cleaned.length > 254 || at > 64 || !EMAIL.test(cleaned)) {
+    return { error: INVALID_EMAIL };
   }
   return { value: cleaned };
 }

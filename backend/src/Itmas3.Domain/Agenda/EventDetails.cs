@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Itmas3.Domain.Common;
 
 namespace Itmas3.Domain.Agenda;
@@ -98,11 +97,17 @@ public sealed class EventDetails
     }
 }
 
-/// <summary>Participants of an event (SPEC-0006 RN-5): valid, unique addresses of the allowed domains, at most 30.</summary>
-public static partial class ParticipantList
+/// <summary>
+/// Participants of an event (SPEC-0006 RN-5): valid, unique addresses of the allowed domains, at most 30. Since SPEC-0008 an
+/// address must follow the strict rule of <see cref="AgendaEmail"/> (RF-2b), so that it can go in an invitation as it is.
+/// </summary>
+public static class ParticipantList
 {
     public const int MaxParticipants = 30;
-    public const int MaxEmailLength = 254;
+    public const int MaxEmailLength = AgendaEmail.MaxLength;
+
+    /// <summary>Longest part of a rejected address quoted back in the error, so the message stays short.</summary>
+    private const int MaxQuotedLength = 80;
 
     /// <summary>Lowercase addresses. Throws when one is malformed, repeated (ignoring case) or outside the allowed domains.</summary>
     public static IReadOnlyList<string> Normalize(IEnumerable<string>? raw, IReadOnlyCollection<string> allowedDomains)
@@ -113,10 +118,11 @@ public static partial class ParticipantList
         var seen = new HashSet<string>(StringComparer.Ordinal);
         foreach (var item in raw ?? [])
         {
-            var email = item?.Trim().ToLowerInvariant();
-            if (string.IsNullOrEmpty(email) || email.Length > MaxEmailLength || !EmailPattern().IsMatch(email))
+            var email = AgendaEmail.Normalize(item);
+            if (email is null)
             {
-                throw new DomainException("Un participante no tiene un correo válido.");
+                throw new DomainException(
+                    $"El correo «{Quote(item)}» de un participante no es válido: usa solo letras sin tilde, números y . _ + - antes de la @.");
             }
 
             if (!seen.Add(email))
@@ -142,7 +148,10 @@ public static partial class ParticipantList
             : throw new DomainException($"Máximo {MaxParticipants} participantes por actividad.");
     }
 
-    // Pragmatic address check, as for device owners: one '@', no spaces or control characters, a dot in the domain.
-    [GeneratedRegex(@"^[^@\s\p{Cc}]+@[^@\s\p{Cc}]+\.[^@\s\p{Cc}]+$", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 100)]
-    private static partial Regex EmailPattern();
+    /// <summary>The rejected value as typed, without control characters and cut to <see cref="MaxQuotedLength"/>.</summary>
+    private static string Quote(string? value)
+    {
+        var text = new string([.. (value ?? string.Empty).Trim().Where(character => !char.IsControl(character))]);
+        return text.Length <= MaxQuotedLength ? text : string.Concat(text.AsSpan(0, MaxQuotedLength), "…");
+    }
 }

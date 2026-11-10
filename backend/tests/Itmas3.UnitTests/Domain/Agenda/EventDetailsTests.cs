@@ -100,11 +100,12 @@ public sealed class EventDetailsTests
         Assert.Throws<DomainException>(() => Details(participants: ["ana@example.com", "ANA@example.com"]));
 
     [Fact]
-    public void CA13_an_address_admits_up_to_254_characters()
+    public void CA13_the_local_part_of_an_address_admits_up_to_64_characters()
     {
-        var domain = "@example.com";
-        Assert.Single(Details(participants: [new string('a', 254 - domain.Length) + domain]).Participants);
-        Assert.Throws<DomainException>(() => Details(participants: [new string('a', 255 - domain.Length) + domain]));
+        // SPEC-0008 RF-2b: the strict rule follows RFC 5321, so the part before the @ has at most 64 characters (the whole
+        // address, at most 254, is covered by AgendaEmailTests).
+        Assert.Single(Details(participants: [new string('a', 64) + "@example.com"]).Participants);
+        Assert.Throws<DomainException>(() => Details(participants: [new string('a', 65) + "@example.com"]));
     }
 
     [Fact]

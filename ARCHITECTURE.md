@@ -10,8 +10,8 @@ en [`specs/architecture/`](specs/architecture/); las reglas que no pueden romper
                                    ┌──────────────────────────── red "edge" (bridge) ─────────────────────────────┐
  Navegador ── 127.0.0.1:8080 ──▶   │  frontend (nginx unprivileged)                 api (ASP.NET Core 10)         │ ──▶ Microsoft Entra ID
                                    │   /                → SPA estática               /auth/*   BFF (sesión)        │     (OIDC, salida HTTPS)
-                                   │                                                                              │ ──▶ Microsoft Graph (opcional,
-                                   │                                                                              │     agenda en Outlook, HTTPS)
+                                   │                                                                              │ ──▶ SMTP de Microsoft 365 (opcional,
+                                   │                                                                              │     invitaciones de la agenda, STARTTLS)
                                    │   /api, /auth,                                  /api/*    API REST            │
                                    │   /signin-oidc, ... → proxy ─────────────────▶  /health*  (solo red interna)  │
                                    └───────────────────────────────────────────────────────┬──────────────────────┘
@@ -25,7 +25,7 @@ en [`specs/architecture/`](specs/architecture/); las reglas que no pueden romper
 |---|---|---|
 | Proxy TLS del host (fuera de Docker, solo en producción) | Termina TLS con Let's Encrypt, redirige HTTP a HTTPS, añade HSTS y reenvía a `127.0.0.1:${FRONTEND_PORT}` (ADR-0018). | Sí, 80 y 443 |
 | `frontend` | Sirve la SPA y actúa como **reverse proxy** (único origen público de la aplicación). Aplica CSP y cabeceras de seguridad de los documentos. | Sí, solo en `127.0.0.1` |
-| `api` | API REST, Backend-for-Frontend de autenticación, autorización, health checks y, si se activa, publicación de la agenda en Outlook con Microsoft Graph (ADR-0016). | No |
+| `api` | API REST, Backend-for-Frontend de autenticación, autorización, health checks y, si se activa, invitaciones de la agenda a Outlook por SMTP de Microsoft 365 (ADR-0023) o, como camino de vuelta, con Microsoft Graph (ADR-0016). | No |
 | `migrator` | Aplica migraciones EF Core y termina. Único proceso con privilegios DDL. | No |
 | `postgres` | Persistencia. Red interna sin salida. | No |
 | `itmas-agent` (fuera de Docker) | Agente de inventario instalado como servicio en los equipos (SPEC-0002). Envía su inventario por HTTPS al mismo origen público. | No (solo conexiones salientes) |
@@ -159,14 +159,16 @@ backend/
 │   │   ├── SqlAudit/           SubmitSnapshot (diferencias, riesgo, registro de cambios), Validation/, Maintenance/
 │   │   │                       (purga, recálculo del riesgo), Queries/, permisos, códigos del contrato
 │   │   └── Agenda/             Casos de uso de eventos, series, etiquetas y tipos; Outlook/ (puerto IOutlookCalendarGateway,
-│   │                           publicación y sincronización en línea); ExportCalendar/ (.ics); consultas y permisos `agenda.*`
+│   │                           publicación y sincronización en línea, escritor de invitaciones iCalendar, reglas de
+│   │                           destinatarios); ExportCalendar/ (.ics); consultas y permisos `agenda.*`
 │   ├── Itmas3.Infrastructure/  Adaptadores: EF Core/PostgreSQL, Data Protection, evaluador de permisos
 │   │   ├── Persistence/        AppDbContext, DatabaseOptions, Configurations/, Migrations/
 │   │   ├── Authorization/      Repositorios, unidad de trabajo auditada, instantáneas en caché, consultas
 │   │   ├── Inventory/          Repositorios, consultas del inventario, unidad de trabajo con auditoría
 │   │   ├── SqlAudit/           Repositorios y almacén de elementos por lotes (COPY binario, ExecuteUpdate), consultas
 │   │   └── Agenda/             Repositorios, unidad de trabajo auditada (repite la operación si dos peticiones crean a la vez la
-│   │                           misma etiqueta nueva), consultas y Graph/ (adaptador de Microsoft Graph con MSAL, solo con Outlook activo)
+│   │                           misma etiqueta nueva), consultas, Smtp/ (adaptador SMTP con MailKit: una conexión por petición,
+│   │                           ritmo de todo el proceso; ADR-0023) y Graph/ (adaptador de Microsoft Graph con MSAL; ADR-0016)
 │   └── Itmas3.Api/             Presentación y composition root
 │       ├── Controllers/        Controllers delgados (Authorization/: users, policies, permissions, audit-events;
 │       │                       Inventory/: devices, devices/{id}/reports, device-enrollments, inventory-reports;
@@ -174,7 +176,7 @@ backend/
 │       │                       Agenda/: agenda-events, agenda-series, agenda-event-types, agenda-tags, agenda-people)
 │       ├── SqlAudit/           Opciones, límite de frecuencia por equipo, mantenimiento (purga y recálculo del riesgo)
 │       ├── Agenda/             Opciones (validadas al arrancar) y registro del módulo; el puerto de Outlook se elige según
-│       │                       AGENDA_OUTLOOK_ENABLED
+│       │                       AGENDA_OUTLOOK_ENABLED y AGENDA_OUTLOOK_TRANSPORT; fecha de caducidad de la excepción SMTP
 │       ├── Inventory/          Esquemas de autenticación de dispositivos, políticas, rate limiting, purga del histórico
 │       ├── Contracts/          DTOs HTTP (request/response)
 │       ├── Authentication/     BFF OIDC + cookie de sesión
@@ -237,7 +239,8 @@ El orden importa y está en `Composition/RequestPipeline.cs`:
   el JSON de las instantáneas: el estado actual y el registro de cambios bastan.
 - **Agenda de infraestructura (SPEC-0006)**: `agenda_event_types` (catálogo con 12 tipos sembrados), `agenda_series` (la regla, solo
   para describirla), `agenda_events` (eventos y ocurrencias materializadas: hora local, zona e instante UTC, estado de la publicación
-  en Outlook; `xmin` y `revision` para la concurrencia), `agenda_tags` y `agenda_event_tags`. Los nombres de tipos y de etiquetas son únicos
+  en Outlook y, con SMTP, quién puede tener la reunión (`outlook_sent_recipients`, SPEC-0008); `xmin` y `revision` para la
+  concurrencia), `agenda_tags` y `agenda_event_tags`. Los nombres de tipos y de etiquetas son únicos
   sin distinguir mayúsculas (`lower(name)`); si dos peticiones crean a la vez la misma etiqueta nueva, la unidad de trabajo repite la
   segunda y la reutiliza. Sin purga: los eventos se conservan. Detalle en [specs/database/README.md](specs/database/README.md).
 
@@ -323,8 +326,9 @@ siempre el último de cada equipo.
 - Health checks: `pg_isready` por TCP (no se da por lista a PostgreSQL mientras ejecuta la inicialización),
   `/health` de la API (incluye conectividad con PostgreSQL), `/healthz` de nginx.
 - Redes: `edge` (proxy ↔ API, con salida para Entra ID) y `data` (`internal: true`). Con `AGENDA_OUTLOOK_ENABLED=true` la API
-  también sale a `graph.microsoft.com` (y a `login.microsoftonline.com` para el token de aplicación de la agenda,
-  SPEC-0006, ADR-0016): son los únicos destinos del adaptador de Outlook, con rutas fijas, y sin Outlook activo no hay llamada alguna.
+  también sale, con el transporte `smtp` (SPEC-0008, ADR-0023), a `smtp.office365.com:587`, fijo en el código, y a los servicios de
+  revocación (OCSP/CRL, HTTP) de su certificado; con `graph` (ADR-0016), a `graph.microsoft.com` y a `login.microsoftonline.com`.
+  Son los únicos destinos del adaptador de Outlook, y sin Outlook activo no hay llamada alguna.
 - Perfil opcional `agent`: `agent-e2e` ejecuta el agente Linux en Ubuntu 24.04 y muestra su inventario, sin enviarlo.
 
 ## 6.1 Agente de dispositivo (ADR-0010)

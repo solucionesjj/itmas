@@ -205,7 +205,7 @@ public sealed class GraphOutlookCalendarGatewayTests
 
         var created = await PublishAsync();
         var updated = await PublishAsync(outlookEventId: id);
-        var cancelled = await _graph.Gateway.CancelAsync(id, "motivo", Ct);
+        var cancelled = await _graph.Gateway.CancelAsync(id, "motivo", null, Ct);
 
         Assert.Equal(OutlookErrorCodes.Rejected, created.ErrorCode);
         Assert.Equal(OutlookErrorCodes.Rejected, updated.ErrorCode);
@@ -279,7 +279,7 @@ public sealed class GraphOutlookCalendarGatewayTests
 
         await PublishAsync(data);
         await PublishAsync(data, CreatedId);
-        await _graph.Gateway.CancelAsync(CreatedId, "https://evil.example", Ct);
+        await _graph.Gateway.CancelAsync(CreatedId, "https://evil.example", null, Ct);
 
         Assert.Equal(3, _graph.Handler.Requests.Count);
         Assert.All(_graph.Handler.Requests, request =>
@@ -330,7 +330,7 @@ public sealed class GraphOutlookCalendarGatewayTests
     {
         _graph.Handler.Respond(HttpStatusCode.Accepted);
 
-        var result = await _graph.Gateway.CancelAsync(CreatedId, "Se pospone por una ventana de cambios <b>mayor</b>", Ct);
+        var result = await _graph.Gateway.CancelAsync(CreatedId, "Se pospone por una ventana de cambios <b>mayor</b>", null, Ct);
 
         var request = Assert.Single(_graph.Handler.Requests);
         Assert.Equal(HttpMethod.Post, request.Method);
@@ -347,7 +347,7 @@ public sealed class GraphOutlookCalendarGatewayTests
     {
         _graph.Handler.Respond(HttpStatusCode.NotFound);
 
-        var result = await _graph.Gateway.CancelAsync(CreatedId, "motivo", Ct);
+        var result = await _graph.Gateway.CancelAsync(CreatedId, "motivo", null, Ct);
 
         Assert.True(result.Succeeded);
         Assert.Equal(CreatedId, result.OutlookEventId);
@@ -491,7 +491,7 @@ public sealed class GraphOutlookCalendarGatewayTests
     {
         _graph.Handler.Respond(status);
 
-        var result = await _graph.Gateway.CancelAsync(CreatedId, "motivo", Ct);
+        var result = await _graph.Gateway.CancelAsync(CreatedId, "motivo", null, Ct);
 
         if (status == HttpStatusCode.NotFound)
         {
@@ -598,7 +598,7 @@ public sealed class GraphOutlookCalendarGatewayTests
         using var cancelPublish = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _graph.Gateway.PublishAsync(GraphGatewayHarness.Data(), null, cancelPublish.Token));
         using var cancelCancel = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _graph.Gateway.CancelAsync(CreatedId, "motivo", cancelCancel.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _graph.Gateway.CancelAsync(CreatedId, "motivo", null, cancelCancel.Token));
     }
 
     // ---- RNF-5: throttling ------------------------------------------------------------------------------------------
@@ -626,7 +626,7 @@ public sealed class GraphOutlookCalendarGatewayTests
 
         var publish = await PublishAsync();
         var update = await PublishAsync(outlookEventId: CreatedId);
-        var cancel = await _graph.Gateway.CancelAsync(CreatedId, "motivo", Ct);
+        var cancel = await _graph.Gateway.CancelAsync(CreatedId, "motivo", null, Ct);
 
         Assert.Single(_graph.Handler.Requests);
         Assert.All(new[] { publish, update, cancel }, result =>
@@ -721,7 +721,7 @@ public sealed class GraphOutlookCalendarGatewayTests
         _graph.Tokens.Result = GraphTokenResult.Failure(code);
 
         var publish = await PublishAsync();
-        var cancel = await _graph.Gateway.CancelAsync(CreatedId, "motivo", Ct);
+        var cancel = await _graph.Gateway.CancelAsync(CreatedId, "motivo", null, Ct);
 
         Assert.Equal(code, publish.ErrorCode);
         Assert.Equal(code, cancel.ErrorCode);
@@ -768,7 +768,7 @@ public sealed class GraphOutlookCalendarGatewayTests
 
         await PublishAsync(data); // 403
         await PublishAsync(data, CreatedId); // 404 on the update and on the recreation
-        await _graph.Gateway.CancelAsync(CreatedId, "motivo confidencial", Ct); // 500
+        await _graph.Gateway.CancelAsync(CreatedId, "motivo confidencial", null, Ct); // 500
         await PublishAsync(data); // 429: the gate closes
         _graph.Clock.Set(AgendaHarness.Now.AddMinutes(11));
         await PublishAsync(data); // network failure

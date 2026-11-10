@@ -38,6 +38,7 @@ public sealed class ScheduleEventsHandler(
             throw new ArgumentOutOfRangeException(nameof(command), $"A batch has 1 to {ScheduleEventsCommand.MaxBatch} events.");
         }
 
+        var startedAt = timeProvider.GetUtcNow();
         var phase = await unitOfWork.ExecuteAsync(async (audit, ct) =>
         {
             var now = timeProvider.GetUtcNow();
@@ -67,7 +68,7 @@ public sealed class ScheduleEventsHandler(
                 }
 
                 var type = typeById[agendaEvent.TypeId];
-                if (settings.OutlookEnabled)
+                if (settings.IsOutlookActive(now))
                 {
                     agendaEvent.MarkOutlookPending();
                     work.Add(OutlookEventContent.ForPublish(agendaEvent, type, users.GetValueOrDefault(agendaEvent.ResponsibleUserId), settings));
@@ -86,7 +87,7 @@ public sealed class ScheduleEventsHandler(
             return (Results: results, Work: work);
         }, cancellationToken);
 
-        var states = await publisher.RunAsync(phase.Work, cancellationToken);
+        var states = await publisher.RunAsync(phase.Work, startedAt, cancellationToken);
         return [.. ids.Select(id => states.TryGetValue(id, out var state) ? phase.Results[id] with { Outlook = state } : phase.Results[id])];
     }
 
@@ -98,11 +99,13 @@ public sealed record CancelEventCommand(Guid EventId, string? Reason);
 
 /// <summary>
 /// Use case: cancel a Scheduled event with a reason (SPEC-0006 RF-10, RN-8). If it was published, the cancellation is sent
-/// to Outlook with the reason after saving; a failure there leaves the event cancelled and its Outlook state in error.
+/// to Outlook with the reason after saving; a failure there leaves the event cancelled and its Outlook state in error. With SMTP the
+/// write-ahead already stored the <c>UID</c>, so the cancellation always goes from here (SPEC-0008 RF-3).
 /// </summary>
 public sealed class CancelEventHandler(
     AgendaSettings settings,
     IAgendaEventRepository events,
+    IEventTypeRepository types,
     IAgendaUnitOfWork unitOfWork,
     ICurrentUser currentUser,
     TimeProvider timeProvider,
@@ -111,17 +114,19 @@ public sealed class CancelEventHandler(
     public async Task<AgendaCommandResult> HandleAsync(CancelEventCommand command, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(command);
+        var startedAt = timeProvider.GetUtcNow();
         var saved = await unitOfWork.ExecuteAsync(async (audit, ct) =>
         {
             var agendaEvent = await events.GetAsync(command.EventId, ct) ?? throw new NotFoundException("Agenda event not found.");
             var before = AgendaAuditViews.OfCancellation(agendaEvent);
-            agendaEvent.Cancel(command.Reason, timeProvider.GetUtcNow(), AgendaActor.Of(currentUser));
+            var now = timeProvider.GetUtcNow();
+            agendaEvent.Cancel(command.Reason, now, AgendaActor.Of(currentUser));
 
             OutlookWork? work = null;
-            if (agendaEvent.OutlookEventId is not null && settings.OutlookEnabled)
+            if (agendaEvent.OutlookEventId is not null && settings.IsOutlookActive(now))
             {
                 agendaEvent.MarkOutlookPending();
-                work = OutlookEventContent.ForCancel(agendaEvent);
+                work = OutlookEventContent.ForCancel(agendaEvent, await types.GetAsync(agendaEvent.TypeId, ct), settings);
             }
 
             audit.Record(
@@ -132,7 +137,7 @@ public sealed class CancelEventHandler(
         var outlook = OutlookState.Of(saved.Event);
         if (saved.Work is not null)
         {
-            outlook = (await publisher.RunAsync([saved.Work], cancellationToken))[saved.Event.Id];
+            outlook = (await publisher.RunAsync([saved.Work], startedAt, cancellationToken))[saved.Event.Id];
         }
 
         return new AgendaCommandResult(saved.Event.Id, saved.Event.Revision, saved.Event.Status, [], outlook);

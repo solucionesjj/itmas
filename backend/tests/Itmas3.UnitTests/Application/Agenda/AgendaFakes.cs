@@ -103,10 +103,22 @@ internal sealed class RecordingAgendaUnitOfWork : IAgendaUnitOfWork
     /// <summary>Raised instead of running the work, to simulate a concurrent change detected by the database.</summary>
     public Exception? FailWith { get; set; }
 
+    /// <summary>How many more times <see cref="FailWith"/> is raised; negative: every time.</summary>
+    public int FailuresLeft { get; set; } = -1;
+
+    /// <summary>Runs before each unit of work, for example to make a write take time on the test clock.</summary>
+    public Action? OnExecute { get; set; }
+
     public async Task<T> ExecuteAsync<T>(Func<AuditTrail, CancellationToken, Task<T>> work, CancellationToken cancellationToken)
     {
-        if (FailWith is { } failure)
+        OnExecute?.Invoke();
+        if (FailWith is { } failure && FailuresLeft != 0)
         {
+            if (FailuresLeft > 0)
+            {
+                FailuresLeft--;
+            }
+
             throw failure;
         }
 
@@ -125,6 +137,9 @@ internal sealed class FakeOutlookGateway : IOutlookCalendarGateway
     public List<(OutlookEventData Data, string? OutlookEventId)> Published { get; } = [];
 
     public List<(string OutlookEventId, string Reason)> Cancelled { get; } = [];
+
+    /// <summary>The meeting each cancellation repeated (SPEC-0008 RF-3), in the order of <see cref="Cancelled"/>.</summary>
+    public List<OutlookEventData?> CancelledData { get; } = [];
 
     /// <summary>When set, every call throws it (to prove that a failure of Outlook never fails the operation).</summary>
     public Exception? ThrowOnCall { get; set; }
@@ -145,9 +160,10 @@ internal sealed class FakeOutlookGateway : IOutlookCalendarGateway
         return Task.FromResult(Next(() => OutlookGatewayResult.Success(outlookEventId ?? $"AAMk-{data.EventId:N}", $"https://outlook.example/{data.EventId:N}")));
     }
 
-    public Task<OutlookGatewayResult> CancelAsync(string outlookEventId, string reason, CancellationToken cancellationToken)
+    public Task<OutlookGatewayResult> CancelAsync(string outlookEventId, string reason, OutlookEventData? data, CancellationToken cancellationToken)
     {
         Cancelled.Add((outlookEventId, reason));
+        CancelledData.Add(data);
         return Task.FromResult(Next(() => OutlookGatewayResult.Success(outlookEventId, null)));
     }
 
@@ -213,7 +229,14 @@ internal sealed class AgendaHarness
     /// <param name="outlookEnabled">Whether events are published to Outlook.</param>
     /// <param name="teamAddress">Address of the team, invited as optional.</param>
     /// <param name="gateway">The Outlook port to use instead of <see cref="Gateway"/> (for example, the adapter of Graph over a simulated handler).</param>
-    public AgendaHarness(bool outlookEnabled = false, string? teamAddress = "equipo@example.com", IOutlookCalendarGateway? gateway = null)
+    /// <param name="transport">The transport the use cases follow. Graph by default, as the tests of SPEC-0006 expect; SMTP for SPEC-0008.</param>
+    /// <param name="acceptedUntil">With SMTP, when the accepted exception expires (SPEC-0008 RF-7). Null: never.</param>
+    public AgendaHarness(
+        bool outlookEnabled = false,
+        string? teamAddress = "equipo@example.com",
+        IOutlookCalendarGateway? gateway = null,
+        OutlookTransport transport = OutlookTransport.Graph,
+        DateTimeOffset? acceptedUntil = null)
     {
         Settings = new AgendaSettings
         {
@@ -221,6 +244,9 @@ internal sealed class AgendaHarness
             AllowedAttendeeDomains = ["example.com"],
             PublicUrl = "https://itmas.example.com/",
             OutlookEnabled = outlookEnabled,
+            Transport = transport,
+            SmtpAcceptedUntil = acceptedUntil,
+            SenderAddress = transport == OutlookTransport.Smtp ? "agenda@example.com" : null,
             TeamAddress = teamAddress,
         };
         Events = new InMemoryAgendaEvents(Types);
@@ -234,7 +260,7 @@ internal sealed class AgendaHarness
         var preparer = new AgendaEventPreparer(Types, Directory, Settings);
         var resolver = new AgendaTagResolver(Tags);
         var warnings = new AgendaWarningService(Events);
-        Publisher = new OutlookPublisher(gateway ?? Gateway, UnitOfWork, Events, clock);
+        Publisher = new OutlookPublisher(gateway ?? Gateway, UnitOfWork, Events, Settings, clock);
         var guard = new AgendaNotificationGuard(user, Permissions, PublishLimit);
 
         CreateType = new CreateEventTypeHandler(Types, UnitOfWork, clock);
@@ -243,7 +269,7 @@ internal sealed class AgendaHarness
         Update = new UpdateEventHandler(Settings, Events, UnitOfWork, user, clock, preparer, warnings, resolver, Publisher, guard);
         Delete = new DeleteDraftEventHandler(Events, UnitOfWork);
         Schedule = new ScheduleEventsHandler(Settings, Events, Types, Directory, UnitOfWork, user, clock, warnings, Publisher);
-        Cancel = new CancelEventHandler(Settings, Events, UnitOfWork, user, clock, Publisher);
+        Cancel = new CancelEventHandler(Settings, Events, Types, UnitOfWork, user, clock, Publisher);
         Complete = new CompleteEventHandler(Events, UnitOfWork, user, clock);
         SetTags = new SetEventTagsHandler(Events, UnitOfWork, user, clock, resolver);
         CreateSeries = new CreateSeriesHandler(Settings, preparer, warnings, resolver, Events, Series, UnitOfWork, user, clock);
